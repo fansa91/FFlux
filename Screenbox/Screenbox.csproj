@@ -1,0 +1,77 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <Nullable>enable</Nullable>
+    <UseUwp>true</UseUwp>
+    <Platforms>x86;x64;arm64</Platforms>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <PublishAot>true</PublishAot>
+    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
+    <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Disable generated Main for custom Main in Program.cs with multi-instancing support. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <!-- Disable default PRI items to manually control which languages are included in the app package. -->
+    <EnableDefaultPriItems>false</EnableDefaultPriItems>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Packaging">
+    <GenerateTemporaryStoreCertificate>False</GenerateTemporaryStoreCertificate>
+    <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+    <AppxPackageSigningEnabled>False</AppxPackageSigningEnabled>
+    <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+    <GenerateTestArtifacts>False</GenerateTestArtifacts>
+    <AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
+    <GenerateAppxPackageOnBuild Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</GenerateAppxPackageOnBuild>
+    <AppxBundle>Always</AppxBundle>
+    <AppxBundlePlatforms>x86|x64|arm64</AppxBundlePlatforms>
+    <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+    
+    <MicrosoftWindowsSdkBuildToolsMSIXPackageVersion>1.7.261102100</MicrosoftWindowsSdkBuildToolsMSIXPackageVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Use application languages for plural rules to avoid mismatches with the system display language. -->
+    <ReswPlusUseApplicationLanguages>true</ReswPlusUseApplicationLanguages>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Uwp.Animations" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.Uwp.Behaviors" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.Uwp.Controls.Primitives" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.Uwp.Controls.SettingsControls" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.Uwp.Converters" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.Uwp.Extensions" Version="8.2.251219" />
+    <PackageReference Include="LibVLC.UWP" Version="3.0.23-2608082208" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0" />
+    <PackageReference Include="Microsoft.UI.Xaml" Version="2.8.7" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Uwp.Managed" Version="3.0.1" />
+    <PackageReference Include="Sentry.Extensions.Logging" Version="6.12.1" />
+    <PackageReference Include="ReswPlus" Version="0.6.1" />
+  </ItemGroup>
+
+  <ItemGroup Label="Localization">
+    <PRIResource Include="**\*.resw" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <!-- Pending translations are explicitly removed. Remove the language below when a translation is complete. -->
+    <PRIResource Remove="Strings\af-ZA\*.resw" />
+    <PRIResource Remove="Strings\ca-ES\*.resw" />
+    <PRIResource Remove="Strings\cs-CZ\*.resw" />
+    <PRIResource Remove="Strings\da-DK\*.resw" />
+    <PRIResource Remove="Strings\fa-IR\*.resw" />
+    <PRIResource Remove="Strings\no-NO\*.resw" />
+    <PRIResource Remove="Strings\sr-SP\*.resw" />
+    <PRIResource Remove="Strings\sv-SE\*.resw" />
+    <PRIResource Remove="Strings\ta-IN\*.resw" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Screenbox.Core\Screenbox.Core.csproj" />
+    <ProjectReference Include="..\Screenbox.Lively\Screenbox.Lively.csproj" />
+    <ProjectReference Include="..\Screenbox.UI\Screenbox.UI.csproj" />
+    <ProjectReference Include="..\Screenbox.VideoView\Screenbox.VideoView.csproj" />
+  </ItemGroup>
+
+</Project>

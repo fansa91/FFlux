@@ -1,0 +1,241 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Linq;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.Mvvm.Messaging.Messages;
+using CommunityToolkit.WinUI;
+using Screenbox.Core.Contexts;
+using Screenbox.Core.Enums;
+using Screenbox.Core.Helpers;
+using Screenbox.Core.Models;
+using Screenbox.Core.Services;
+using Windows.System;
+
+namespace Screenbox.Core.ViewModels;
+
+public sealed partial class SongsPageViewModel : BaseMusicContentViewModel,
+    IRecipient<PropertyChangedMessage<MusicLibrary>>
+{
+    public ObservableCollection<ObservableMediaGroup> GroupedSongs { get; } = new();
+
+    [ObservableProperty] public partial MediaViewModel? ContextMedia { get; set; }
+    [ObservableProperty] public partial SongSortOrder SortBy { get; set; } = SongSortOrder.Title;
+    [ObservableProperty] public partial string? SelectedGenre { get; set; }
+    [ObservableProperty] public partial IReadOnlyList<string> Genres { get; set; } = [];
+
+    private readonly LibraryContext _libraryContext;
+    private readonly LibrarySettingsContext _librarySettings;
+    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly DispatcherQueueTimer _refreshTimer;
+
+    public SongsPageViewModel(LibraryContext libraryContext, LibrarySettingsContext librarySettings)
+    {
+        _libraryContext = libraryContext;
+        _librarySettings = librarySettings;
+        SortBy = _librarySettings.SongsSortOrder;
+        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _refreshTimer = _dispatcherQueue.CreateTimer();
+
+        Messenger.Register<PropertyChangedMessage<MusicLibrary>>(this);
+    }
+
+    public void Receive(PropertyChangedMessage<MusicLibrary> message)
+    {
+        _dispatcherQueue.TryEnqueue(FetchSongs);
+    }
+
+    public void OnNavigatedFrom()
+    {
+        _refreshTimer.Stop();
+    }
+
+    public void FetchSongs()
+    {
+        // No need to run fetch async. HomePageViewModel should already called the method.
+        IsLoading = _libraryContext.IsLoadingMusic;
+        Genres = _libraryContext.Music.Genres;
+
+        if (!_libraryContext.IsLoadingMusic && SelectedGenre is not null && SelectedGenre != string.Empty && !Genres.Contains(SelectedGenre, StringComparer.CurrentCultureIgnoreCase))
+        {
+            SelectedGenre = null;
+            return;
+        }
+
+        Songs = GetFilteredSongs().ToList();
+
+        // Populate song groups with fetched result
+        var groups = GetCurrentGrouping(_libraryContext, SortBy);
+        if (Songs.Count < 5000)
+        {
+            // Only sync when the number of items is low enough
+            // Sync on too many items can cause UI hang
+            GroupedSongs.SyncObservableGroups(groups, (key, items)
+                => items as ObservableMediaGroup ?? new ObservableMediaGroup(key, items));
+        }
+        else
+        {
+            GroupedSongs.Clear();
+            foreach (IGrouping<string, MediaViewModel> group in groups)
+            {
+                GroupedSongs.Add(new ObservableMediaGroup(group));
+            }
+        }
+
+        // Progressively update when it's still loading
+        if (_libraryContext.IsLoadingMusic)
+        {
+            _refreshTimer.Debounce(FetchSongs, TimeSpan.FromSeconds(5));
+        }
+        else
+        {
+            _refreshTimer.Stop();
+        }
+    }
+
+    private IEnumerable<MediaViewModel> GetFilteredSongs()
+    {
+        IReadOnlyList<MediaViewModel> allSongs = _libraryContext.Music.Songs;
+        return SelectedGenre switch
+        {
+            null => allSongs,
+            "" => allSongs.Where(s => string.IsNullOrWhiteSpace(s.MediaInfo.MusicProperties.Genre)),
+            _ => allSongs.Where(s => GenreHelpers.MatchesGenre(s.MediaInfo.MusicProperties.Genre, SelectedGenre))
+        };
+    }
+
+    private List<IGrouping<string, MediaViewModel>> GetAlbumGrouping(LibraryContext context)
+    {
+        var groups = Songs.GroupBy(m => m.Album?.Name ?? context.Music.UnknownAlbum.Name)
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        var index = groups.FindIndex(g => g.Key == context.Music.UnknownAlbum.Name);
+        if (index >= 0)
+        {
+            var firstGroup = groups[index];
+            groups.RemoveAt(index);
+            groups.Insert(0, firstGroup);
+        }
+
+        return groups;
+    }
+
+    private List<IGrouping<string, MediaViewModel>> GetArtistGrouping(LibraryContext context)
+    {
+        var groups = Songs.GroupBy(m => m.MainArtist?.Name ?? context.Music.UnknownArtist.Name)
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        var index = groups.FindIndex(g => g.Key == context.Music.UnknownArtist.Name);
+        if (index >= 0)
+        {
+            var firstGroup = groups[index];
+            groups.RemoveAt(index);
+            groups.Insert(0, firstGroup);
+        }
+
+        return groups;
+    }
+
+    private List<IGrouping<string, MediaViewModel>> GetYearGrouping()
+    {
+        var groups = Songs.GroupBy(m =>
+                m.MediaInfo.MusicProperties.Year > 0
+                    ? m.MediaInfo.MusicProperties.Year.ToString()
+                    : MediaGroupingHelpers.OtherGroupSymbol)
+            .OrderByDescending(g => g.Key == MediaGroupingHelpers.OtherGroupSymbol ? 0 : uint.Parse(g.Key))
+            .ToList();
+        return groups;
+    }
+
+    private List<IGrouping<string, MediaViewModel>> GetDateAddedGrouping()
+    {
+        var groups = Songs.GroupBy(m => m.DateAdded.Date)
+            .OrderByDescending(g => g.Key)
+            .Select(g =>
+                new ListGrouping<string, MediaViewModel>(
+                    g.Key == default ? MediaGroupingHelpers.OtherGroupSymbol : g.Key.ToString("d", CultureInfo.CurrentCulture), g))
+            .OfType<IGrouping<string, MediaViewModel>>()
+            .ToList();
+        return groups;
+    }
+
+    private List<IGrouping<string, MediaViewModel>> GetDefaultGrouping()
+    {
+        var groups = Songs
+            .GroupBy(m => MediaGroupingHelpers.GetCharacterGroupLabel(m.Name))
+            .ToDictionary(g => g.Key);
+
+        var sortedGroup = new List<IGrouping<string, MediaViewModel>>();
+        foreach (string groupHeader in MediaGroupingHelpers.CharacterGroupLabels)
+        {
+            if (groups.TryGetValue(groupHeader, out var group))
+            {
+                sortedGroup.Add(group);
+            }
+            else
+            {
+                sortedGroup.Add(new ListGrouping<string, MediaViewModel>(groupHeader));
+            }
+        }
+
+        return sortedGroup;
+    }
+
+    private List<IGrouping<string, MediaViewModel>> GetCurrentGrouping(LibraryContext context, SongSortOrder sortBy)
+    {
+        return sortBy switch
+        {
+            SongSortOrder.Album => GetAlbumGrouping(context),
+            SongSortOrder.Artist => GetArtistGrouping(context),
+            SongSortOrder.Year => GetYearGrouping(),
+            SongSortOrder.DateAdded => GetDateAddedGrouping(),
+            _ => GetDefaultGrouping()
+        };
+    }
+
+    partial void OnSortByChanged(SongSortOrder value)
+    {
+        _librarySettings.SongsSortOrder = value;
+        UpdateGrouping();
+    }
+
+    partial void OnSelectedGenreChanged(string? value)
+    {
+        Songs = GetFilteredSongs().ToList();
+        UpdateGrouping();
+    }
+
+    private void UpdateGrouping()
+    {
+        var groups = GetCurrentGrouping(_libraryContext, SortBy);
+        GroupedSongs.Clear();
+        foreach (IGrouping<string, MediaViewModel> group in groups)
+        {
+            GroupedSongs.Add(new ObservableMediaGroup(group));
+        }
+    }
+
+    [RelayCommand]
+    private void SetSortBy(SongSortOrder tag)
+    {
+        SortBy = tag;
+    }
+
+    [RelayCommand]
+    private void SetGenre(string? genre)
+    {
+        SelectedGenre = genre;
+    }
+
+    [RelayCommand]
+    private void Play(MediaViewModel media)
+    {
+        if (Songs.Count == 0) return;
+        Messenger.SendQueueAndPlay(media, Songs, origin: QueueOrigin.ForLibraryQueue(media));
+    }
+}

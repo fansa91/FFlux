@@ -1,0 +1,57 @@
+using System;
+using System.Windows.Input;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using Screenbox.Core.Messages;
+using Screenbox.Core.ViewModels;
+using Screenbox.Dialogs;
+using Windows.UI.Xaml.Controls;
+
+namespace Screenbox.Commands;
+
+internal sealed partial class SetPlaybackOptionsCommand : IRelayCommand
+{
+    public event EventHandler? CanExecuteChanged;
+
+    public ICommand? PlayCommand { get; set; }
+
+    public bool CanExecute(object? parameter)
+    {
+        return true;
+    }
+
+    public async void Execute(object? parameter)
+    {
+        if (parameter is SettingsPageViewModel settings)
+        {
+            SetOptionsDialog dialog = new(settings.GlobalArguments, true);
+            ContentDialogResult result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.None) return;
+            settings.GlobalArguments = dialog.Options;
+        }
+        else
+        {
+            if (TryGetMedia(parameter) is not { } media) return;
+            SetOptionsDialog dialog = new(string.Join(' ', media.Options));
+            ContentDialogResult result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.None) return;
+            WeakReferenceMessenger.Default.Send(new UpdateMediaOptionsMessage(media, dialog.Options));
+            if (result == ContentDialogResult.Secondary)
+            {
+                PlayCommand?.Execute(parameter);
+            }
+        }
+    }
+
+    public void NotifyCanExecuteChanged()
+    {
+        CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static MediaViewModel? TryGetMedia(object? parameter) => parameter switch
+    {
+        MediaViewModel media => media,
+        StorageItemViewModel storageItemViewModel => storageItemViewModel.Media,
+        _ => null
+    };
+}

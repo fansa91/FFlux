@@ -1,0 +1,465 @@
+using System;
+using System.ComponentModel;
+using System.Globalization;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.Mvvm.Messaging.Messages;
+using Screenbox.Core.Contexts;
+using Screenbox.Core.Coordinators;
+using Screenbox.Core.Enums;
+using Screenbox.Core.Helpers;
+using Screenbox.Core.Messages;
+using Screenbox.Core.Playback;
+using Screenbox.Core.Services;
+using Windows.Foundation;
+using Windows.Media.Playback;
+using Windows.Storage;
+using Windows.System;
+
+namespace Screenbox.Core.ViewModels;
+
+public sealed partial class PlayerControlsViewModel : ObservableRecipient,
+    IRecipient<SettingChangedMessage<PlayerSettingsContext, bool>>,
+    IRecipient<PropertyChangedMessage<IMediaPlayer?>>,
+    IRecipient<TogglePlayPauseMessage>,
+    IRecipient<TrackNavigationMessage>,
+    IRecipient<PropertyChangedMessage<PlayerVisibilityState>>,
+    IRecipient<PropertyChangedMessage<WindowViewMode>>,
+    IRecipient<QueueCanNavigateChangedMessage>
+{
+    /// <summary>
+    /// The observable play queue state. Bind to this for <c>Items</c>,
+    /// <c>CurrentItem</c>, <c>ShuffleMode</c>, and <c>RepeatMode</c>.
+    /// </summary>
+    public PlayQueueContext PlayQueue { get; }
+
+    public bool ShouldBeAdaptive => !IsCompact && SystemInformation.IsDesktop;
+
+    /// <summary>
+    /// Gets a value that indicates whether the current playback item has exactly one subtitle track.
+    /// </summary>
+    /// <value><see langword="true"/> if the current playback item has exactly one subtitle track; otherwise, <see langword="false"/>.</value>
+    public bool HasSingleSubtitleTrackCount => MediaPlayer?.PlaybackItem is { SubtitleTracks.Count: 1 };
+
+    [ObservableProperty] public partial bool IsPlaying { get; set; }
+    [ObservableProperty] public partial bool IsFullscreen { get; set; }
+    [ObservableProperty] public partial string? TitleName { get; set; } // TODO: Handle VLC title name
+    [ObservableProperty] public partial bool IsAdvancedModeActive { get; set; }
+    [ObservableProperty] public partial bool IsMinimal { get; set; }
+    [ObservableProperty] public partial bool PlayerShowChapters { get; set; }
+    [ObservableProperty] public partial bool IsDisplayingRemainingTime { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShouldBeAdaptive))]
+    public partial bool IsCompact { get; set; }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveSnapshotCommand))]
+    public partial bool HasVideo { get; set; }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PlayPauseCommand))]
+    public partial bool HasActiveItem { get; set; }
+
+    private IMediaPlayer? MediaPlayer => _playerContext.MediaPlayer;
+
+    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IWindowService _windowService;
+    private readonly PlayerSettingsContext _playerSettings;
+    private readonly PlayerContext _playerContext;
+    private readonly IFilesService _filesService;
+    private readonly IPlayQueueCoordinator _coordinator;
+
+    private Size _aspectRatio;
+
+    public PlayerControlsViewModel(
+        PlayQueueContext playQueue,
+        IFilesService filesService,
+        IPlayQueueCoordinator coordinator,
+        PlayerSettingsContext playerSettings,
+        IWindowService windowService,
+        PlayerContext playerContext)
+    {
+        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _windowService = windowService;
+        _playerSettings = playerSettings;
+        _playerContext = playerContext;
+        _filesService = filesService;
+        _coordinator = coordinator;
+        IsAdvancedModeActive = playerSettings.AdvancedMode;
+        IsMinimal = true;
+        IsDisplayingRemainingTime = playerSettings.ShowRemainingTime;
+        PlayerShowChapters = playerSettings.ShowChapters;
+        PlayQueue = playQueue;
+        PlayQueue.PropertyChanged += PlayQueueOnPropertyChanged;
+
+        if (MediaPlayer != null)
+        {
+            MediaPlayer.PlaybackStateChanged += OnPlaybackStateChanged;
+            MediaPlayer.NaturalVideoSizeChanged += OnNaturalVideoSizeChanged;
+        }
+
+        Messenger.Register<SettingChangedMessage<PlayerSettingsContext, bool>>(this);
+        Messenger.Register<PropertyChangedMessage<IMediaPlayer?>>(this);
+        Messenger.Register<TogglePlayPauseMessage>(this);
+        Messenger.Register<TrackNavigationMessage>(this);
+        Messenger.Register<PropertyChangedMessage<PlayerVisibilityState>>(this);
+        Messenger.Register<PropertyChangedMessage<WindowViewMode>>(this);
+        Messenger.Register<QueueCanNavigateChangedMessage>(this);
+    }
+
+    public void Receive(SettingChangedMessage<PlayerSettingsContext, bool> message)
+    {
+        if (message.PropertyName == nameof(PlayerSettingsContext.ShowChapters))
+        {
+            PlayerShowChapters = message.NewValue;
+        }
+        else if (message.PropertyName == nameof(PlayerSettingsContext.AdvancedMode))
+        {
+            IsAdvancedModeActive = message.NewValue;
+        }
+    }
+
+    public void Receive(PropertyChangedMessage<IMediaPlayer?> message)
+    {
+        if (message.Sender is not PlayerContext) return;
+        if (message.OldValue is { } oldPlayer)
+        {
+            oldPlayer.PlaybackStateChanged -= OnPlaybackStateChanged;
+            oldPlayer.NaturalVideoSizeChanged -= OnNaturalVideoSizeChanged;
+        }
+
+        if (MediaPlayer != null)
+        {
+            MediaPlayer.PlaybackStateChanged += OnPlaybackStateChanged;
+            MediaPlayer.NaturalVideoSizeChanged += OnNaturalVideoSizeChanged;
+        }
+    }
+
+    public void Receive(TogglePlayPauseMessage message)
+    {
+        if (!HasActiveItem || MediaPlayer is null)
+            return;
+
+        PlayPause();
+
+        if (message.ShowBadge)
+        {
+            Messenger.Send(
+                new PlayerOsdUpdateMessage(
+                    IsPlaying ? PlaybackCommandKind.Pause : PlaybackCommandKind.Play)
+                .ShowBadge());
+        }
+    }
+
+    public async void Receive(TrackNavigationMessage message)
+    {
+        if (MediaPlayer is null)
+            return;
+
+        switch (message.Direction)
+        {
+            case TrackNavigationDirection.Next when CanGoNext():
+                await _coordinator.NextAsync();
+                break;
+            case TrackNavigationDirection.Previous when CanGoPrevious():
+                await _coordinator.PreviousAsync();
+                break;
+        }
+    }
+
+    public void Receive(PropertyChangedMessage<PlayerVisibilityState> message)
+    {
+        IsMinimal = message.NewValue != PlayerVisibilityState.Visible;
+    }
+
+    /// <summary>
+    /// Handles toggling the playback state.
+    /// </summary>
+    public void HandlePlaybackStateToggleKey()
+    {
+        if (!HasActiveItem)
+            return;
+
+        Messenger.Send(new TogglePlayPauseMessage(showBadge: true));
+    }
+
+    /// <summary>
+    /// Handles track navigation based on keyboard input.
+    /// </summary>
+    /// <remarks>
+    /// The following keys determine the resize action:
+    /// <list type="bullet">
+    /// <item><description><see cref="VirtualKey.PageUp"/>, or <see cref="VirtualKey.P"/> with <see cref="VirtualKeyModifiers.Shift"/>: Navigate to the previous track.</description></item>
+    /// <item><description><see cref="VirtualKey.PageDown"/>, or <see cref="VirtualKey.N"/> with <see cref="VirtualKeyModifiers.Shift"/>: Navigate to the next track.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <param name="key">The key that was pressed.</param>
+    /// <param name="modifiers">The modifier keys held during the key press.</param>
+    public void HandleTrackNavigationKey(VirtualKey key, VirtualKeyModifiers modifiers)
+    {
+        if (!HasActiveItem || MediaPlayer is null)
+            return;
+
+        switch (key)
+        {
+            case VirtualKey.PageUp:
+            case VirtualKey.P when modifiers is VirtualKeyModifiers.Shift:
+                Messenger.Send(new TrackNavigationMessage(TrackNavigationDirection.Previous));
+                Messenger.Send(new PlayerOsdUpdateMessage(PlaybackCommandKind.Previous).ShowBadge());
+                break;
+            case VirtualKey.PageDown:
+            case VirtualKey.N when modifiers is VirtualKeyModifiers.Shift:
+                Messenger.Send(new TrackNavigationMessage(TrackNavigationDirection.Next));
+                Messenger.Send(new PlayerOsdUpdateMessage(PlaybackCommandKind.Next).ShowBadge());
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Handles toggling the subtitle track during media playback based on keyboard input.
+    /// </summary>
+    /// <remarks>
+    /// The following modifiers determine the toggle action:
+    /// <list type="bullet">
+    /// <item><description><see cref="VirtualKeyModifiers.None"/> toggles the only subtitle track on or off.</description></item>
+    /// <item><description><see cref="VirtualKeyModifiers.Control"/> cycles forward through the available subtitle tracks.</description></item>
+    /// <item><description><see cref="VirtualKeyModifiers.Control"/> + <see cref="VirtualKeyModifiers.Shift"/> cycles backward through the available subtitle tracks.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <param name="modifiers">The modifier keys held during the key press.</param>
+    public void HandleSubtitleToggleKey(VirtualKeyModifiers modifiers)
+    {
+        if (MediaPlayer?.PlaybackItem is null)
+            return;
+
+        ISubtitleTrackList tracks = MediaPlayer.PlaybackItem.SubtitleTracks;
+        int count = tracks.Count;
+        if (count == 0 || (count > 1 && modifiers == VirtualKeyModifiers.None))
+            return;
+
+        int oldIndex = tracks.SelectedIndex;
+
+        tracks.SelectedIndex = modifiers switch
+        {
+            VirtualKeyModifiers.None when count == 1
+                => oldIndex >= 0 ? -1 : 0,
+            VirtualKeyModifiers.Control
+                => oldIndex == count - 1 ? -1 : ++oldIndex,
+            VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift
+                => oldIndex == -1 ? count - 1 : --oldIndex,
+            _ => oldIndex,
+        };
+
+        string? label = tracks.SelectedIndex == -1
+            ? null
+            : tracks[tracks.SelectedIndex].Label;
+
+        Messenger.Send(
+            new PlayerOsdUpdateMessage(
+                label is null ? PlaybackCommandKind.SubtitleOff : PlaybackCommandKind.Subtitle,
+                value: label)
+            .ShowMessage());
+    }
+
+    partial void OnIsDisplayingRemainingTimeChanged(bool value)
+    {
+        _playerSettings.ShowRemainingTime = value;
+    }
+
+    private void PlayQueueOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(PlayQueueContext.CurrentItem):
+                HasActiveItem = PlayQueue.CurrentItem is not null;
+                Messenger.Send(new ResetPlaybackSessionMessage());
+                break;
+        }
+    }
+
+    private void OnNaturalVideoSizeChanged(IMediaPlayer sender, object? args)
+    {
+        _dispatcherQueue.TryEnqueue(() => HasVideo = MediaPlayer?.NaturalVideoHeight > 0);
+    }
+
+    private void OnPlaybackStateChanged(IMediaPlayer sender, object? args)
+    {
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            IsPlaying = sender.PlaybackState is MediaPlaybackState.Playing or MediaPlaybackState.Opening;
+        });
+    }
+
+    public void Receive(PropertyChangedMessage<WindowViewMode> message)
+    {
+        if (message.Sender is not WindowContext) return;
+        switch (message.NewValue)
+        {
+            case WindowViewMode.Default:
+                IsFullscreen = false;
+                IsCompact = false;
+                break;
+            case WindowViewMode.Compact:
+                IsCompact = true;
+                IsFullscreen = false;
+                break;
+            case WindowViewMode.FullScreen:
+                IsFullscreen = true;
+                IsCompact = false;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    public void Receive(QueueCanNavigateChangedMessage message)
+    {
+        NextCommand.NotifyCanExecuteChanged();
+        PreviousCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanGoNext))]
+    private async Task Next() => await _coordinator.NextAsync();
+
+    [RelayCommand(CanExecute = nameof(CanGoPrevious))]
+    private async Task Previous() => await _coordinator.PreviousAsync();
+
+    private bool CanGoNext() => _coordinator.CanNext();
+
+    private bool CanGoPrevious() => _coordinator.CanPrevious();
+
+    [RelayCommand]
+    private void ResetMediaPlayback()
+    {
+        if (MediaPlayer is null) return;
+        TimeSpan pos = MediaPlayer.Position;
+        _coordinator.ResetCurrentItem();
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            MediaPlayer.Play();
+            MediaPlayer.Position = pos;
+        });
+    }
+
+    [RelayCommand]
+    private void SetAspectRatio(string aspect)
+    {
+        switch (aspect)
+        {
+            case "Fit":
+                _aspectRatio = new Size(0, 0);
+                break;
+            case "Fill":
+                _aspectRatio = new Size(double.NaN, double.NaN);
+                break;
+            default:
+                string[] values = aspect.Split(':', StringSplitOptions.RemoveEmptyEntries);
+                if (values.Length != 2) return;
+                if (!double.TryParse(values[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double width)) return;
+                if (!double.TryParse(values[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double height)) return;
+                _aspectRatio = new Size(width, height);
+                break;
+        }
+
+        Messenger.Send(new ChangeAspectRatioMessage(_aspectRatio));
+        Messenger.Send(new PlayerOsdUpdateMessage(PlaybackCommandKind.AspectRatio, value: aspect).ShowMessage());
+    }
+
+    [RelayCommand]
+    private async Task ToggleCompactLayoutAsync()
+    {
+        if (IsCompact)
+        {
+            await _windowService.TryExitCompactLayoutAsync();
+        }
+        else if (MediaPlayer?.NaturalVideoHeight > 0)
+        {
+            double aspectRatio = MediaPlayer.NaturalVideoWidth / (double)MediaPlayer.NaturalVideoHeight;
+            await _windowService.TryEnterCompactLayoutAsync(new Size(240 * aspectRatio, 240));
+        }
+        else
+        {
+            await _windowService.TryEnterCompactLayoutAsync(new Size(240, 240));
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleFullscreen()
+    {
+        if (IsCompact) return;
+        if (IsFullscreen)
+        {
+            _windowService.ExitFullScreen();
+        }
+        else
+        {
+            _windowService.TryEnterFullScreen();
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(HasActiveItem))]
+    private void PlayPause()
+    {
+        if (IsPlaying)
+        {
+            MediaPlayer?.Pause();
+        }
+        else
+        {
+            MediaPlayer?.Play();
+        }
+    }
+
+    /// <summary>
+    /// Saves a snapshot of the current video frame to the configured folder, falling back
+    /// to the Pictures library when the folder is not set or cannot be accessed.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(HasVideo))]
+    private async Task SaveSnapshotAsync()
+    {
+        if (MediaPlayer?.PlaybackState is not (MediaPlaybackState.Paused or MediaPlaybackState.Playing)) return;
+        try
+        {
+            StorageFile file = await SaveSnapshotInternalAsync(MediaPlayer);
+            Messenger.Send(new NotificationMessage(
+                NotificationLevel.Success,
+                NotificationKind.FrameSaved,
+                actionContent: file.Name,
+                actionCommand: new RelayCommand(() => _filesService.OpenFileLocationAsync(file))));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Messenger.Send(new NotificationMessage(NotificationLevel.Error, NotificationKind.PicturesLibraryAccessDenied));
+        }
+        catch (Exception e)
+        {
+            Messenger.Send(new NotificationMessage(NotificationLevel.Error, NotificationKind.FrameSaveFailed, message: e.Message));
+        }
+    }
+
+    private async Task<StorageFile> SaveSnapshotInternalAsync(IMediaPlayer mediaPlayer)
+    {
+        StorageFolder tempFolder = await ApplicationData.Current.TemporaryFolder.CreateFolderAsync(
+            $"snapshot_{DateTimeOffset.Now.Ticks}",
+            CreationCollisionOption.FailIfExists);
+
+        try
+        {
+            if (!mediaPlayer.TryTakeSnapshot(tempFolder.Path))
+                throw new Exception("Media player failed to save snapshot");
+
+            StorageFile file = (await tempFolder.GetFilesAsync())[0];
+            StorageFolder destFolder = await _filesService.GetFrameCaptureFolderAsync(_playerSettings.FrameCaptureFolderToken);
+            return await file.CopyAsync(destFolder, $"Screenbox_{DateTimeOffset.Now:yyyyMMdd_HHmmss}{file.FileType}",
+                NameCollisionOption.GenerateUniqueName);
+        }
+        finally
+        {
+            await tempFolder.DeleteAsync(StorageDeleteOption.PermanentDelete);
+        }
+    }
+}
+

@@ -1,0 +1,170 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.WinUI;
+using Screenbox.Core.Enums;
+using Screenbox.Core.Factories;
+using Screenbox.Core.Helpers;
+using Screenbox.Core.Messages;
+using Screenbox.Core.Models;
+using Screenbox.Core.Services;
+using Windows.Storage;
+using Windows.System;
+
+namespace Screenbox.Core.ViewModels;
+
+public sealed partial class PlaylistDetailsPageViewModel : ObservableRecipient
+{
+    [ObservableProperty]
+    public partial PlaylistViewModel? Source { get; set; }
+
+    [ObservableProperty]
+    public partial MediaViewModel? ContextMedia { get; set; }
+
+    [ObservableProperty]
+    public partial MediaViewModel? FirstItem { get; set; }
+
+    private readonly IFilesService _filesService;
+    private readonly ISourceMetadataService _sourceMetadataService;
+    private readonly IPlaylistService _playlistService;
+    private readonly IQueueService _queueService;
+    private readonly MediaViewModelFactory _mediaFactory;
+    private readonly DispatcherQueueTimer _commandRefreshTimer;
+
+    public PlaylistDetailsPageViewModel(
+        IFilesService filesService,
+        ISourceMetadataService sourceMetadataService,
+        IPlaylistService playlistService,
+        IQueueService queueService,
+        MediaViewModelFactory mediaFactory)
+    {
+        _filesService = filesService;
+        _sourceMetadataService = sourceMetadataService;
+        _playlistService = playlistService;
+        _queueService = queueService;
+        _mediaFactory = mediaFactory;
+        _commandRefreshTimer = DispatcherQueue.GetForCurrentThread().CreateTimer();
+    }
+
+    public void OnNavigatedTo(object? parameter)
+    {
+        if (Source is not null)
+        {
+            Source.Items.CollectionChanged -= SourceItems_CollectionChanged;
+        }
+
+        Source = parameter switch
+        {
+            NavigationMetadata { Parameter: PlaylistViewModel source } => source,
+            PlaylistViewModel source => source,
+            _ => throw new ArgumentException("Navigation parameter is not a playlist")
+        };
+
+        if (Source is not null)
+        {
+            Source.Items.CollectionChanged += SourceItems_CollectionChanged;
+        }
+
+        FirstItem = Source?.Items.FirstOrDefault();
+    }
+
+    private void SourceItems_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        FirstItem = Source?.Items.FirstOrDefault();
+        _commandRefreshTimer.Debounce(() =>
+        {
+            PlayCommand.NotifyCanExecuteChanged();
+            ShuffleAndPlayCommand.NotifyCanExecuteChanged();
+        }, TimeSpan.FromMilliseconds(50));
+    }
+
+    private static bool NotNull(MediaViewModel? item) => item != null;
+
+    private static bool NotEmpty(PlaylistViewModel? playlist) => playlist?.ItemsCount > 0;
+
+    [RelayCommand(CanExecute = nameof(NotNull))]
+    private void Play(MediaViewModel? item)
+    {
+        if (Source == null || item == null) return;
+        var queue = new QueueSession(item, Source.Items)
+        {
+            Origin = QueueOrigin.ForPlaylist(Source)
+        };
+        Messenger.Send(new SetQueueMessage(queue, true));
+    }
+
+    [RelayCommand(CanExecute = nameof(NotEmpty))]
+    private void ShuffleAndPlay(PlaylistViewModel? playlist)
+    {
+        if (playlist == null || playlist.Items.Count == 0) return;
+        Messenger.SendShuffleAndPlay(playlist.Items, QueueOrigin.ForPlaylist(playlist));
+    }
+
+    [RelayCommand(CanExecute = nameof(NotNull))]
+    private async Task Remove(MediaViewModel? item)
+    {
+        if (Source == null || item == null) return;
+        Source.Items.Remove(item);
+        await Source.SaveAsync();
+    }
+
+    [RelayCommand]
+    private async Task AddFilesAsync()
+    {
+        if (Source == null) return;
+
+        IReadOnlyList<StorageFile>? files = await _filesService.PickMultipleFilesAsync();
+        if (files == null || files.Count == 0) return;
+
+        var items = files.Where(f => f.IsSupported()).Select(_mediaFactory.GetOrCreate).ToList();
+        if (items.Count == 0) return;
+
+        await Task.WhenAll(items.Select(m => m.LoadDetailsAsync(_sourceMetadataService)));
+        await Source.AddItemsAsync(items);
+    }
+
+    public async Task AddDroppedItemsAsync(IReadOnlyList<IStorageItem> items, int insertIndex)
+    {
+        if (Source is null) return;
+
+        var queue = await _queueService.TryParseQueueAsync(items);
+        if (queue?.Items.Count > 0)
+        {
+            await Source.AddItemsAtIndexAsync(queue.Items, insertIndex);
+        }
+    }
+
+    public async Task ExportPlaylistAsync(string playlistFileDisplayName = "M3U8")
+    {
+        if (Source == null) return;
+
+        var saveFileTypes = new Dictionary<string, IList<string>> { [playlistFileDisplayName] = [".m3u8"] };
+        StorageFile? file = await _filesService.PickSaveFileAsync(Source.Name,
+            saveFileTypes, Windows.Storage.Pickers.PickerLocationId.MusicLibrary);
+        if (file is null) return;
+
+        await _playlistService.ExportPlaylistItemsAsync(Source.Items, file);
+    }
+
+    public async Task<bool> DeletePlaylistAsync()
+    {
+        if (Source == null) return false;
+
+        string playlistName = Source.Name;
+        await _playlistService.DeletePlaylistAsync(Source.Id);
+        Messenger.Send(new NotificationMessage(NotificationLevel.Success, NotificationKind.PlaylistDeleted, title: playlistName));
+        return true;
+    }
+
+    public async Task RenamePlaylistAsync(string newDisplayName)
+    {
+        if (Source == null) return;
+        await Source.RenameAsync(newDisplayName);
+        Messenger.Send(new NotificationMessage(NotificationLevel.Success, NotificationKind.PlaylistRenamed, title: newDisplayName));
+    }
+}

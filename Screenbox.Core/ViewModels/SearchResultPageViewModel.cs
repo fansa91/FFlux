@@ -1,0 +1,184 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using Screenbox.Core.Helpers;
+using Screenbox.Core.Messages;
+using Screenbox.Core.Models;
+using Screenbox.Core.Services;
+
+namespace Screenbox.Core.ViewModels;
+
+public sealed partial class SearchResultPageViewModel : ObservableRecipient
+{
+    public string SearchQuery { get; private set; }
+
+    public SearchResult? SearchResult { get; private set; }
+
+    public ObservableCollection<ArtistViewModel> Artists { get; }
+    public ObservableCollection<AlbumViewModel> Albums { get; }
+    public ObservableCollection<MediaViewModel> Songs { get; }
+    public ObservableCollection<MediaViewModel> Videos { get; }
+    public ObservableCollection<PlaylistViewModel> Playlists { get; }
+
+    [ObservableProperty] public partial ArtistViewModel? ContextArtist { get; set; }
+    [ObservableProperty] public partial AlbumViewModel? ContextAlbum { get; set; }
+    [ObservableProperty] public partial MediaViewModel? ContextMedia { get; set; }
+    [ObservableProperty] public partial PlaylistViewModel? ContextPlaylist { get; set; }
+    [ObservableProperty] public partial bool ShowArtists { get; set; }
+    [ObservableProperty] public partial bool ShowAlbums { get; set; }
+    [ObservableProperty] public partial bool ShowSongs { get; set; }
+    [ObservableProperty] public partial bool ShowVideos { get; set; }
+    [ObservableProperty] public partial bool ShowPlaylists { get; set; }
+    [ObservableProperty] public partial bool HasMoreArtists { get; set; }
+    [ObservableProperty] public partial bool HasMoreAlbums { get; set; }
+    [ObservableProperty] public partial bool HasMoreSongs { get; set; }
+    [ObservableProperty] public partial bool HasMoreVideos { get; set; }
+    [ObservableProperty] public partial bool HasMorePlaylists { get; set; }
+
+    private readonly INavigationService _navigationService;
+
+    public SearchResultPageViewModel(INavigationService navigationService)
+    {
+        _navigationService = navigationService;
+        SearchQuery = string.Empty;
+        Artists = new ObservableCollection<ArtistViewModel>();
+        Albums = new ObservableCollection<AlbumViewModel>();
+        Songs = new ObservableCollection<MediaViewModel>();
+        Videos = new ObservableCollection<MediaViewModel>();
+        Playlists = new ObservableCollection<PlaylistViewModel>();
+    }
+
+    public void Load(SearchResult searchResult)
+    {
+        SearchResult = searchResult;
+        SearchQuery = searchResult.Query;
+        if (searchResult.Artists.Count > 0)
+        {
+            ShowArtists = true;
+        }
+
+        if (searchResult.Albums.Count > 0)
+        {
+            ShowAlbums = true;
+        }
+
+        if (searchResult.Songs.Count > 0)
+        {
+            ShowSongs = true;
+            foreach (MediaViewModel song in searchResult.Songs.Take(5))
+            {
+                Songs.Add(song);
+            }
+        }
+
+        if (searchResult.Videos.Count > 0)
+        {
+            ShowVideos = true;
+            foreach (MediaViewModel video in searchResult.Videos.Take(6))
+            {
+                Videos.Add(video);
+            }
+        }
+
+        if (searchResult.Playlists.Count > 0)
+        {
+            ShowPlaylists = true;
+            foreach (PlaylistViewModel playlist in searchResult.Playlists.Take(6))
+            {
+                Playlists.Add(playlist);
+            }
+        }
+
+        UpdateHasMoreProperties(searchResult);
+    }
+
+    public void UpdateGridItems(int requestedCount)
+    {
+        if (SearchResult == null) return;
+        SyncCollection(Artists, SearchResult.Artists, requestedCount);
+        SyncCollection(Albums, SearchResult.Albums, requestedCount);
+        UpdateHasMoreProperties(SearchResult);
+    }
+
+    private void UpdateHasMoreProperties(SearchResult searchResult)
+    {
+        HasMoreArtists = Artists.Count < searchResult.Artists.Count;
+        HasMoreAlbums = Albums.Count < searchResult.Albums.Count;
+        HasMoreSongs = Songs.Count < searchResult.Songs.Count;
+        HasMoreVideos = Videos.Count < searchResult.Videos.Count;
+        HasMorePlaylists = Playlists.Count < searchResult.Playlists.Count;
+    }
+
+    [RelayCommand]
+    private void Play(MediaViewModel media)
+    {
+        Messenger.Send(new PlayMediaMessage(media));
+    }
+
+    [RelayCommand]
+    private void PlaySong(MediaViewModel media)
+    {
+        if (SearchResult == null) return;
+        Messenger.SendQueueAndPlay(media, SearchResult.Songs, origin: QueueOrigin.ForLibraryQueue(media));
+    }
+
+    [RelayCommand(CanExecute = nameof(SearchResultPageViewModel.HasMoreArtists))]
+    private void SeeAllArtists()
+    {
+        _navigationService.Navigate(typeof(ArtistSearchResultPageViewModel), this);
+    }
+
+    [RelayCommand(CanExecute = nameof(SearchResultPageViewModel.HasMoreAlbums))]
+    private void SeeAllAlbums()
+    {
+        _navigationService.Navigate(typeof(AlbumSearchResultPageViewModel), this);
+    }
+
+    [RelayCommand(CanExecute = nameof(SearchResultPageViewModel.HasMoreSongs))]
+    private void SeeAllSongs()
+    {
+        _navigationService.Navigate(typeof(SongSearchResultPageViewModel), this);
+    }
+
+    [RelayCommand(CanExecute = nameof(SearchResultPageViewModel.HasMoreVideos))]
+    private void SeeAllVideos()
+    {
+        _navigationService.Navigate(typeof(VideoSearchResultPageViewModel), this);
+    }
+
+    [RelayCommand(CanExecute = nameof(HasMorePlaylists))]
+    private void SeeAllPlaylists()
+    {
+        _navigationService.Navigate(typeof(PlaylistSearchResultPageViewModel), this);
+    }
+
+    private static void SyncCollection<T>(IList<T> target, IReadOnlyList<T> source, int desiredCount)
+    {
+        desiredCount = Math.Min(desiredCount, source.Count);
+        if (desiredCount <= 0)
+        {
+            target.Clear();
+            return;
+        }
+
+        if (target.Count > desiredCount)
+        {
+            int countToRemove = target.Count - desiredCount;
+            for (int i = 0; i < countToRemove; i++)
+            {
+                target.RemoveAt(target.Count - 1);
+            }
+        }
+        else
+        {
+            for (int i = target.Count; i < desiredCount; i++)
+            {
+                target.Add(source[i]);
+            }
+        }
+    }
+}
