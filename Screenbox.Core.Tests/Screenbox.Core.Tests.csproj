@@ -12,6 +12,11 @@
     <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- The test host is a plain desktop process. Without the WinAppSDK runtime
+         beside it, WinUI WinRT types (DispatcherQueue, ItemIndexRange) cannot be
+         activated and any ViewModel test touching them fails with REGDB_E_CLASSNOTREG. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
   </PropertyGroup>
 
   <ItemGroup>

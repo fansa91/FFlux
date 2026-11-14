@@ -32,7 +32,7 @@ public partial class PropertyViewModelTests
         new(NullLogger<StorageMetadataService>.Instance);
 
     private static PlayerContext CreatePlayerContextWithPlayer() =>
-        new() { MediaPlayer = new TestMediaPlayer() };
+        new(new TestMediaPlayer());
 
     private sealed partial class DummyPlaybackItem : IPlaybackItem
     {

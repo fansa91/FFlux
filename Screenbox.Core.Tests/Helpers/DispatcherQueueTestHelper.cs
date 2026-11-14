@@ -38,7 +38,16 @@ public static partial class DispatcherQueueTestHelper
         var queue = DispatcherQueue.GetForCurrentThread();
         if (queue is not null)
         {
-            SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(queue));
+            // The UWP Windows.System.DispatcherQueueSynchronizationContext type is
+            // not part of the WinUI 3 SDK projection. Post continuations onto the
+            // queue directly so await still resumes on the dispatcher thread.
+            SynchronizationContext.SetSynchronizationContext(new QueueSynchronizationContext(queue));
         }
+    }
+
+    private sealed class QueueSynchronizationContext(DispatcherQueue queue) : SynchronizationContext
+    {
+        public override void Post(SendOrPostCallback d, object? state) =>
+            queue.TryEnqueue(() => d(state));
     }
 }
