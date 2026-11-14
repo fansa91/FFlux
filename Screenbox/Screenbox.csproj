@@ -15,6 +15,9 @@
          -p:WindowsAppSDKSelfContained=false for framework-dependent deployment. -->
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- An unpackaged app gets its taskbar / Alt+Tab / Explorer icon from the PE resource,
+         not from a package manifest logo, so the icon has to be embedded in the exe. -->
+    <ApplicationIcon>Assets\Screenbox.ico</ApplicationIcon>
     <Platforms>x86;x64;arm64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <DefaultLanguage>en-US</DefaultLanguage>

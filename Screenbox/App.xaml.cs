@@ -39,6 +39,7 @@ sealed partial class App : Application
     private readonly ILogger<App> _logger;
     private readonly ITelemetryService _telemetryService;
     private Window? _window;
+    private WindowTitleController? _windowTitle;
     private IAppDispatcherTimer? _heartbeatTimer;
 
     /// <summary>
@@ -252,6 +253,11 @@ sealed partial class App : Application
             _window = new Window();
             WindowAccessor.Register(_window);
             Screenbox.UI.Controls.TitleBar.HostWindow = _window;
+            // An unpackaged window has no ApplicationView, so its caption has to be set
+            // explicitly or it stays "WinUI Desktop" everywhere the shell shows it.
+            // Held in a field: the messenger keeps only a weak reference to the recipient.
+            _windowTitle = new WindowTitleController(_window);
+            _windowTitle.Attach();
             _window.Closed += (_, _) => StartupErrorLog.Write("Window closed");
             try
             {
