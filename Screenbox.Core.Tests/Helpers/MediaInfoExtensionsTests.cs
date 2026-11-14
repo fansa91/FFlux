@@ -164,4 +164,29 @@ public class MediaInfoExtensionsTests
         await Assert.That(merged.VideoProperties.Season).IsEqualTo("Season 2");
         await Assert.That(merged.VideoProperties.Episode).IsEqualTo("Episode 5");
     }
+
+    [Test]
+    public async Task MergeSelective_ShouldCarryEmbeddedArtworkData()
+    {
+        var target = new MediaInfo(MediaPlaybackType.Music);
+        byte[] artwork = [0x89, 0x50, 0x4E, 0x47];
+
+        MediaInfo merged = target.MergeSelective(
+            new MediaInfo(MediaPlaybackType.Music) { ArtworkData = artwork });
+
+        await Assert.That(merged.ArtworkData).IsSameReferenceAs(artwork);
+    }
+
+    [Test]
+    public async Task MergeSelective_ShouldKeepTargetArtworkDataOverSource()
+    {
+        byte[] targetArtwork = [1, 2, 3];
+        byte[] sourceArtwork = [4, 5, 6];
+        var target = new MediaInfo(MediaPlaybackType.Music) { ArtworkData = targetArtwork };
+
+        MediaInfo merged = target.MergeSelective(
+            new MediaInfo(MediaPlaybackType.Music) { ArtworkData = sourceArtwork });
+
+        await Assert.That(merged.ArtworkData).IsSameReferenceAs(targetArtwork);
+    }
 }

@@ -4,16 +4,19 @@ using System.Threading;
 using System.Threading.Tasks;
 using FFmpegInteropX;
 using Screenbox.Core.Helpers;
+using Screenbox.Core.MediaSources;
 using Windows.Media.Core;
 using Windows.Media.Playback;
 using Windows.Storage;
+using Windows.Storage.FileProperties;
 
 namespace Screenbox.Core.Playback;
 
 /// <summary>
 /// Opt-in scripted playback exercise. Screenbox has no automation surface, so verifying
-/// track switching, external subtitles, FastSeek and hardware decoding means driving the
-/// player from code and reading the result out of the trace file.
+/// track switching, external subtitles, FastSeek, hardware decoding, audio-only playback and
+/// artwork extraction means driving the player from code and reading the result out of the
+/// trace file.
 /// Enable with <c>SCREENBOX_PLAYBACK_PROBE=1</c>; point <c>SCREENBOX_PROBE_SUBTITLE</c> at a
 /// subtitle file to exercise the external-subtitle path.
 /// </summary>
@@ -57,6 +60,8 @@ public static class PlaybackProbe
             await Task.Delay(1200);
 
             DescribeMedia(player, item);
+            await InspectArtworkAsync(item);
+            await ExerciseAudioTimelineAsync(player, item);
             await SwitchAudioAsync(player, item);
             await ExerciseAudioDelayAsync(player);
             await SelectEmbeddedSubtitleAsync(item);
@@ -112,6 +117,88 @@ public static class PlaybackProbe
         FFmpegSubtitleTrackList subtitleTracks = item.SubtitleTracks;
         Log($"subtitle tracks: count={subtitleTracks.Count} selected={subtitleTracks.SelectedIndex} " +
             $"labels=[{DescribeTracks(subtitleTracks)}]");
+    }
+
+    /// <summary>
+    /// Reports what the two artwork sources actually produce. Screenbox shows album art from
+    /// <see cref="MediaViewModel.Thumbnail"/>, which is filled from the shell thumbnail provider;
+    /// FFmpeg can also hand out the embedded cover. Both are checked so a blank album art panel
+    /// can be attributed to a specific stage instead of guessed at.
+    /// </summary>
+    private static async Task InspectArtworkAsync(FFmpegPlaybackItem item)
+    {
+        FFmpegMediaSource? source = item.FFmpegSource;
+        if (source is null)
+        {
+            Log("artwork: no FFmpeg source");
+        }
+        else
+        {
+            Log($"artwork: ffmpeg hasThumbnail={source.HasThumbnail} " +
+                $"tags=[{string.Join(",", source.MetadataTags.Keys)}]");
+
+            if (source.HasThumbnail)
+            {
+                try
+                {
+                    MediaThumbnailData thumbnail = source.ExtractThumbnail();
+                    try
+                    {
+                        // The cover buffer is single-use: an empty read here means the metadata
+                        // service already took it on the way into the player page.
+                        Log($"artwork: ffmpeg extracted ext='{thumbnail.Extension}' bytes={thumbnail.Buffer?.Length ?? 0}");
+                    }
+                    finally
+                    {
+                        thumbnail.Dispose();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log("artwork: ffmpeg extract failed: " + ex);
+                }
+            }
+        }
+
+        if (item.Source is not IFileMediaSource fileSource ||
+            await fileSource.GetStorageFileAsync() is not { } file)
+        {
+            Log("artwork: no StorageFile, shell thumbnail not attempted");
+            return;
+        }
+
+        try
+        {
+            // Same request MediaViewModel.LoadThumbnailAsync makes.
+            using StorageItemThumbnail? shell = await file.GetThumbnailAsync(
+                ThumbnailMode.SingleItem, 1280, ThumbnailOptions.UseCurrentScale);
+            Log(shell is null
+                ? "artwork: shell thumbnail null"
+                : $"artwork: shell type={shell.Type} contentType='{shell.ContentType}' " +
+                  $"bytes={shell.Size} {shell.OriginalWidth}x{shell.OriginalHeight}");
+        }
+        catch (Exception ex)
+        {
+            Log("artwork: shell thumbnail failed: " + ex);
+        }
+    }
+
+    /// <summary>
+    /// Confirms that an audio-only item advances its own clock. A stalled position would mean
+    /// the audio stream opened but the pipeline never started.
+    /// </summary>
+    private static async Task ExerciseAudioTimelineAsync(FFmpegMediaPlayer player, FFmpegPlaybackItem item)
+    {
+        FFmpegMediaSource? source = item.FFmpegSource;
+        bool audioOnly = source is { } s && s.VideoStreams.Count == 0;
+
+        TimeSpan start = player.Position;
+        await Task.Delay(1500);
+        TimeSpan end = player.Position;
+
+        Log($"audio timeline: audioOnly={audioOnly} state={player.PlaybackState} " +
+            $"pos {start} -> {end} advanced={(end - start).TotalMilliseconds:0}ms " +
+            $"duration={player.NaturalDuration} volume={player.Volume}");
     }
 
     private static async Task SwitchAudioAsync(FFmpegMediaPlayer player, FFmpegPlaybackItem item)

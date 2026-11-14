@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Screenbox.Core.Enums;
 using Screenbox.Core.Models;
 using Screenbox.Core.Playback;
+using Windows.Storage.Streams;
 
 namespace Screenbox.Core.Services;
 
@@ -129,9 +130,49 @@ public sealed class FFmpegMetadataService : IPlaybackMetadataService
             Episode = episode
         };
 
-        // Embedded cover art is exposed as raw bytes by MediaThumbnailData, not as a URI.
-        // Screenbox's artwork pipeline expects a URI, so it is intentionally left empty.
-        return new MediaInfo(mediaType, musicInfo, videoInfo);
+        // Cover art lives in the container as an attachment, so it is available as raw pixels
+        // rather than as a path. Carrying the bytes lets the player page show album art for
+        // formats where the shell thumbnail provider only offers a generic file-type icon.
+        byte[]? artworkData = TryExtractArtwork(source);
+
+        return new MediaInfo(mediaType, musicInfo, videoInfo)
+        {
+            ArtworkData = artworkData
+        };
+    }
+
+    private static byte[]? TryExtractArtwork(FFmpegMediaSource source)
+    {
+        if (!source.HasThumbnail)
+        {
+            return null;
+        }
+
+        MediaThumbnailData? thumbnail = null;
+        try
+        {
+            thumbnail = source.ExtractThumbnail();
+            IBuffer? buffer = thumbnail?.Buffer;
+            if (buffer is null || buffer.Length == 0)
+            {
+                return null;
+            }
+
+            byte[] bytes = new byte[buffer.Length];
+            using DataReader reader = DataReader.FromBuffer(buffer);
+            reader.ReadBytes(bytes);
+            return bytes;
+        }
+        catch (Exception)
+        {
+            // A malformed cover must not fail metadata extraction; the UI falls back to the
+            // generic placeholder.
+            return null;
+        }
+        finally
+        {
+            thumbnail?.Dispose();
+        }
     }
 
     private static string NormalizeTitle(string? rawTitle, FFmpegMediaSource source)

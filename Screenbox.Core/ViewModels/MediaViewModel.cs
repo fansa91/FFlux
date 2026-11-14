@@ -201,10 +201,30 @@ public sealed partial class MediaViewModel : ObservableRecipient
     {
         if (Thumbnail is not null) return;
 
+        // Embedded artwork first: it is the cover the file itself declares, and the shell
+        // thumbnail provider answers with a generic file-type icon for many audio containers
+        // (and always for audio-only files it has no handler for).
+        if (MediaInfo.ArtworkData is { Length: > 0 } artworkData)
+        {
+            if (await DecodeArtworkAsync(artworkData) is { } embedded)
+            {
+                PlaybackTrace.Write($"thumbnail: embedded artwork decoded, {artworkData.Length} bytes");
+                Thumbnail = embedded;
+                return;
+            }
+
+            PlaybackTrace.Write($"thumbnail: embedded artwork rejected, {artworkData.Length} bytes");
+        }
+
         if (Source is IFileMediaSource fileSource && await fileSource.GetStorageFileAsync() is { } file)
         {
             using var source = await GetThumbnailSourceAsync(file);
-            if (source is null) return;
+            if (source is null)
+            {
+                PlaybackTrace.Write("thumbnail: no shell thumbnail");
+                return;
+            }
+
             BitmapImage image = new()
             {
                 DecodePixelType = DecodePixelType.Logical,
@@ -221,6 +241,7 @@ public sealed partial class MediaViewModel : ObservableRecipient
                 return;
             }
 
+            PlaybackTrace.Write("thumbnail: shell thumbnail decoded");
             Thumbnail = image;
         }
         else if (MediaInfo.ArtworkUri is { } artworkUri)
@@ -230,6 +251,36 @@ public sealed partial class MediaViewModel : ObservableRecipient
                 DecodePixelType = DecodePixelType.Logical,
                 DecodePixelHeight = 300
             };
+        }
+    }
+
+    private static async Task<BitmapImage?> DecodeArtworkAsync(byte[] artworkData)
+    {
+        try
+        {
+            using InMemoryRandomAccessStream stream = new();
+            using (DataWriter writer = new(stream))
+            {
+                writer.WriteBytes(artworkData);
+                await writer.StoreAsync();
+                await writer.FlushAsync();
+                writer.DetachStream();
+            }
+
+            stream.Seek(0);
+            BitmapImage image = new()
+            {
+                DecodePixelType = DecodePixelType.Logical,
+                DecodePixelHeight = 300
+            };
+
+            await image.SetSourceAsync(stream);
+            return image;
+        }
+        catch (Exception)
+        {
+            // Unknown or corrupt codec for the embedded cover; fall back to the shell.
+            return null;
         }
     }
 

@@ -26,6 +26,7 @@ public static class MediaInfoExtensions
         ulong size = target.Size > 0 ? target.Size : source.Size;
         DateTimeOffset dateModified = target.DateModified != default ? target.DateModified : source.DateModified;
         Uri? artworkUri = target.ArtworkUri ?? source.ArtworkUri;
+        byte[]? artworkData = target.ArtworkData ?? source.ArtworkData;
 
         MusicInfo musicInfo = new()
         {
@@ -105,7 +106,8 @@ public static class MediaInfoExtensions
         {
             Size = size,
             DateModified = dateModified,
-            ArtworkUri = artworkUri
+            ArtworkUri = artworkUri,
+            ArtworkData = artworkData
         };
     }
 }

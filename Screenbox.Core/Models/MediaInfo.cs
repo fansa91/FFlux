@@ -18,6 +18,16 @@ public sealed class MediaInfo
 
     public Uri? ArtworkUri { get; set; }
 
+    /// <summary>
+    /// Gets or sets the encoded (PNG/JPEG) cover art embedded in the media file itself.
+    /// </summary>
+    /// <remarks>
+    /// Containers such as MP3, FLAC, M4A and MKV carry their cover as an attachment rather than
+    /// as a separate file, and the shell thumbnail provider does not always surface it. FFmpeg
+    /// reads it reliably, so the bytes are carried here and decoded on demand.
+    /// </remarks>
+    public byte[]? ArtworkData { get; set; }
+
     public MediaInfo(MediaPlaybackType mediaType, string title = "", uint year = default, TimeSpan duration = default)
     {
         MediaType = mediaType;
