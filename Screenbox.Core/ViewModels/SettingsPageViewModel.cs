@@ -17,7 +17,7 @@ using Windows.Devices.Enumeration;
 using Windows.Storage;
 using Windows.Storage.AccessCache;
 using Windows.System;
-using Windows.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 namespace Screenbox.Core.ViewModels;
 

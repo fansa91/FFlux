@@ -14,7 +14,7 @@ using Screenbox.Core.Services;
 using Windows.Storage;
 using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
-using Windows.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Screenbox.Core.ViewModels;
 

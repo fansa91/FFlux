@@ -13,12 +13,12 @@ using Screenbox.Strings;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.UI.Composition;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Hosting;
-using Windows.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Hosting;
+using Microsoft.UI.Xaml.Navigation;
 using EF = CommunityToolkit.WinUI.Animations.Expressions.ExpressionFunctions;
-using NavigationViewDisplayMode = Windows.UI.Xaml.Controls.NavigationViewDisplayMode;
+using NavigationViewDisplayMode = Microsoft.UI.Xaml.Controls.NavigationViewDisplayMode;
 
 namespace Screenbox.Pages;
 

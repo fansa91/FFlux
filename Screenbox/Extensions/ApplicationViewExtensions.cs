@@ -4,7 +4,7 @@
 // Source: https://github.com/CommunityToolkit/WindowsCommunityToolkit/blob/main/Microsoft.Toolkit.Uwp.UI/Extensions/ApplicationViewExtensions.cs
 
 using Windows.UI.ViewManagement;
-using Windows.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Screenbox.Extensions;
 

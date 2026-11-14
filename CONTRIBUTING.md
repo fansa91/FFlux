@@ -162,7 +162,7 @@ When testing your changes:
 
 ### Platform Testing
 
-While not required, testing on different architectures (x64, x86, ARM64) and platforms (such as Xbox One and Xbox Series consoles) is helpful if you have access to these systems.
+While not required, testing on different architectures (x64, x86, ARM64) and Windows versions is helpful if you have access to these systems.
 
 ## 🌍 Translation
 

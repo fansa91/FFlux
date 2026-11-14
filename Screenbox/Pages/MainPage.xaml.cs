@@ -11,11 +11,11 @@ using Screenbox.Core.ViewModels;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using Windows.UI.Core;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media.Animation;
-using Windows.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Navigation;
 
 using NavigationView = Microsoft.UI.Xaml.Controls.NavigationView;
 using NavigationViewBackRequestedEventArgs = Microsoft.UI.Xaml.Controls.NavigationViewBackRequestedEventArgs;
@@ -94,7 +94,7 @@ public sealed partial class MainPage : Page, IContentFrame
         Window.Current.Dispatcher.AcceleratorKeyActivated += CoreDispatcher_AcceleratorKeyActivated;
         SystemNavigationManager.GetForCurrentView().BackRequested += System_BackRequested;
         Window.Current.CoreWindow.PointerPressed += CoreWindow_PointerPressed;
-        ViewModel.NavigationViewDisplayMode = (Windows.UI.Xaml.Controls.NavigationViewDisplayMode)NavView.DisplayMode;
+        ViewModel.NavigationViewDisplayMode = (Microsoft.UI.Xaml.Controls.NavigationViewDisplayMode)NavView.DisplayMode;
         if (!ViewModel.PlayerVisible)
         {
             AppTitleBar.RefreshDragRegion();
@@ -261,7 +261,7 @@ public sealed partial class MainPage : Page, IContentFrame
     private void NavView_OnDisplayModeChanged(NavigationView sender, NavigationViewDisplayModeChangedEventArgs args)
     {
         UpdateNavigationViewState(args.DisplayMode, NavView.IsPaneOpen);
-        ViewModel.NavigationViewDisplayMode = (Windows.UI.Xaml.Controls.NavigationViewDisplayMode)args.DisplayMode;
+        ViewModel.NavigationViewDisplayMode = (Microsoft.UI.Xaml.Controls.NavigationViewDisplayMode)args.DisplayMode;
     }
 
     private void UpdateNavigationViewState(NavigationViewDisplayMode displayMode, bool paneOpen)

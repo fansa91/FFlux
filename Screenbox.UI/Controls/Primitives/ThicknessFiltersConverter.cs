@@ -2,8 +2,8 @@
 // https://github.com/microsoft/microsoft-ui-xaml/pull/6829
 
 using System;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Data;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Data;
 
 namespace Screenbox.UI.Controls.Primitives;
 
@@ -42,8 +42,8 @@ namespace Screenbox.UI.Controls.Primitives;
 /// </Grid>
 /// ]]></code>
 /// <code lang="c#">
-/// var myBorder = new Windows.UI.Xaml.Controls.Border();
-/// var exampleThickness = new Windows.UI.Xaml.Thickness(1, 1, 1, 1);
+/// var myBorder = new Microsoft.UI.Xaml.Controls.Border();
+/// var exampleThickness = new Microsoft.UI.Xaml.Thickness(1, 1, 1, 1);
 /// 
 /// // Create the converter instance and the filter type.
 /// var thicknessConverter = new ThicknessFiltersConverter();

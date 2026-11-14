@@ -17,7 +17,7 @@ using Screenbox.Core.Services;
 using Windows.Media.Core;
 using Windows.Media.Playback;
 using Windows.System;
-using Windows.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace Screenbox.Core.ViewModels;
 

@@ -5,7 +5,7 @@
 
 using System;
 using Windows.ApplicationModel.Resources;
-using Windows.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Data;
 
 namespace Screenbox.Converters;
 

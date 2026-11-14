@@ -16,7 +16,7 @@ using Screenbox.Core.Models;
 using Screenbox.Core.Services;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
-using Windows.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Screenbox.Core.ViewModels;
 

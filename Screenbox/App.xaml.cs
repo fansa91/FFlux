@@ -23,9 +23,9 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.ApplicationModel.Core;
 using Windows.Storage.Search;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 
 namespace Screenbox;
 
@@ -52,20 +52,8 @@ sealed partial class App : Application
 
         InitializeComponent();
 
-        if (DeviceInfoHelper.IsXbox)
-        {
-            // Disable pointer mode on Xbox
-            // https://learn.microsoft.com/en-us/windows/uwp/xbox-apps/how-to-disable-mouse-mode#xaml
-            RequiresPointerMode = ApplicationRequiresPointerMode.WhenRequested;
-
-            // Use Reveal focus for 10-foot experience
-            // https://learn.microsoft.com/en-us/windows/apps/design/input/gamepad-and-remote-interactions#reveal-focus
-            FocusVisualKind = FocusVisualKind.Reveal;
-        }
-
-        // Disable automatic High Contrast adjustments
-        // https://learn.microsoft.com/en-us/windows/apps/design/accessibility/high-contrast-themes#setting-highcontrastadjustment-to-none
-        HighContrastAdjustment = ApplicationHighContrastAdjustment.None;
+        // WinUI 3 has no Xbox support and no UWP-only Application properties
+        // (RequiresPointerMode, Reveal focus, HighContrastAdjustment); system defaults apply.
 
         _services = ConfigureServices();
         CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.ConfigureServices(_services);
@@ -100,7 +88,7 @@ sealed partial class App : Application
     }
 
     [SecurityCritical]
-    private void App_UnhandledException(object sender, Windows.UI.Xaml.UnhandledExceptionEventArgs e)
+    private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
         // Get a reference to the exception, because the Exception property is cleared when accessed.
         var exception = e.Exception;

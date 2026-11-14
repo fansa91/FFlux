@@ -1,5 +1,5 @@
 using Screenbox.Core.Services;
-using Windows.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 namespace Screenbox.Core.Contexts;
 

@@ -27,8 +27,8 @@ Steps to reproduce the behavior:
 
 **Environment**
 <!-- What you run the app on. Please provide as much info as possible. -->
- - OS: [e.g. Windows 10, Windows 11, Xbox]
- - Device: [e.g. PC, Laptop model, Xbox model]
+ - OS: [e.g. Windows 10, Windows 11]
+ - Device: [e.g. PC, Laptop model]
  - App Version [e.g. v0.9.15]
 
 **Additional context**

@@ -1,7 +1,7 @@
 using System;
 using CommunityToolkit.Diagnostics;
 using Windows.Media;
-using Windows.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Data;
 
 namespace Screenbox.Converters;
 

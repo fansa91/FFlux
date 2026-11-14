@@ -1,9 +1,9 @@
 ﻿using CommunityToolkit.WinUI;
 using CommunityToolkit.WinUI.Controls;
 using Microsoft.Xaml.Interactivity;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace Screenbox.Behaviors;
 
@@ -37,8 +37,8 @@ internal sealed partial class SettingsExpanderXYNavigationBehavior : Behavior<Se
                     toggleButton.XYFocusRight = contentPresenter;
 
                     // Ensure that when using the D-pad or left stick to navigate left or right, focus will move to the associated settings expander
-                    contentPresenter.XYFocusLeftNavigationStrategy = Windows.UI.Xaml.Input.XYFocusNavigationStrategy.NavigationDirectionDistance;
-                    contentPresenter.XYFocusRightNavigationStrategy = Windows.UI.Xaml.Input.XYFocusNavigationStrategy.NavigationDirectionDistance;
+                    contentPresenter.XYFocusLeftNavigationStrategy = Microsoft.UI.Xaml.Input.XYFocusNavigationStrategy.NavigationDirectionDistance;
+                    contentPresenter.XYFocusRightNavigationStrategy = Microsoft.UI.Xaml.Input.XYFocusNavigationStrategy.NavigationDirectionDistance;
                 }
             }
         }

@@ -34,10 +34,10 @@
                     <Color x:Key="BackgroundAcrylicTintFallbackColor">#2C2C2C</Color>
                     <x:Double x:Key="BackgroundAcrylicTintOpacity">0.5</x:Double>
 
-                    <media:RevealBorderBrush
+                    <!-- WinUI 3 removed RevealBorderBrush / SystemRevealListLowColor. -->
+                    <SolidColorBrush
                         x:Key="MiniPlayerRevealBorderBrush"
-                        TargetTheme="Dark"
-                        Color="{StaticResource SystemRevealListLowColor}" />
+                        Color="{StaticResource BackgroundAcrylicTintFallbackColor}" />
 
                     <LinearGradientBrush x:Key="PlayerTitleBarBackgroundBrush" StartPoint="0.5,0" EndPoint="0.5,1">
                         <LinearGradientBrush.GradientStops>
@@ -58,10 +58,10 @@
                     <Color x:Key="BackgroundAcrylicTintFallbackColor">#F9F9F9</Color>
                     <x:Double x:Key="BackgroundAcrylicTintOpacity">0.15</x:Double>
 
-                    <media:RevealBorderBrush
+                    <!-- WinUI 3 removed RevealBorderBrush / SystemRevealListLowColor. -->
+                    <SolidColorBrush
                         x:Key="MiniPlayerRevealBorderBrush"
-                        TargetTheme="Light"
-                        Color="{StaticResource SystemRevealListLowColor}" />
+                        Color="{StaticResource BackgroundAcrylicTintFallbackColor}" />
 
                     <LinearGradientBrush x:Key="PlayerTitleBarBackgroundBrush" StartPoint="0.5,0" EndPoint="0.5,1">
                         <LinearGradientBrush.GradientStops>
@@ -262,9 +262,9 @@
 
             <Border>
                 <Border.Background>
+                    <!-- WinUI 3 has no backdrop AcrylicBrush; in-app tint only. -->
                     <media:AcrylicBrush
                         x:Name="BackgroundAcrylicBrush"
-                        BackgroundSource="Backdrop"
                         FallbackColor="{ThemeResource BackgroundAcrylicTintFallbackColor}"
                         TintColor="{ThemeResource BackgroundAcrylicTintColor}"
                         TintOpacity="{ThemeResource BackgroundAcrylicTintOpacity}" />
@@ -890,7 +890,6 @@
                     <VisualState.Setters>
                         <Setter Target="LayoutRoot.Background" Value="{ThemeResource AcrylicInAppFillColorDefaultBrush}" />
                         <Setter Target="LayoutRoot.BorderBrush" Value="{ThemeResource MiniPlayerRevealBorderBrush}" />
-                        <Setter Target="LayoutRoot.(RevealBrush.State)" Value="Normal" />
                         <Setter Target="LayoutRoot.BorderThickness" Value="1" />
                         <Setter Target="LayoutRoot.CornerRadius" Value="{StaticResource OverlayCornerRadius}" />
                         <Setter Target="LayoutRoot.Height" Value="128" />

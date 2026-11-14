@@ -1,7 +1,7 @@
 using System.Globalization;
 using Windows.Globalization;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace Screenbox.Helpers;
 

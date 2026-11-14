@@ -8,9 +8,8 @@ using Microsoft.UI.Xaml.Controls;
 using Screenbox.Core.Enums;
 using Screenbox.Core.ViewModels;
 using Windows.System;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Navigation;
 
 namespace Screenbox.Pages;
 

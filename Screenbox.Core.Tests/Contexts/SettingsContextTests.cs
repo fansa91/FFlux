@@ -4,7 +4,7 @@ using Screenbox.Core.Contexts;
 using Screenbox.Core.Messages;
 using Screenbox.Core.Services;
 using Screenbox.Core.Tests.Helpers;
-using Windows.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 namespace Screenbox.Core.Tests.Contexts;
 

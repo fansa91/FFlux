@@ -5,7 +5,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Screenbox.Core.Messages;
 using Screenbox.Core.ViewModels;
 using Screenbox.Dialogs;
-using Windows.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Screenbox.Commands;
 

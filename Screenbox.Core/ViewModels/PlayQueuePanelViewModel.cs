@@ -145,7 +145,7 @@ public sealed partial class PlayQueuePanelViewModel : ObservableRecipient
         int newIndex = oldIndex - 1;
         Queue.Items.Insert(newIndex, item);
         Queue.Items.RemoveAt(oldIndex + 1);
-        Selection.SelectRange(new Windows.UI.Xaml.Data.ItemIndexRange(newIndex, 1));
+        Selection.SelectRange(new Microsoft.UI.Xaml.Data.ItemIndexRange(newIndex, 1));
     }
 
     [RelayCommand(CanExecute = nameof(IsItemNotFirst))]
@@ -167,7 +167,7 @@ public sealed partial class PlayQueuePanelViewModel : ObservableRecipient
         // Preserve selection. Insert first. Reselect. Remove after.
         int newIndex = oldIndex + 2;
         Queue.Items.Insert(newIndex, item);
-        Selection.SelectRange(new Windows.UI.Xaml.Data.ItemIndexRange(newIndex, 1));
+        Selection.SelectRange(new Microsoft.UI.Xaml.Data.ItemIndexRange(newIndex, 1));
         Queue.Items.RemoveAt(oldIndex);
     }
 

@@ -5,9 +5,9 @@ using Screenbox.Commands;
 using Screenbox.Converters;
 using Screenbox.Core.ViewModels;
 using Screenbox.Helpers;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace Screenbox.Flyouts;
 

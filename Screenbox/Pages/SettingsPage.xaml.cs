@@ -2,11 +2,11 @@ using System;
 using System.Linq;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Screenbox.Core.ViewModels;
-using Windows.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Windows.Globalization;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Documents;
-using Windows.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Navigation;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -63,7 +63,7 @@ public sealed partial class SettingsPage : Page
         ViewModel.OnNavigatedFrom();
     }
 
-    private async void ManageSystemIndexingCard_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+    private async void ManageSystemIndexingCard_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         await Windows.System.Launcher.LaunchUriAsync(new Uri("ms-settings:search"));
     }

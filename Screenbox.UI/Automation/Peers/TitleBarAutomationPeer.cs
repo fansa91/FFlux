@@ -1,6 +1,6 @@
 using Screenbox.UI.Controls;
 using Windows.ApplicationModel;
-using Windows.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Automation.Peers;
 
 namespace Screenbox.UI.Automation.Peers;
 

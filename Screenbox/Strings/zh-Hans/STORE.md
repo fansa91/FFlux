@@ -6,7 +6,7 @@
 
 ### 描述
 
-Screenbox 是一个现代化的媒体播放器，它力求为经典应用程序带来崭新的收获。 Screenbox 提供了一个时尚而直观的用户界面，可以适应您系统的性能。 专为在各种 Windows 设备和 Xbox 主机上实现无缝体验而设计，Screenbox 快速、轻便且功能强大。
+Screenbox 是一个现代化的媒体播放器，它力求为经典应用程序带来崭新的收获。 Screenbox 提供了一个时尚而直观的用户界面，可以适应您系统的性能。 专为在各种 Windows 设备上实现无缝体验而设计，Screenbox 快速、轻便且功能强大。
 
 Screenbox 支持许多常见的文件格式和编解码器，无需额外的插件即可播放几乎所有媒体类型。 它由 FFmpegInteropX 与 FFmpeg 提供支持，兼具广泛的编解码器兼容性和现代 Windows 应用程序的功能。 使用 FFmpeg key=value 选项可以获得高级播放选项。
 

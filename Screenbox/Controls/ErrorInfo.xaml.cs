@@ -1,9 +1,9 @@
 using System;
 using Windows.ApplicationModel.Resources;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Automation.Peers;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Markup;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Markup;
 
 namespace Screenbox.Controls;
 
@@ -117,7 +117,7 @@ public sealed partial class ErrorInfo : UserControl
         nameof(NavigateUri), typeof(Uri), typeof(ErrorInfo), new PropertyMetadata(null, OnPropertyChanged));
 
     /// <summary>
-    /// Gets or sets the Uniform Resource Identifier (URI) to navigate to when the <see cref="Windows.UI.Xaml.Documents.Hyperlink"/> is clicked.
+    /// Gets or sets the Uniform Resource Identifier (URI) to navigate to when the <see cref="Microsoft.UI.Xaml.Documents.Hyperlink"/> is clicked.
     /// </summary>
     public Uri NavigateUri
     {

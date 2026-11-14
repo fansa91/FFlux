@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using System.Windows.Input;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
 
 namespace Screenbox.Commands;
 

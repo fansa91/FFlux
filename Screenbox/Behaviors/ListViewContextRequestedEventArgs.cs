@@ -1,5 +1,5 @@
 using System;
-using Windows.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace Screenbox.Behaviors;
 

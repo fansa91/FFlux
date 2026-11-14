@@ -17,7 +17,7 @@
   </a>
 </p>
 
-Screenbox is a modern video player that cares about performance and ease of use on a wide range of device types. It features a beautiful, friendly user interface that is fast and lightweight. Screenbox is available on Windows 10 version 1903 and up, Windows 11, and Xbox consoles.
+Screenbox is a modern video player that cares about performance and ease of use on a wide range of device types. It features a beautiful, friendly user interface that is fast and lightweight. Screenbox is available on Windows 10 version 1903 and up and Windows 11.
 
 Screenbox is built on top of [FFmpegInteropX](https://github.com/ffmpeginteropx/FFmpegInteropX) and the Universal Windows Platform (UWP).
 

@@ -1,6 +1,6 @@
 using System;
 using Screenbox.Core.Models;
-using Windows.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Data;
 
 namespace Screenbox.Converters;
 

@@ -1,5 +1,5 @@
 using Screenbox.Core.ViewModels;
-using Windows.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Data;
 
 namespace Screenbox.Core.Tests.ViewModels;
 

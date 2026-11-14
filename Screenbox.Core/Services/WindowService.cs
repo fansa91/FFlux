@@ -7,7 +7,7 @@ using Windows.Graphics.Display;
 using Windows.UI.Core;
 using Windows.UI.ViewManagement;
 using Windows.UI.WindowManagement;
-using Windows.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 namespace Screenbox.Core.Services;
 

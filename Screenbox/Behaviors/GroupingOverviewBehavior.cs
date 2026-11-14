@@ -1,8 +1,8 @@
 using System;
 using Microsoft.Xaml.Interactivity;
 using Screenbox.Core.Helpers;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace Screenbox.Behaviors;
 
