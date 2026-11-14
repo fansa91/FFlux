@@ -24,7 +24,7 @@ public sealed partial class RenamePlaylistDialog : ContentDialog
 
     public async Task<string?> GetPlaylistNameAsync()
     {
-        ContentDialogResult result = await ShowAsync();
+        ContentDialogResult result = await DialogHelper.ShowAsync(this);
         string playlistName = PlaylistNameTextBox.Text.Trim();
         return result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(playlistName)
             ? playlistName

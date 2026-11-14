@@ -25,11 +25,11 @@ public static class Program
     [STAThread]
     static void Main(string[] args)
     {
-        // args will carry files opened from Explorer / the command line.
-        _ = args;
-
+        // Unpackaged WinUI 3 has no file-type activation, so the command line is the
+        // primary way Explorer / a terminal hands media files to the app.
+        LaunchArguments.Capture(args);
         InstallDiagnostics();
-        StartupErrorLog.Write("Main entered");
+        StartupErrorLog.Write($"Main entered ({LaunchArguments.Files.Count} media file(s) on the command line)");
         try
         {
             WinRT.ComWrappersSupport.InitializeComWrappers();

@@ -94,9 +94,27 @@ public sealed partial class CompositeTrackPickerViewModel : ObservableRecipient,
     }
 
     /// <summary>
-    /// Try load a subtitle in the same directory with the same name
+    /// Messenger callbacks are <c>async void</c>: an escaping exception is marshalled
+    /// back into the WinUI dispatcher as a stowed exception (0xC000027B) and kills
+    /// the process. Keep a hard boundary here.
     /// </summary>
     public async void Receive(QueueCurrentItemChangedMessage message)
+    {
+        try
+        {
+            await ReceiveCoreAsync(message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to prepare track picker for the current queue item.");
+            PlaybackTrace.Write("CompositeTrackPickerViewModel.Receive failed", ex);
+        }
+    }
+
+    /// <summary>
+    /// Try load a subtitle in the same directory with the same name
+    /// </summary>
+    private async Task ReceiveCoreAsync(QueueCurrentItemChangedMessage message)
     {
         _cts?.Cancel();
         if (MediaPlayer is null) return;
@@ -131,6 +149,13 @@ public sealed partial class CompositeTrackPickerViewModel : ObservableRecipient,
             catch (OperationCanceledException)
             {
                 // pass
+            }
+            catch (Exception ex)
+            {
+                // Subtitle auto-detection is best effort. An unsupported or corrupt
+                // source must not take down the whole app from this async void path.
+                _logger.LogWarning(ex, "Playback item could not be parsed for subtitle detection.");
+                PlaybackTrace.Write("WaitForParsedAsync failed", ex);
             }
             finally
             {

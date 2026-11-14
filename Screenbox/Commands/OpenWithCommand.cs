@@ -82,10 +82,12 @@ internal sealed partial class OpenWithCommand : IRelayCommand<MediaViewModel>
 
         try
         {
-            LauncherOptions options = new()
+            // DisplayApplicationPicker opens a system dialog, which needs an owner
+            // HWND in an unpackaged desktop app.
+            LauncherOptions options = AppWindowInterop.Initialize(new LauncherOptions()
             {
                 DisplayApplicationPicker = true
-            };
+            });
 
             bool success = await Launcher.LaunchFileAsync(file, options);
             if (!success)

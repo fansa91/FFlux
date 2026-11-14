@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using Screenbox.Core.ViewModels;
 using Screenbox.Dialogs;
+using Screenbox.Helpers;
 
 namespace Screenbox.Commands;
 
@@ -51,6 +52,6 @@ internal sealed partial class ShowPropertiesCommand : IRelayCommand<MediaViewMod
             Media = parameter
         };
 
-        await dialog.ShowAsync();
+        await DialogHelper.ShowAsync(dialog);
     }
 }

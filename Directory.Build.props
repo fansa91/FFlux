@@ -22,14 +22,22 @@
   <PropertyGroup>
     <CsWinRTAotWarningLevel>3</CsWinRTAotWarningLevel>
 
-    <!-- C#/WinRT size‑saving options:
-         Disable dynamic object support and manifest‑free activation to reduce binary size.
+    <!-- C#/WinRT size-saving options:
+         Disable dynamic object support to reduce binary size. Manifest-free
+         activation is kept on for the unpackaged build (see below).
          References:
          https://github.com/microsoft/CsWinRT/blob/2.3.1.260716.1/nuget/readme.md#advanced-size-saving-options
          https://github.com/microsoft/CsWinRT/pull/1887
     -->
     <CsWinRTEnableDynamicObjectsSupport>false</CsWinRTEnableDynamicObjectsSupport>
-    <CsWinRTEnableManifestFreeActivation>false</CsWinRTEnableManifestFreeActivation>
+
+    <!-- MUST stay enabled for the unpackaged build. With WindowsPackageType=None there
+         is no APPX manifest declaring activatable classes, so third-party WinRT
+         components (FFmpegInteropX.MediaSourceConfig and friends) cannot be resolved
+         by RoGetActivationFactory (REGDB_E_CLASSNOTREG). CsWinRT's manifest-free
+         fallback locates the component DLL from the sibling .winmd instead. The
+         original UWP/MSIX build had package metadata and could disable this for size. -->
+    <CsWinRTEnableManifestFreeActivation>true</CsWinRTEnableManifestFreeActivation>
 
     <!-- WinRT does not require 'INotifyPropertyChanging' support.
          References:

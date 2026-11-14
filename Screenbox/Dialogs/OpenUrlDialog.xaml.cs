@@ -23,7 +23,7 @@ public sealed partial class OpenUrlDialog : ContentDialog
     public static async Task<Uri?> GetUrlAsync()
     {
         OpenUrlDialog dialog = new();
-        ContentDialogResult result = await dialog.ShowAsync();
+        ContentDialogResult result = await DialogHelper.ShowAsync(dialog);
         string url = dialog.UrlBox.Text;
         return result == ContentDialogResult.Primary && Uri.TryCreate(url, UriKind.Absolute, out Uri? uri)
             ? uri

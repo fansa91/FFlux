@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using FFmpegInteropX;
 using Screenbox.Core.Events;
+using Screenbox.Core.Helpers;
 using Windows.Devices.Enumeration;
 using Windows.Foundation;
 using Windows.Media.Core;
@@ -307,9 +308,11 @@ public sealed class FFmpegMediaPlayer : IMediaPlayer
             item.SubtitleTracks.ApplySelection(item.SubtitleTracks.SelectedIndex);
 
             _player.Source = playbackItem;
+            PlaybackTrace.Write($"Source attached (generation {generation}): duration={source.Duration}");
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            PlaybackTrace.Write("AttachSourceAsync FAILED", ex);
             if (generation == _generation)
             {
                 MediaFailed?.Invoke(this, EventArgs.Empty);
@@ -320,11 +323,13 @@ public sealed class FFmpegMediaPlayer : IMediaPlayer
     private void OnMediaOpened(NativeMediaPlayer sender, object? args)
     {
         RefreshCapabilities();
+        PlaybackTrace.Write($"MediaOpened: {NaturalVideoWidth}x{NaturalVideoHeight}, duration={_player.PlaybackSession?.NaturalDuration}, state={PlaybackState}");
         MediaOpened?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnMediaFailed(NativeMediaPlayer sender, MediaPlayerFailedEventArgs args)
     {
+        PlaybackTrace.Write($"MediaFailed: {args.Error}");
         MediaFailed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -348,6 +353,7 @@ public sealed class FFmpegMediaPlayer : IMediaPlayer
         MediaPlaybackState oldValue = _lastPlaybackState;
         _lastPlaybackState = sender.PlaybackState;
         RefreshCapabilities();
+        PlaybackTrace.Write($"PlaybackState {oldValue} -> {_lastPlaybackState}");
         PlaybackStateChanged?.Invoke(this, new ValueChangedEventArgs<MediaPlaybackState>(_lastPlaybackState, oldValue));
     }
 
@@ -356,6 +362,10 @@ public sealed class FFmpegMediaPlayer : IMediaPlayer
         TimeSpan position = sender.Position;
         TimeSpan oldValue = _lastPosition;
         _lastPosition = position;
+        if (PlaybackTrace.Enabled && (int)position.TotalSeconds != (int)oldValue.TotalSeconds)
+        {
+            PlaybackTrace.Write($"Position {position} / {sender.NaturalDuration}, state={PlaybackState}");
+        }
         PositionChanged?.Invoke(this, new ValueChangedEventArgs<TimeSpan>(position, oldValue));
         UpdateChapter(position);
     }
@@ -370,6 +380,7 @@ public sealed class FFmpegMediaPlayer : IMediaPlayer
 
     private void OnNaturalVideoSizeChanged(MediaPlaybackSession sender, object? args)
     {
+        PlaybackTrace.Write($"NaturalVideoSizeChanged {NaturalVideoWidth}x{NaturalVideoHeight}");
         NaturalVideoSizeChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -467,6 +478,7 @@ public sealed class FFmpegMediaPlayer : IMediaPlayer
     /// <inheritdoc/>
     public void Play()
     {
+        PlaybackTrace.Write($"Play() called (source={_player.Source is not null}, state={PlaybackState})");
         _ = PlayAsync();
     }
 

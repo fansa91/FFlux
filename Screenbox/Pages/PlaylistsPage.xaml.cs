@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using Screenbox.Commands;
 using Screenbox.Core.ViewModels;
 using Screenbox.Dialogs;
+using Screenbox.Helpers;
 using Screenbox.Strings;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -68,7 +69,7 @@ public sealed partial class PlaylistsPage : Page
     private async Task DeletePlaylistAsync(PlaylistViewModel playlist)
     {
         var deleteConfirmation = new DeletePlaylistDialog(playlist.Name);
-        var result = await deleteConfirmation.ShowAsync();
+        var result = await DialogHelper.ShowAsync(deleteConfirmation);
         if (result == ContentDialogResult.Primary)
             await ViewModel.DeletePlaylistAsync(playlist);
     }

@@ -22,6 +22,7 @@ using Sentry.Protocol;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.ApplicationModel.Core;
+using Windows.Storage;
 using Windows.Storage.Search;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -262,7 +263,7 @@ sealed partial class App : Application
             {
                 StartupErrorLog.Write("AppWindow hook unavailable: " + ex.Message);
             }
-            StartupErrorLog.Write("Window created");
+            StartupErrorLog.Write($"Window created (HWND=0x{AppWindowInterop.WindowHandle.ToInt64():X})");
         }
 
         Frame rootFrame = InitRootFrame();
@@ -280,6 +281,14 @@ sealed partial class App : Application
         if (Environment.GetEnvironmentVariable("SCREENBOX_STARTUP_TRACE") == "1")
         {
             StartHeartbeat();
+        }
+        if (LaunchArguments.Files.Count > 0)
+        {
+            _ = OpenCommandLineFilesAsync();
+        }
+        if (Environment.GetEnvironmentVariable("SCREENBOX_PICKER_PROBE") == "1")
+        {
+            _ = ProbePickerInteropAsync();
         }
 
 #if DEBUG
@@ -367,6 +376,70 @@ sealed partial class App : Application
         finally
         {
             deferral.Complete();
+        }
+    }
+
+    /// <summary>
+    /// Diagnostic-only (SCREENBOX_PICKER_PROBE=1): starts a file picker without
+    /// awaiting user input so a missing IInitializeWithWindow binding shows up as
+    /// 0x80070578 in the startup log instead of only when a user clicks "Open".
+    /// </summary>
+    private async Task ProbePickerInteropAsync()
+    {
+        await Task.Delay(1500);
+        try
+        {
+            StartupErrorLog.Write($"Picker probe: HWND=0x{AppWindowInterop.WindowHandle.ToInt64():X}");
+            _ = _services.GetRequiredService<IFilesService>().PickFileAsync();
+            StartupErrorLog.Write("Picker probe: PickSingleFileAsync started OK");
+        }
+        catch (Exception ex)
+        {
+            StartupErrorLog.Write("Picker probe FAILED: " + ex);
+        }
+    }
+
+    /// <summary>
+    /// Plays files supplied on the command line. An unpackaged app has no
+    /// FileActivatedEventArgs, so <c>Screenbox.exe &lt;path&gt;</c> replaces both the
+    /// Explorer file association and the old UWP file activation path.
+    /// <para>
+    /// The dispatch is delayed until the XAML tree (in particular PlayerElement and
+    /// its view model) has finished loading; otherwise the SetQueueMessage would be
+    /// sent before anything subscribes to it.
+    /// </para>
+    /// </summary>
+    private async Task OpenCommandLineFilesAsync()
+    {
+        await Task.Delay(2000);
+
+        try
+        {
+            List<IStorageItem> items = [];
+            foreach (string path in LaunchArguments.Files)
+            {
+                try
+                {
+                    items.Add(await StorageFile.GetFileFromPathAsync(path));
+                }
+                catch (Exception ex)
+                {
+                    StartupErrorLog.Write("Cannot open command line file '" + path + "': " + ex.Message);
+                }
+            }
+
+            if (items.Count == 0) return;
+
+            StartupErrorLog.Write($"Command line playback: {items.Count} file(s)");
+            var queueService = _services.GetRequiredService<IQueueService>();
+            var settings = _services.GetRequiredService<GeneralSettingsContext>();
+            await WeakReferenceMessenger.Default.PlayFilesAsync(
+                items, queueService, settings.EnqueueAllFilesInFolder);
+            StartupErrorLog.Write("Command line playback dispatched");
+        }
+        catch (Exception ex)
+        {
+            StartupErrorLog.Write("Command line playback failed: " + ex);
         }
     }
 

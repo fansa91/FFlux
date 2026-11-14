@@ -95,11 +95,11 @@ public sealed class FilesService : IFilesService
     public IAsyncOperation<StorageFile> PickSaveFileAsync(string suggestedFileName,
         IDictionary<string, IList<string>> fileTypes, PickerLocationId startLocation = PickerLocationId.ComputerFolder)
     {
-        FileSavePicker picker = new()
+        FileSavePicker picker = AppWindowInterop.Initialize(new FileSavePicker()
         {
             SuggestedStartLocation = startLocation,
             SuggestedFileName = suggestedFileName
-        };
+        });
 
         foreach (var fileType in fileTypes)
         {
@@ -111,10 +111,10 @@ public sealed class FilesService : IFilesService
 
     public IAsyncOperation<StorageFolder> PickFolderAsync()
     {
-        FolderPicker picker = new()
+        FolderPicker picker = AppWindowInterop.Initialize(new FolderPicker()
         {
             SuggestedStartLocation = PickerLocationId.ComputerFolder
-        };
+        });
 
         foreach (string supportedFormat in FilesHelpers.SupportedFormats)
         {
@@ -140,7 +140,7 @@ public sealed class FilesService : IFilesService
         }
         else
         {
-            FolderLauncherOptions options = new();
+            FolderLauncherOptions options = AppWindowInterop.Initialize(new FolderLauncherOptions());
             options.ItemsToSelect.Add(file);
             await Launcher.LaunchFolderAsync(folder, options);
         }
@@ -214,6 +214,8 @@ public sealed class FilesService : IFilesService
             picker.FileTypeFilter.Add(fileType);
         }
 
-        return picker;
+        // Desktop pickers need an owner HWND; without it PickSingleFileAsync throws
+        // 0x80070578 (invalid window handle) in an unpackaged process.
+        return AppWindowInterop.Initialize(picker);
     }
 }

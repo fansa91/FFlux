@@ -80,22 +80,35 @@ public sealed partial class FFmpegPlaybackItem : IPlaybackItem
 
     private async Task<FFmpegMediaSource> OpenAsync(IEnumerable<string>? options)
     {
-        MediaSourceConfig config = FFmpegMediaSourceConfigFactory.Create(options);
-        FFmpegMediaSource ffmpegSource = await CreateSourceAsync(config);
+        PlaybackTrace.Write($"OpenAsync start: {Source.GetType().Name} / {Source}");
+        try
+        {
+            MediaSourceConfig config = FFmpegMediaSourceConfigFactory.Create(options);
+            FFmpegMediaSource ffmpegSource = await CreateSourceAsync(config);
 
-        FFmpegSource = ffmpegSource;
-        MediaPlaybackItem = ffmpegSource.CreateMediaPlaybackItem();
+            FFmpegSource = ffmpegSource;
+            MediaPlaybackItem = ffmpegSource.CreateMediaPlaybackItem();
+            PlaybackTrace.Write(
+                $"FFmpegMediaSource created: duration={ffmpegSource.Duration}, playbackItem={MediaPlaybackItem is not null}");
 
-        AudioTracks.Attach(ffmpegSource, MediaPlaybackItem);
-        VideoTracks.Attach(ffmpegSource, MediaPlaybackItem);
-        SubtitleTracks.Attach(ffmpegSource, MediaPlaybackItem);
+            AudioTracks.Attach(ffmpegSource, MediaPlaybackItem);
+            VideoTracks.Attach(ffmpegSource, MediaPlaybackItem);
+            SubtitleTracks.Attach(ffmpegSource, MediaPlaybackItem);
+            PlaybackTrace.Write(
+                $"Tracks attached: audio={AudioTracks.Count}, video={VideoTracks.Count}, subtitle={SubtitleTracks.Count}");
 
-        List<Screenbox.Core.Models.ChapterInfo> rawChapters = ffmpegSource.ChapterInfos
-            .Select(c => new Screenbox.Core.Models.ChapterInfo(c.StartTime, c.Duration, c.Title))
-            .ToList();
-        Chapters = ChapterHelper.Sanitize(rawChapters, ffmpegSource.Duration);
+            List<Screenbox.Core.Models.ChapterInfo> rawChapters = ffmpegSource.ChapterInfos
+                .Select(c => new Screenbox.Core.Models.ChapterInfo(c.StartTime, c.Duration, c.Title))
+                .ToList();
+            Chapters = ChapterHelper.Sanitize(rawChapters, ffmpegSource.Duration);
 
-        return ffmpegSource;
+            return ffmpegSource;
+        }
+        catch (Exception ex)
+        {
+            PlaybackTrace.Write("OpenAsync FAILED", ex);
+            throw;
+        }
     }
 
     private async Task<FFmpegMediaSource> CreateSourceAsync(MediaSourceConfig config)

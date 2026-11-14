@@ -9,6 +9,7 @@ using Screenbox.Core;
 using Screenbox.Core.ViewModels;
 using Screenbox.Dialogs;
 using Screenbox.Extensions;
+using Screenbox.Helpers;
 using Screenbox.Strings;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
@@ -246,7 +247,7 @@ public sealed partial class PlaylistDetailsPage : Page
     {
         if (ViewModel.Source == null) return;
         var deleteConfirmation = new DeletePlaylistDialog(ViewModel.Source.Name);
-        var result = await deleteConfirmation.ShowAsync();
+        var result = await DialogHelper.ShowAsync(deleteConfirmation);
         if (result == ContentDialogResult.Primary)
         {
             bool deleted = await ViewModel.DeletePlaylistAsync();

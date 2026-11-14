@@ -25,7 +25,7 @@ public sealed partial class CreatePlaylistDialog : ContentDialog
     public static async Task<string?> GetPlaylistNameAsync()
     {
         CreatePlaylistDialog dialog = new();
-        ContentDialogResult result = await dialog.ShowAsync();
+        ContentDialogResult result = await DialogHelper.ShowAsync(dialog);
         string playlistName = dialog.PlaylistNameTextBox.Text.Trim();
         return result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(playlistName)
             ? playlistName
