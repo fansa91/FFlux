@@ -4,35 +4,38 @@
     <Nullable>enable</Nullable>
     <!-- WinUI 3 / Windows App SDK. UseUwp belongs to the UWP project model and is gone. -->
     <UseWinUI>true</UseWinUI>
-    <WindowsPackageType>MSIX</WindowsPackageType>
+    <!-- Unpackaged deployment: build a plain .exe into the output folder, never an MSIX.
+         Combined with WindowsAppSDKSelfContained below, the SDK targets switch from the
+         runtime bootstrapper to registration-free WinRT activation. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <AppxPackage>false</AppxPackage>
+    <!-- Ship the Windows App SDK runtime next to the exe so the app runs without a
+         separately installed framework package. Override on the command line with
+         -p:WindowsAppSDKSelfContained=false for framework-dependent deployment. -->
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;arm64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <DefaultLanguage>en-US</DefaultLanguage>
     <PublishAot>true</PublishAot>
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
-    <EnableMsixTooling>true</EnableMsixTooling>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Disable generated Main for custom Main in Program.cs with multi-instancing support. -->
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
-    <!-- Disable default PRI items to manually control which languages are included in the app package. -->
+    <!-- MRT Core still needs resources.pri in an unpackaged app; keep manual language control. -->
     <EnableDefaultPriItems>false</EnableDefaultPriItems>
   </PropertyGroup>
 
-  <PropertyGroup Label="Packaging">
-    <GenerateTemporaryStoreCertificate>False</GenerateTemporaryStoreCertificate>
-    <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
-    <AppxPackageSigningEnabled>False</AppxPackageSigningEnabled>
-    <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
-    <GenerateTestArtifacts>False</GenerateTestArtifacts>
-    <AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
-    <GenerateAppxPackageOnBuild Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</GenerateAppxPackageOnBuild>
-    <AppxBundle>Always</AppxBundle>
-    <AppxBundlePlatforms>x86|x64|arm64</AppxBundlePlatforms>
-    <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
-    
-    <MicrosoftWindowsSdkBuildToolsMSIXPackageVersion>1.7.261102100</MicrosoftWindowsSdkBuildToolsMSIXPackageVersion>
-  </PropertyGroup>
+  <ItemGroup Label="Unpackaged build">
+    <!-- Retained only as the file-type-association reference for a future installer.
+         An unpackaged app has no package identity, so this manifest is inert: the
+         54 associations and all capabilities must be registered by an installer instead. -->
+    <AppxManifest Remove="Package.appxmanifest" />
+    <None Remove="Package.appxmanifest" />
+    <None Include="Package.appxmanifest" />
+  </ItemGroup>
 
   <PropertyGroup>
     <!-- Use application languages for plural rules to avoid mismatches with the system display language. -->

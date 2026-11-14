@@ -89,37 +89,8 @@ jobs:
         with:
           msbuild-architecture: x64
 
-      - name: Setup Windows App Developer CLI
-        uses: microsoft/setup-WinAppCli@v0.2
-        with:
-          version: latest
-
-      - name: Update package manifest
-        run: ./scripts/Update-AppxManifest.ps1 -Identity Sideload
-
       - name: Update project version
         run: ./scripts/Update-ProjectVersion.ps1
-
-      - name: Create self-signed certificate
-        env:
-          TEMP_CERT_PASSWORD: ${{ secrets.TEMP_CERT_PASSWORD }}
-          WINAPP_CLI_TELEMETRY_OPTOUT: '1'
-        run: |
-          winapp cert generate `
-            --manifest "$env:APP_PROJ_PATH/Package.appxmanifest" `
-            --password "$env:TEMP_CERT_PASSWORD" `
-            --output "$env:APP_PROJ_PATH/Screenbox_TemporaryKey.pfx" `
-            --install
-
-      - name: Extract self-signed certificate thumbprint
-        id: cert_thumb
-        env:
-          TEMP_CERT_PASSWORD: ${{ secrets.TEMP_CERT_PASSWORD }}
-        run: |
-          $cert = Get-PfxCertificate `
-            -FilePath "$env:APP_PROJ_PATH/Screenbox_TemporaryKey.pfx" `
-            -Password (ConvertTo-SecureString $env:TEMP_CERT_PASSWORD -AsPlainText -Force)
-          "thumbprint=$($cert.Thumbprint)" >> $env:GITHUB_OUTPUT
 
       - name: Cache NuGet packages
         uses: actions/cache@v6
@@ -129,7 +100,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
-      - name: Build app package
+      - name: Build unpackaged app
         run: |
           msbuild $env:APP_PROJ_PATH/Screenbox.csproj `
             -restore `
@@ -137,21 +108,12 @@ jobs:
             -p:ContinuousIntegrationBuild=true `
             -p:Configuration=Release `
             -p:Platform=x64 `
-            -p:UapAppxPackageBuildMode=SideloadOnly `
-            -p:AppxPackageSigningEnabled=True `
-            -p:PackageCertificateThumbprint=${{ steps.cert_thumb.outputs.thumbprint }}
+            -p:WindowsPackageType=None `
+            -p:WindowsAppSDKSelfContained=true
 
-      - name: Upload sideload app package artifact
+      - name: Upload unpackaged app artifact
         uses: actions/upload-artifact@v7
         with:
-          path: ${{ env.APP_PROJ_PATH }}/AppPackages/*_Test/*.msixbundle
-          archive: false
-
-      - name: Create pre-install kit artifact
-        run: ./scripts/Export-InstallKit.ps1 -OutputPath "$env:APP_PROJ_PATH/AppPackages/*_Test/Screenbox-PreInstallKit.zip" -IncludeCertificate
-
-      - name: Upload pre-install kit artifact
-        uses: actions/upload-artifact@v7
-        with:
-          path: ${{ env.APP_PROJ_PATH }}/AppPackages/*_Test/Screenbox-PreInstallKit.zip
+          name: screenbox-unpackaged-win-x64
+          path: ${{ env.APP_PROJ_PATH }}/bin/x64/Release/**/Screenbox.exe
           archive: false

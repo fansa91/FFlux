@@ -1,4 +1,4 @@
-name: Build unsigned app package
+name: Build unpackaged app
 
 on:
   workflow_dispatch:
@@ -32,9 +32,6 @@ jobs:
         with:
           msbuild-architecture: x64
 
-      - name: Update package manifest
-        run: ./scripts/Update-AppxManifest.ps1 -Identity SideloadUnsigned
-
       - name: Update project version
         run: ./scripts/Update-ProjectVersion.ps1
 
@@ -46,19 +43,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
-      - name: Build app package
+      - name: Publish unpackaged app
         run: |
           msbuild $env:APP_PROJ_PATH/Screenbox.csproj `
             -restore `
+            -t:Publish `
             -v:${{ inputs.detail_level }} `
             -p:RestoreConfigFile=nuget.config `
             -p:ContinuousIntegrationBuild=true `
             -p:Configuration=Release `
             -p:Platform=x64 `
-            -p:UapAppxPackageBuildMode=SideloadOnly
+            -p:WindowsPackageType=None `
+            -p:WindowsAppSDKSelfContained=true
 
-      - name: Upload app package artifact
+      - name: Upload unpackaged app artifact
         uses: actions/upload-artifact@v7
         with:
-          path: ${{ env.APP_PROJ_PATH }}/AppPackages/*_Test/*.msixbundle
+          name: screenbox-unpackaged-win-x64
+          path: ${{ env.APP_PROJ_PATH }}/bin/Release/**/publish/**
           archive: false

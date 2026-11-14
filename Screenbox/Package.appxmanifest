@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- INERT IN THE UNPACKAGED BUILD.
+     Screenbox now builds as a plain .exe (WindowsPackageType=None), so this manifest is
+     excluded from the build. It is kept as the authoritative list of the 54 file type
+     associations and the capabilities the app used to declare. An unpackaged app has no
+     package identity: file associations must be written to the registry by an installer,
+     and the library/removable-storage capabilities are no longer required (no AppContainer).
+     Do not delete until the installer has been written. -->
 
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
