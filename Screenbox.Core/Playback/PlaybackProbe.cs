@@ -285,7 +285,21 @@ public static class PlaybackProbe
         }
 
         int before = item.FFmpegSource?.SubtitleStreams.Count ?? 0;
-        StorageFile file = await StorageFile.GetFileFromPathAsync(path);
+        StorageFile file;
+        try
+        {
+            file = await StorageFile.GetFileFromPathAsync(path);
+        }
+        catch (Exception ex)
+        {
+            // The app's own subtitle entry points hand over a StorageFile from the picker or a
+            // drop, so path-based resolution is only needed here. It is unreliable for some
+            // files on this host (0x800700A1 even for paths File.Exists accepts), so report it
+            // instead of aborting the remaining probe steps.
+            Log($"external subtitle: cannot resolve '{path}': {ex.Message}");
+            return;
+        }
+
         player.AddSubtitle(file, select: true);
         await Task.Delay(1800);
 
