@@ -1,28 +1,34 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using LibVLCSharp.Shared;
 using Screenbox.Core.Events;
 using Screenbox.Core.Models;
 using Screenbox.Core.Playback;
 
 namespace Screenbox.Core.Helpers;
 
+/// <summary>
+/// Watches for available casting renderers.
+/// </summary>
+/// <remarks>
+/// LibVLC exposed renderer discovery on its own LibVLC instance. The native
+/// Windows.Media.Playback.MediaPlayer does not expose that API; casting must be migrated
+/// to <c>MediaPlayer.GetAsCastingSource()</c> with a DevicePicker. Until then the watcher
+/// reports no renderers so the cast UI stays inert instead of throwing.
+/// </remarks>
 public sealed partial class RendererWatcher : IDisposable
 {
+#pragma warning disable CS0067 // Kept for the cast view model's event subscription contract.
     public event EventHandler<RendererFoundEventArgs>? RendererFound;
     public event EventHandler<RendererLostEventArgs>? RendererLost;
+#pragma warning restore CS0067
 
     public bool IsStarted { get; private set; }
 
-    private readonly VlcMediaPlayer _vlcMediaPlayer;
-    private readonly List<Renderer> _renderers;
-    private RendererDiscoverer? _discoverer;
+    private readonly List<Renderer> _renderers = new();
 
-    internal RendererWatcher(VlcMediaPlayer vlcMediaPlayer)
+    internal RendererWatcher(IMediaPlayer player)
     {
-        _vlcMediaPlayer = vlcMediaPlayer;
-        _renderers = new List<Renderer>();
+        ArgumentNullException.ThrowIfNull(player);
     }
 
     public IReadOnlyList<Renderer> GetRenderers()
@@ -32,57 +38,18 @@ public sealed partial class RendererWatcher : IDisposable
 
     public bool Start()
     {
-        if (IsStarted) return true;
-
-        _discoverer = new RendererDiscoverer(_vlcMediaPlayer.LibVlc);
-        _discoverer.ItemAdded += OnItemAdded;
-        _discoverer.ItemDeleted += OnItemDeleted;
-        bool started = _discoverer.Start();
-        if (started)
-        {
-            IsStarted = true;
-        }
-        return started;
+        IsStarted = true;
+        return true;
     }
 
     public void Stop()
     {
-        if (!IsStarted || _discoverer == null) return;
-
-        _discoverer.Stop();
-        _discoverer.ItemAdded -= OnItemAdded;
-        _discoverer.ItemDeleted -= OnItemDeleted;
-        _discoverer.Dispose();
-        _discoverer = null;
         IsStarted = false;
-
-        foreach (Renderer renderer in _renderers)
-        {
-            renderer.Dispose();
-        }
-
         _renderers.Clear();
     }
 
     public void Dispose()
     {
         Stop();
-    }
-
-    private void OnItemAdded(object? sender, RendererDiscovererItemAddedEventArgs e)
-    {
-        Renderer renderer = new(e.RendererItem);
-        _renderers.Add(renderer);
-        RendererFound?.Invoke(this, new RendererFoundEventArgs(renderer));
-    }
-
-    private void OnItemDeleted(object? sender, RendererDiscovererItemDeletedEventArgs e)
-    {
-        Renderer? item = _renderers.FirstOrDefault(r => r.Target == e.RendererItem);
-        if (item != null)
-        {
-            _renderers.Remove(item);
-            RendererLost?.Invoke(this, new RendererLostEventArgs(item));
-        }
     }
 }

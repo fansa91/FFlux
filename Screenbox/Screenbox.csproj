@@ -44,7 +44,8 @@
     <PackageReference Include="CommunityToolkit.Uwp.Controls.SettingsControls" Version="8.2.251219" />
     <PackageReference Include="CommunityToolkit.Uwp.Converters" Version="8.2.251219" />
     <PackageReference Include="CommunityToolkit.Uwp.Extensions" Version="8.2.251219" />
-    <PackageReference Include="LibVLC.UWP" Version="3.0.23-2608082208" />
+    <!-- The app project must also reference the UWP FFmpeg build so its DLLs are packaged. -->
+    <PackageReference Include="FFmpegInteropX.UWP" Version="2.1.0.81200" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0" />
     <PackageReference Include="Microsoft.UI.Xaml" Version="2.8.7" />
@@ -71,7 +72,6 @@
     <ProjectReference Include="..\Screenbox.Core\Screenbox.Core.csproj" />
     <ProjectReference Include="..\Screenbox.Lively\Screenbox.Lively.csproj" />
     <ProjectReference Include="..\Screenbox.UI\Screenbox.UI.csproj" />
-    <ProjectReference Include="..\Screenbox.VideoView\Screenbox.VideoView.csproj" />
   </ItemGroup>
 
 </Project>

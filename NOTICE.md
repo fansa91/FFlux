@@ -3,7 +3,13 @@ Do Not Translate or Localize
 
 This software incorporates third party material from the projects listed below.
 
-## LibVLCSharp
+> **Playback backend migration notice:** the video engine now uses
+> [FFmpegInteropX](https://github.com/ffmpeginteropx/FFmpegInteropX) (Apache-2.0) together with
+> the `FFmpegInteropX.UWP` FFmpeg build. The LibVLCSharp notice below is kept for the historical
+> release lineage; the FFmpeg/FFmpegInteropX notice set and the final licence obligations
+> (LGPL vs GPL depending on the FFmpeg build) must be reviewed before shipping a release.
+
+## LibVLCSharp (historical)
 
 **Source**: [https://github.com/videolan/libvlcsharp](https://github.com/videolan/libvlcsharp)
 

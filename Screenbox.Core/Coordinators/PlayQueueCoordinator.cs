@@ -615,8 +615,8 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
                     }
                 }
 
-                // ExpandSubItemsAsync may complete on a LibVLC native event thread (MediaParsedChanged);
-                // marshal queue mutation and VlcPlayer.Play() back onto the UI dispatcher thread.
+                // ExpandSubItemsAsync can complete off the UI thread; marshal queue mutation
+                // and playback back onto the UI dispatcher thread.
                 _dispatcherQueue.TryExecuteOrEnqueue(ReplaceAndPlay);
             }
         }
@@ -938,7 +938,7 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
 
     private void OnMediaFailed(IMediaPlayer sender, EventArgs args)
     {
-        // MediaFailed is raised on a LibVLC native event thread; marshal observable property updates to the UI thread.
+        // Playback events arrive on a WinRT callback thread; marshal observable property updates to the UI thread.
         _dispatcherQueue.TryEnqueue(() =>
         {
             _context.IsPlaying = false;
@@ -954,7 +954,7 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
 
     private void OnPlaybackStateChanged(IMediaPlayer sender, object args)
     {
-        // PlaybackStateChanged is raised on a LibVLC native event thread; marshal observable property updates to the UI thread.
+        // Playback events arrive on a WinRT callback thread; marshal observable property updates to the UI thread.
         _dispatcherQueue.TryEnqueue(() =>
         {
             bool isPlaying = sender.PlaybackState == MediaPlaybackState.Playing;
@@ -976,9 +976,8 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
 
     private async void OnEndReached(IMediaPlayer sender, object? args)
     {
-        // MediaEnded is raised on LibVLC's EndReached native callback thread while LibVLC holds internal locks.
-        // Escape the native event thread via Task.Run before calling Position or advancing playback
-        // to avoid a LibVLC re-entrancy deadlock.
+        // MediaEnded arrives on a WinRT callback thread. Escape it via Task.Run before
+        // touching Position or advancing playback, so the session can transition freely.
         await Task.Run(async () =>
         {
             try

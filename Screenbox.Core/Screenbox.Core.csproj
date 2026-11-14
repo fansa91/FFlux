@@ -16,7 +16,11 @@
     <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.4.2" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="CommunityToolkit.Uwp.Extensions" Version="8.2.251219" />
-    <PackageReference Include="LibVLCSharp.UWP" Version="3.10.2" />
+    <!-- FFmpegInteropX.UWP is the UWP-flavoured top-level package for .NET 9+ UWP apps.
+         It pulls in FFmpegInteropX.UWP.Lib (the WinRT component) and
+         FFmpegInteropX.UWP.FFmpeg (avcodec/avformat/avutil/swscale/swresample DLLs).
+         The older FFmpegInteropX + FFmpegInteropX.FFmpegUWP pair targets .NET Native only. -->
+    <PackageReference Include="FFmpegInteropX.UWP" Version="2.1.0.81200" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="11.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />

@@ -45,7 +45,7 @@ public sealed partial class PlayerControlsViewModel : ObservableRecipient,
 
     [ObservableProperty] public partial bool IsPlaying { get; set; }
     [ObservableProperty] public partial bool IsFullscreen { get; set; }
-    [ObservableProperty] public partial string? TitleName { get; set; } // TODO: Handle VLC title name
+    [ObservableProperty] public partial string? TitleName { get; set; } // TODO: Handle disc title metadata
     [ObservableProperty] public partial bool IsAdvancedModeActive { get; set; }
     [ObservableProperty] public partial bool IsMinimal { get; set; }
     [ObservableProperty] public partial bool PlayerShowChapters { get; set; }

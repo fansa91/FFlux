@@ -74,6 +74,9 @@ public static class ServiceHelpers
         services.AddSingleton<IPlayQueueBufferManager, PlayQueueBufferManager>();
         services.AddSingleton<IPlaybackProgressTracker, PlaybackProgressTracker>();
 
+        // Playback kernel (a single long lived native MediaPlayer shared with the video view)
+        services.AddSingleton<IMediaPlayer, FFmpegMediaPlayer>();
+
         // Services
         services.AddSingleton<ISettingsStorage, SettingsStorage>();
         services.AddSingleton<IDatabaseService, DatabaseService>();
@@ -88,6 +91,6 @@ public static class ServiceHelpers
         services.AddSingleton<IQueueService, QueueService>();
         services.AddSingleton<IPlaylistService, PlaylistService>();
         services.AddSingleton<ISourceMetadataService, StorageMetadataService>();
-        services.AddSingleton<IPlaybackMetadataService, VlcMetadataService>();
+        services.AddSingleton<IPlaybackMetadataService, FFmpegMetadataService>();
     }
 }

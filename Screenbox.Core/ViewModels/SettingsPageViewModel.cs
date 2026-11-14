@@ -163,7 +163,7 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
 
     partial void OnGlobalArgumentsChanged(string value)
     {
-        string sanitized = VlcArgumentHelper.SanitizeArguments(value);
+        string sanitized = PlaybackOptionHelper.SanitizeArguments(value);
         if (sanitized != value)
         {
             GlobalArguments = sanitized;

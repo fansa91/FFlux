@@ -760,17 +760,18 @@
     <value>设置并播放</value>
   </data>
   <data name="SetPlaybackOptionsHelpTextLine1" xml:space="preserve">
-    <value>设置适用于流的 VLC 选项。</value>
+    <value>设置适用于媒体流的 FFmpeg 选项。</value>
   </data>
   <data name="SetPlaybackOptionsHelpTextLine2" xml:space="preserve">
     <value>某些选项可能只能全局设置。</value>
   </data>
+  <!-- 资源键名保留以兼容本地化；链接现已指向 FFmpeg 文档。 -->
   <data name="VlcCommandLineHelpLink" xml:space="preserve">
-    <value>VLC 命令行帮助</value>
+    <value>FFmpeg 协议与格式选项</value>
   </data>
   <data name="VlcCommandLineHelpText" xml:space="preserve">
     <value>请参阅 {0} 查看可用选项的完整列表。</value>
-    <comment>{0} = VLC command-line help</comment>
+    <comment>{0} = FFmpeg 选项文档链接</comment>
   </data>
   <data name="SettingsCategoryAdvanced" xml:space="preserve">
     <value>高级</value>
@@ -782,13 +783,13 @@
     <value>高级模式</value>
   </data>
   <data name="SettingsAdvancedModeDescription" xml:space="preserve">
-    <value>高级模式允许您使用命令行参数自定义 LibVLC 的行为。</value>
+    <value>高级模式允许您使用 key=value 选项自定义 FFmpeg 播放行为。</value>
   </data>
   <data name="SettingsGlobalArgumentsHeader" xml:space="preserve">
-    <value>全局参数</value>
+    <value>全局选项</value>
   </data>
   <data name="SettingsGlobalArgumentsDescription" xml:space="preserve">
-    <value>适用于所有媒体播放的命令行参数。</value>
+    <value>适用于所有媒体播放的 FFmpeg 选项。</value>
   </data>
   <data name="RemoveFolder" xml:space="preserve">
     <value>移除文件夹</value>

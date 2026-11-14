@@ -24,7 +24,7 @@ This document provides a comprehensive overview of the Screenbox project's archi
 
 ## 📖 Overview
 
-Screenbox is a modern media player for Windows built using the Universal Windows Platform ([UWP](https://learn.microsoft.com/en-us/windows/uwp/get-started/universal-application-platform-guide)) and LibVLCSharp. The application follows the Model-View-ViewModel ([MVVM](https://learn.microsoft.com/en-us/windows/uwp/data-binding/data-binding-and-mvvm)) design pattern with dependency injection for maintainable and testable code.
+Screenbox is a modern media player for Windows built using the Universal Windows Platform ([UWP](https://learn.microsoft.com/en-us/windows/uwp/get-started/universal-application-platform-guide)) and FFmpegInteropX. The application follows the Model-View-ViewModel ([MVVM](https://learn.microsoft.com/en-us/windows/uwp/data-binding/data-binding-and-mvvm)) design pattern with dependency injection for maintainable and testable code.
 
 The architecture is built around clean separation of concerns:
 
@@ -41,7 +41,6 @@ Screenbox.slnx
 ├── Screenbox/                 # Main UWP application
 ├── Screenbox.Core/            # Core services, models, view models, and playback logic
 ├── Screenbox.UI/              # Shared UI components and custom controls
-├── Screenbox.VideoView/       # Video rendering helper for playback surfaces
 ├── Screenbox.Lively/          # Lively Wallpaper integration support
 └── Screenbox.Core.Tests/      # Unit and integration tests for the core library
 ```
@@ -58,9 +57,9 @@ The core project contains the business logic, services, domain models, view mode
 
 This library contains shared UI components, theme resources, and templated controls that can be reused across different parts of the application.
 
-### Video Rendering Helper: Screenbox.VideoView
+### Video Rendering
 
-The VideoView project provides a helper for rendering video playback surfaces, abstracting the underlying video rendering implementation.
+Video is rendered by the platform `MediaPlayerElement` in `Screenbox/Controls/PlayerElement.xaml`. The `Windows.Media.Playback.MediaPlayer` instance lives in the DI singleton `FFmpegMediaPlayer` and is attached to the element with `SetMediaPlayer`. The former custom D3D swap-chain project (`Screenbox.VideoView`) has been removed; FFmpegInteropX supplies decoded frames through `MediaPlaybackItem` instead.
 
 ### Lively Wallpaper Integration: Screenbox.Lively
 
@@ -292,28 +291,28 @@ Available coordinators:
 
 Helper classes provide focused utilities and lightweight wrappers for specific functionality:
 
-- **`RendererWatcher`**: Lightweight wrapper around VLC's RendererDiscoverer for network renderer discovery, exposing events for renderer found/lost notifications and maintaining a list of available renderers
+- **`RendererWatcher`**: Casting target watcher. LibVLC's RendererDiscoverer was removed; this is now an inert placeholder pending a `MediaPlayer.GetAsCastingSource()` implementation, and still exposes renderer found/lost events
 - **`DisplayRequestTracker`**: Manages display sleep prevention during media playback
 
 ### Media Playback Engine
 
-The media playback system is built on [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) with custom abstractions for integration with the MVVM architecture:
+The media playback system is built on [FFmpegInteropX](https://github.com/ffmpeginteropx/FFmpegInteropX) and the native `Windows.Media.Playback.MediaPlayer`, wrapped in abstractions for the MVVM architecture:
 
 #### Core Playback Components
 
 - **`IMediaPlayer`**: Media player abstraction interface
 - **`IPlaybackItem`**: Playback item interface with track, chapter, and timing abstractions
-- **`VlcMediaPlayer.cs`**: VLC-based implementation of media player
-- **`VlcPlaybackItem.cs`**: VLC-backed implementation of playback item
+- **`FFmpegMediaPlayer.cs`**: `IMediaPlayer` implementation over `MediaPlayer` + `FFmpegMediaSource`
+- **`FFmpegPlaybackItem.cs`**: `IPlaybackItem` implementation over `MediaPlaybackItem`
+- **`FFmpegMediaSourceConfigFactory.cs`**: D3D11VA / FastSeek / decoder-thread configuration
 
 #### Track Management System
 
-- **VlcAudioTrackList.cs**: Audio track selection and switching
-- **VlcVideoTrackList.cs**: Video track and subtitle management
-- **VlcSubtitleTrackList.cs**: Subtitle track handling
-- **VlcChapterList.cs**: Chapter navigation support
+- **FFmpegAudioTrackList.cs**: Audio track selection and switching
+- **FFmpegVideoTrackList.cs**: Video track selection
+- **FFmpegSubtitleTrackList.cs**: Embedded and external subtitle handling
 
-The playback engine provides a clean interface for the ViewModel layer while abstracting the complexities of the underlying VLC media framework.
+The playback engine provides a clean interface for the ViewModel layer while abstracting the complexities of the underlying FFmpeg media framework.
 
 ### Data Models and Persistence
 
@@ -372,7 +371,7 @@ The following table summarizes the allowed dependency directions between layers:
 - **UWP (Universal Windows Platform)**: Windows application framework providing native performance and system integration
 - **.NET 10**: Cross-platform runtime for building modern applications
 - **XAML**: Declarative markup for user interface definition
-- **LibVLCSharp**: Cross-platform media playback engine with extensive codec support
+- **FFmpegInteropX.UWP**: FFmpeg demuxing/decoding with D3D11VA hardware acceleration, wrapped as a WinRT `MediaPlaybackItem` consumed by the native media pipeline
 - **CommunityToolkit.Mvvm**: MVVM framework for property change notification, messaging, and source generation
 
 ### Development and Build Tools
@@ -395,7 +394,7 @@ The following table summarizes the allowed dependency directions between layers:
 
 #### Media and Data Processing
 
-- [LibVLCSharp](https://github.com/videolan/libvlcsharp) - VLC media player integration
+- [FFmpegInteropX](https://github.com/ffmpeginteropx/FFmpegInteropX) - FFmpeg media playback integration for UWP
 - [TagLibSharp](https://github.com/mono/taglib-sharp) - Audio metadata reading
 - [Microsoft.Data.Sqlite](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/) - SQLite database access for media library cache and playlist persistence
 

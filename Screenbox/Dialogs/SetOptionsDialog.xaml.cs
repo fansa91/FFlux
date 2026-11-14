@@ -20,7 +20,7 @@ public sealed partial class SetOptionsDialog : ContentDialog
 
     private string OptionTextBoxPlaceholder { get; }
 
-    private string[] VlcCommandLineHelpTextParts { get; }
+    private string[] PlaybackOptionsHelpTextParts { get; }
 
     [DynamicWindowsRuntimeCast(typeof(FrameworkElement))]
     public SetOptionsDialog(string existingOptions, bool global = false)
@@ -28,11 +28,13 @@ public sealed partial class SetOptionsDialog : ContentDialog
         this.InitializeComponent();
         FlowDirection = GlobalizationHelper.GetFlowDirection();
         RequestedTheme = ((FrameworkElement)Window.Current.Content).RequestedTheme;
-        OptionTextBoxPlaceholder = global ? "--option=value" : ":option=value";
+        OptionTextBoxPlaceholder = "--option=value";
         Options = existingOptions;
         OptionsTextBox.Text = Options;
+        // Resource key is retained for historical localization coverage; the text now
+        // describes FFmpeg options rather than VLC command-line switches.
         var helpText = Strings.Resources.VlcCommandLineHelpText;
-        VlcCommandLineHelpTextParts = helpText.Contains("{0}")
+        PlaybackOptionsHelpTextParts = helpText.Contains("{0}")
             ? helpText.Split("{0}").Select(s => s.Trim()).Take(2).ToArray()
             : new[] { helpText, string.Empty };
 

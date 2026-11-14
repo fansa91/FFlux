@@ -299,7 +299,7 @@ public sealed class QueueService : IQueueService
         // VM identity. Without this, GetOrCreate creates a new VM for the same file that is a
         // different object reference. QueueSession uses IndexOf (reference equality) to find
         // CurrentItem in the new list; if it fails, CurrentIndex becomes -1, which causes
-        // LoadFromPlaylist to set PlaybackItem to null and call VlcPlayer.Stop() on the UI
+        // LoadFromPlaylist to set PlaybackItem to null and clear the media source on the UI
         // thread, freezing the app.
         int matchIndex = neighboringItems.FindIndex(vm =>
             vm.Location.Equals(currentItem.Location, StringComparison.OrdinalIgnoreCase));

@@ -764,17 +764,18 @@
     <value>Set and Play</value>
   </data>
   <data name="SetPlaybackOptionsHelpTextLine1" xml:space="preserve">
-    <value>Set VLC options that apply to a stream.</value>
+    <value>Set FFmpeg options that apply to a stream.</value>
   </data>
   <data name="SetPlaybackOptionsHelpTextLine2" xml:space="preserve">
     <value>Some options may only be set globally.</value>
   </data>
+  <!-- Resource key kept for localization compatibility; the link now points at FFmpeg docs. -->
   <data name="VlcCommandLineHelpLink" xml:space="preserve">
-    <value>VLC command-line help</value>
+    <value>FFmpeg protocol and format options</value>
   </data>
   <data name="VlcCommandLineHelpText" xml:space="preserve">
     <value>See {0} for the full list of available options.</value>
-    <comment>{0} = VLC command-line help</comment>
+    <comment>{0} = FFmpeg options documentation link</comment>
   </data>
   <data name="SettingsCategoryAdvanced" xml:space="preserve">
     <value>Advanced</value>
@@ -786,13 +787,13 @@
     <value>Advanced mode</value>
   </data>
   <data name="SettingsAdvancedModeDescription" xml:space="preserve">
-    <value>Advanced mode allows you to customize LibVLC's behavior using command line arguments</value>
+    <value>Advanced mode lets you customize FFmpeg playback using key=value options</value>
   </data>
   <data name="SettingsGlobalArgumentsHeader" xml:space="preserve">
-    <value>Global arguments</value>
+    <value>Global options</value>
   </data>
   <data name="SettingsGlobalArgumentsDescription" xml:space="preserve">
-    <value>Command line arguments that apply to all media playback</value>
+    <value>FFmpeg options that apply to all media playback</value>
   </data>
   <data name="RemoveFolder" xml:space="preserve">
     <value>Remove folder</value>

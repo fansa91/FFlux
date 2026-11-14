@@ -45,6 +45,18 @@ public sealed partial class PlayerElement : UserControl
         _gestureRecognizer.Holding += GestureRecognizer_OnHolding;
     }
 
+    /// <summary>
+    /// Attach the DI owned native MediaPlayer to the XAML renderer once the view is loaded.
+    /// </summary>
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        ViewModel.Initialize();
+        if (ViewModel.NativePlayer is { } player)
+        {
+            MediaPlayerView.SetMediaPlayer(player);
+        }
+    }
+
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         if (_gestureRecognizer is not null)
@@ -55,12 +67,7 @@ public sealed partial class PlayerElement : UserControl
         }
     }
 
-    private void VlcVideoView_OnInitialized(object sender, VideoViewInitializedEventArgs e)
-    {
-        ViewModel.Initialize(e.SwapChainOptions);
-    }
-
-    private void VlcVideoView_OnSizeChanged(object sender, SizeChangedEventArgs e)
+    private void MediaPlayerView_OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
         ViewModel.UpdatePlayerViewSize(e.NewSize);
     }

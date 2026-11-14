@@ -760,17 +760,18 @@
     <value>設定並播放</value>
   </data>
   <data name="SetPlaybackOptionsHelpTextLine1" xml:space="preserve">
-    <value>設定適用於串流的 VLC 選項。</value>
+    <value>設定適用於媒體串流的 FFmpeg 選項。</value>
   </data>
   <data name="SetPlaybackOptionsHelpTextLine2" xml:space="preserve">
     <value>部分選項僅能套用至所有播放模式。</value>
   </data>
+  <!-- 資源鍵名保留以相容本地化；連結現已指向 FFmpeg 文件。 -->
   <data name="VlcCommandLineHelpLink" xml:space="preserve">
-    <value>VLC 命令列說明</value>
+    <value>FFmpeg 通訊協定與格式選項</value>
   </data>
   <data name="VlcCommandLineHelpText" xml:space="preserve">
     <value>請參閱 {0} 查看所有可用選項。</value>
-    <comment>{0} = VLC command-line help</comment>
+    <comment>{0} = FFmpeg 選項文件連結</comment>
   </data>
   <data name="SettingsCategoryAdvanced" xml:space="preserve">
     <value>進階</value>
@@ -782,13 +783,13 @@
     <value>進階模式</value>
   </data>
   <data name="SettingsAdvancedModeDescription" xml:space="preserve">
-    <value>進階模式允許您使用命令列引數自訂 LibVLC 行為。</value>
+    <value>進階模式允許您使用 key=value 選項自訂 FFmpeg 播放行為。</value>
   </data>
   <data name="SettingsGlobalArgumentsHeader" xml:space="preserve">
-    <value>全域引數</value>
+    <value>全域選項</value>
   </data>
   <data name="SettingsGlobalArgumentsDescription" xml:space="preserve">
-    <value>套用至所有播放模式的命令列引數</value>
+    <value>套用至所有播放模式的 FFmpeg 選項</value>
   </data>
   <data name="RemoveFolder" xml:space="preserve">
     <value>移除資料夾</value>

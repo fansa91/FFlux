@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.ExceptionServices;
 using System.Threading;
-using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
-using LibVLCSharp.Shared;
 using Microsoft.Extensions.Logging;
 using Screenbox.Core.Contexts;
 using Screenbox.Core.Enums;
@@ -39,7 +36,11 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
 
     public event EventHandler<EventArgs>? ClearViewRequested;
 
-    public LibVLCSharp.Shared.MediaPlayer? VlcPlayer => (_playerContext.MediaPlayer as VlcMediaPlayer)?.VlcPlayer;
+    /// <summary>
+    /// Gets the native media player that the view attaches to its MediaPlayerElement.
+    /// </summary>
+    public Windows.Media.Playback.MediaPlayer? NativePlayer =>
+        (_playerContext.MediaPlayer as FFmpegMediaPlayer)?.NativePlayer;
 
     private IMediaPlayer? MediaPlayer
     {
@@ -58,7 +59,7 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
     private readonly DispatcherQueueTimer _pointerWheelTimer;
     private readonly DisplayRequestTracker _requestTracker;
     private readonly ILogger<PlayerElementViewModel> _logger;
-    private CancellationTokenSource? _initCts;
+    private bool _eventsSubscribed;
     private Size _viewSize;
     private Size _aspectRatio;
     private TimeSpan _timeBeforeManipulation;
@@ -95,99 +96,31 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
         SetCropGeometry(message.Value);
     }
 
-    public void Initialize(string[] swapChainOptions)
+    /// <summary>
+    /// Initializes the long lived FFmpeg player once and subscribes to its state events.
+    /// </summary>
+    /// <remarks>
+    /// LibVLC needed a native instance plus a D3D swap chain per video view, so the old
+    /// implementation tore down and rebuilt the player on every view load. The native
+    /// MediaPlayer is view independent, which makes this method idempotent and synchronous.
+    /// </remarks>
+    public void Initialize()
     {
-        // Unsubscribe events and set MediaPlayer to null immediately so that
-        // downstream consumers (e.g. PlayQueueCoordinator._delayPlay) know the player
-        // is unavailable and queue any incoming playback requests for later processing.
-        IMediaPlayer? oldPlayer = MediaPlayer;
-        if (oldPlayer != null)
+        List<string> options = new();
+        if (_playerSettings.GlobalArguments.Length > 0)
         {
-            oldPlayer.PlaybackStateChanged -= OnPlaybackStateChanged;
-            oldPlayer.PositionChanged -= OnPositionChanged;
-            oldPlayer.MediaFailed -= OnMediaFailed;
-            oldPlayer.PlaybackItemChanged -= OnPlaybackItemChanged;
-            MediaPlayer = null;
+            options.AddRange(_playerSettings.GlobalArguments.Split(' ', StringSplitOptions.RemoveEmptyEntries));
         }
 
-        // Cancel any in-progress initialization so that a stale Task cannot
-        // overwrite the new player after it becomes ready.
-        CancellationTokenSource? oldCts = _initCts;
-        _initCts = new CancellationTokenSource();
-        CancellationToken ct = _initCts.Token;
-        oldCts?.Cancel();
-        oldCts?.Dispose();
+        IMediaPlayer player = _playerService.Initialize(options.ToArray());
+        MediaPlayer = player;
 
-        // Run both the old-player disposal and new-player initialization on a
-        // background thread.  LibVLC teardown (LibVLC.Dispose) is expensive and
-        // must not block the UI thread, which would delay window messaging and
-        // prevent the app from processing the next activation in time.
-        Task.Run(() =>
-        {
-            // Always dispose the old player even if a newer init was requested —
-            // we captured oldPlayer before the cancellation token was reset, so
-            // only this invocation owns the reference.
-            if (oldPlayer != null)
-            {
-                _playerService.DisposePlayer(oldPlayer);
-            }
-
-            if (ct.IsCancellationRequested) return;
-
-            try
-            {
-                var args = new List<string>();
-                if (_playerSettings.GlobalArguments.Length > 0)
-                {
-                    args.AddRange(_playerSettings.GlobalArguments.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-                }
-
-                if (_playerSettings.VideoUpscale != VideoUpscaleOption.Linear)
-                {
-                    args.Add($"--d3d11-upscale-mode={_playerSettings.VideoUpscale.ToString().ToLower()}");
-                }
-
-                args.AddRange(swapChainOptions);
-                IMediaPlayer player;
-                ExceptionDispatchInfo? initException = null;
-                try
-                {
-                    player = _playerService.Initialize(args.ToArray());
-                }
-                catch (VLCException e)
-                {
-                    player = _playerService.Initialize(swapChainOptions);
-                    initException = ExceptionDispatchInfo.Capture(e);  // Passable exception
-                }
-
-                if (player is not VlcMediaPlayer vlcMediaPlayer)
-                {
-                    throw new InvalidOperationException("PlayerService must return a VlcMediaPlayer instance.");
-                }
-
-                if (ct.IsCancellationRequested)
-                {
-                    // A newer Initialize() call won the race; discard this player to avoid a leak.
-                    _playerService.DisposePlayer(vlcMediaPlayer);
-                    return;
-                }
-
-                MediaPlayer = vlcMediaPlayer;
-                player.PlaybackStateChanged += OnPlaybackStateChanged;
-                player.PositionChanged += OnPositionChanged;
-                player.MediaFailed += OnMediaFailed;
-                player.PlaybackItemChanged += OnPlaybackItemChanged;
-
-                initException?.Throw();
-            }
-            catch (Exception ex)
-            {
-                _dispatcherQueue.TryEnqueue(() =>
-                {
-                    Messenger.Send(new NotificationMessage(NotificationLevel.Error, NotificationKind.InitializationFailed, message: ex.Message));
-                });
-            }
-        });
+        if (_eventsSubscribed) return;
+        _eventsSubscribed = true;
+        player.PlaybackStateChanged += OnPlaybackStateChanged;
+        player.PositionChanged += OnPositionChanged;
+        player.MediaFailed += OnMediaFailed;
+        player.PlaybackItemChanged += OnPlaybackItemChanged;
     }
 
     public void UpdatePlayerViewSize(Size size)

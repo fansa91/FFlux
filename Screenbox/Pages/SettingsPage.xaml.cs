@@ -31,7 +31,7 @@ public sealed partial class SettingsPage : Page
         set => ViewModel.Language = value.Equals(SystemDefaultLanguage) ? string.Empty : value;
     }
 
-    private string[] VlcCommandLineHelpTextParts { get; }
+    private string[] PlaybackOptionsHelpTextParts { get; }
 
     private string[] LanguageOptions => _languageOptions;
 
@@ -44,7 +44,7 @@ public sealed partial class SettingsPage : Page
         Common = Ioc.Default.GetRequiredService<CommonViewModel>();
 
         var helpText = Strings.Resources.VlcCommandLineHelpText;
-        VlcCommandLineHelpTextParts = helpText.Contains("{0}")
+        PlaybackOptionsHelpTextParts = helpText.Contains("{0}")
             ? helpText.Split("{0}").Select(s => s.Trim()).Take(2).ToArray()
             : new[] { helpText, string.Empty };
     }

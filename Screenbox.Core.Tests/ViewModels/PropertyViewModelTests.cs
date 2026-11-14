@@ -229,7 +229,7 @@ public partial class PropertyViewModelTests
             MediaInfo = new MediaInfo(MediaPlaybackType.Video, new MusicInfo(), videoInfo)
         };
 
-        var vlcVideo = new VideoInfo
+        var playbackVideo = new VideoInfo
         {
             Width = 1920,
             Height = 1080,
@@ -238,7 +238,7 @@ public partial class PropertyViewModelTests
         var vm = new PropertyViewModel(
             new DummyFilesService(),
             CreateStorageMetadataService(),
-            new TestMetadataService(new MediaInfo(MediaPlaybackType.Video, new MusicInfo(), vlcVideo)),
+            new TestMetadataService(new MediaInfo(MediaPlaybackType.Video, new MusicInfo(), playbackVideo)),
             CreatePlayerContextWithPlayer(),
             new FakePlayerService(),
             new FakeBufferManager());

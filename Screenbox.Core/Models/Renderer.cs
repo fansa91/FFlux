@@ -1,7 +1,14 @@
-using LibVLCSharp.Shared;
-
 namespace Screenbox.Core.Models;
 
+/// <summary>
+/// Describes a media casting target.
+/// </summary>
+/// <remarks>
+/// Renderer discovery was provided by LibVLC's RendererDiscoverer. The FFmpegInteropX
+/// backend plays through Windows.Media.Playback, which casts via CastingSource/DevicePicker
+/// instead of VLC renderer items. The model is retained so the cast UI keeps compiling
+/// until that flow is implemented; no VLC native handle is stored.
+/// </remarks>
 public sealed partial class Renderer
 {
     public bool IsAvailable { get; private set; }
@@ -16,25 +23,19 @@ public sealed partial class Renderer
 
     public bool CanRenderAudio { get; }
 
-    internal RendererItem? Target => IsAvailable ? _item : null;
-
-    private readonly RendererItem _item;
-
-    internal Renderer(RendererItem item)
+    internal Renderer(string name, string type, string? iconUri = null, bool canRenderVideo = true, bool canRenderAudio = true)
     {
-        _item = item;
-        Name = item.Name;
-        Type = item.Type;
-        IconUri = item.IconUri;
-        CanRenderVideo = item.CanRenderVideo;
-        CanRenderAudio = item.CanRenderAudio;
+        Name = name;
+        Type = type;
+        IconUri = iconUri;
+        CanRenderVideo = canRenderVideo;
+        CanRenderAudio = canRenderAudio;
         IsAvailable = true;
     }
 
     internal void Dispose()
     {
         IsAvailable = false;
-        _item.Dispose();
     }
 
     public override string ToString()

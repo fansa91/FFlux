@@ -76,12 +76,12 @@ public partial class MediaViewModelTests
         var vm = new MediaViewModel(source);
         var item = new DummyPlaybackItem { Source = source };
 
-        var vlcVideo = new VideoInfo
+        var playbackVideo = new VideoInfo
         {
             Width = 1920,
             Height = 1080
         };
-        var playbackMetadataService = new TestMetadataService(new MediaInfo(MediaPlaybackType.Video, new MusicInfo(), vlcVideo));
+        var playbackMetadataService = new TestMetadataService(new MediaInfo(MediaPlaybackType.Video, new MusicInfo(), playbackVideo));
 
         await vm.LoadDetailsAsync(playbackMetadataService, item);
 
@@ -142,7 +142,7 @@ public partial class MediaViewModelTests
         };
         await vm.LoadDetailsAsync((ISourceMetadataService)new TestMetadataService(storageInfo));
 
-        var vlcVideo = new VideoInfo
+        var playbackVideo = new VideoInfo
         {
             Title = string.Empty,
             Subtitle = string.Empty,
@@ -157,8 +157,8 @@ public partial class MediaViewModelTests
             Season = "Season 1",
             Episode = "Episode 4"
         };
-        var vlcInfo = new MediaInfo(MediaPlaybackType.Video, new MusicInfo(), vlcVideo);
-        await vm.LoadDetailsAsync(new TestMetadataService(vlcInfo), item);
+        var playbackInfo = new MediaInfo(MediaPlaybackType.Video, new MusicInfo(), playbackVideo);
+        await vm.LoadDetailsAsync(new TestMetadataService(playbackInfo), item);
 
         await Assert.That(vm.Name).IsEqualTo("Storage Movie Title");
         await Assert.That(vm.MediaInfo.VideoProperties.Title).IsEqualTo("Storage Movie Title");
@@ -193,19 +193,19 @@ public partial class MediaViewModelTests
         var storageInfo = new MediaInfo(MediaPlaybackType.Video, new MusicInfo(), storageVideo);
         await vm.LoadDetailsAsync((ISourceMetadataService)new TestMetadataService(storageInfo));
 
-        var vlcVideo = new VideoInfo
+        var playbackVideo = new VideoInfo
         {
             Title = string.Empty,
             Bitrate = 4_500_000,
             Width = 1920,
             Height = 1080
         };
-        var vlcMusic = new MusicInfo
+        var playbackMusic = new MusicInfo
         {
             Bitrate = 192_000
         };
-        var vlcInfo = new MediaInfo(MediaPlaybackType.Video, vlcMusic, vlcVideo);
-        await vm.LoadDetailsAsync(new TestMetadataService(vlcInfo), item);
+        var playbackInfo = new MediaInfo(MediaPlaybackType.Video, playbackMusic, playbackVideo);
+        await vm.LoadDetailsAsync(new TestMetadataService(playbackInfo), item);
 
         await Assert.That(vm.MediaInfo.VideoProperties.Title).IsEqualTo("Storage MKV");
         await Assert.That(vm.MediaInfo.VideoProperties.Bitrate).IsEqualTo(4_500_000U);
