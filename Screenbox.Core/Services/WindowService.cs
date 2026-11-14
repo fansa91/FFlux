@@ -24,7 +24,7 @@ public sealed class WindowService : IWindowService
         Window.Current.SizeChanged += OnWindowSizeChanged;
     }
 
-    private void OnWindowSizeChanged(object sender, WindowSizeChangedEventArgs e)
+    private void OnWindowSizeChanged(object sender, Microsoft.UI.Xaml.WindowSizeChangedEventArgs e)
     {
         ApplicationView view = ApplicationView.GetForCurrentView();
         if (_windowContext.ViewMode == WindowViewMode.FullScreen && !view.IsFullScreenMode)

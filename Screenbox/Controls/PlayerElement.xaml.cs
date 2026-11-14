@@ -1,7 +1,7 @@
 using System;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Screenbox.Core.ViewModels;
-using Windows.UI.Input;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -189,7 +189,7 @@ public sealed partial class PlayerElement : UserControl
 
     private void GestureRecognizer_OnHolding(GestureRecognizer sender, HoldingEventArgs args)
     {
-        if (args.PointerDeviceType is not (Windows.Devices.Input.PointerDeviceType.Touch or Windows.Devices.Input.PointerDeviceType.Pen)
+        if (args.PointerDeviceType is not (Microsoft.UI.Input.PointerDeviceType.Touch or Microsoft.UI.Input.PointerDeviceType.Pen)
             && args.HoldingState is HoldingState.Completed or HoldingState.Canceled)
             _shouldSuppressNextClick = true;
         ViewModel.ProcessHoldingGesture(args.HoldingState);

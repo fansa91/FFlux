@@ -313,7 +313,7 @@ public sealed partial class NavigationViewEx : NavigationView
             var rect = new Rectangle
             {
                 Name = "LightDismissLayer",
-                Fill = new SolidColorBrush(Colors.Transparent),
+                Fill = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
                 Visibility = Visibility.Collapsed
             };
             rect.Tapped += OverlayLightDismissLayer_OnTapped;

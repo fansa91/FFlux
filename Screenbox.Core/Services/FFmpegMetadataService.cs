@@ -85,17 +85,17 @@ public sealed class FFmpegMetadataService : IPlaybackMetadataService
                 : MediaPlaybackType.Unknown;
 
         TimeSpan duration = source.Duration;
-        string title = NormalizeTitle(Tag(tags, "title"), source);
-        string artist = Tag(tags, "artist");
-        string album = Tag(tags, "album");
-        string albumArtist = Tag(tags, "album_artist", "albumartist");
-        string genre = Tag(tags, "genre");
-        string description = Tag(tags, "description", "comment");
-        string showName = Tag(tags, "show_name", "showname");
-        string season = Tag(tags, "season_number", "season");
-        string episode = Tag(tags, "episode_number", "episode", "episode_id");
-        uint trackNumber = ParseTrackNumber(Tag(tags, "track"));
-        uint year = ParseYear(Tag(tags, "date", "year"));
+        string title = NormalizeTitle(Tag( "title"), source);
+        string artist = Tag( "artist");
+        string album = Tag( "album");
+        string albumArtist = Tag( "album_artist", "albumartist");
+        string genre = Tag( "genre");
+        string description = Tag( "description", "comment");
+        string showName = Tag( "show_name", "showname");
+        string season = Tag( "season_number", "season");
+        string episode = Tag( "episode_number", "episode", "episode_id");
+        uint trackNumber = ParseTrackNumber(Tag( "track"));
+        uint year = ParseYear(Tag( "date", "year"));
 
         uint videoWidth = video is { PixelWidth: > 0 } ? (uint)video.PixelWidth : 0;
         uint videoHeight = video is { PixelHeight: > 0 } ? (uint)video.PixelHeight : 0;

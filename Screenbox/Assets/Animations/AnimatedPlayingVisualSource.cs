@@ -47,7 +47,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Windows.UI;
-using Windows.UI.Composition;
+using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
 
 namespace Screenbox.Animations

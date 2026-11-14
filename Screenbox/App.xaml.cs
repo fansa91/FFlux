@@ -61,7 +61,9 @@ sealed partial class App : Application
         _logger = _services.GetRequiredService<ILogger<App>>();
         _telemetryService = _services.GetRequiredService<ITelemetryService>();
 
-        Suspending += OnSuspending;
+        // WinUI 3 has no Application.Suspending event. State is flushed on window close
+        // instead; OnSuspending stays as a reusable helper until the lifecycle rewrite.
+        // Suspending += OnSuspending;
     }
 
     [SecurityCritical]
@@ -174,7 +176,8 @@ sealed partial class App : Application
         options.SampleRate = 1.0f;
         options.IsGlobalModeEnabled = true;
         options.AutoSessionTracking = true;
-        options.Release = $"screenbox@{Package.Current.Id.Version.ToFormattedString(3)}";
+        // Unpackaged apps have no Package.Current; use the assembly version instead.
+        options.Release = $"screenbox@{typeof(App).Assembly.GetName().Version?.ToString(3) ?? "0.0.0"}";
     }
 
     private void SetMinWindowSize()
@@ -183,7 +186,10 @@ sealed partial class App : Application
         //view.SetPreferredMinSize(new Size(480, 270));
     }
 
-    protected override async void OnFileActivated(FileActivatedEventArgs args)
+    // WinUI 3 / unpackaged has no Application.OnFileActivated override. File activation has
+    // to be routed through Program.cs command-line parsing in the lifecycle rewrite; this
+    // helper keeps the existing playback logic reusable until that work lands.
+    private async void HandleFileActivation(FileActivatedEventArgs args)
     {
         _logger.LogInformation("File activation started. {PreviousExecutionState}", args.PreviousExecutionState);
 
@@ -219,16 +225,13 @@ sealed partial class App : Application
     /// will be used such as when the application is launched to open a specific file.
     /// </summary>
     /// <param name="e">Details about the launch request and process.</param>
-    protected override void OnLaunched(LaunchActivatedEventArgs e)
+    protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs e)
     {
-        _logger.LogInformation("App launched. {PrelaunchActivated} {PreviousExecutionState}",
-            e.PrelaunchActivated, e.PreviousExecutionState);
+        _logger.LogInformation("App launched.");
 
         Frame rootFrame = InitRootFrame();
         _ = StartupInitAsync();
 
-        if (e.PrelaunchActivated) return;
-        CoreApplication.EnablePrelaunch(true);
         if (rootFrame.Content == null)
         {
             SetMinWindowSize();

@@ -17,7 +17,7 @@ using Windows.Graphics.Display;
 using Windows.Media;
 using Windows.Media.Playback;
 using Windows.System;
-using Windows.UI.Input;
+using Microsoft.UI.Input;
 
 
 namespace Screenbox.Core.ViewModels;

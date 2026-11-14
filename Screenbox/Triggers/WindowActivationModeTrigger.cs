@@ -45,7 +45,7 @@ namespace Screenbox.Triggers;
 public sealed partial class WindowActivationModeTrigger : StateTriggerBase
 {
     private readonly CoreWindow _coreWindow;
-    private readonly WeakEventListener<WindowActivationModeTrigger, CoreWindow, WindowActivatedEventArgs> _weakEventListener;
+    private readonly WeakEventListener<WindowActivationModeTrigger, CoreWindow, Windows.UI.Core.WindowActivatedEventArgs> _weakEventListener;
 
     /// <summary>
     /// Identifies the <see cref="ActivationMode"/> dependency property.
@@ -86,7 +86,7 @@ public sealed partial class WindowActivationModeTrigger : StateTriggerBase
         UpdateTrigger();
     }
 
-    private void CoreWindow_OnActivated(CoreWindow sender, WindowActivatedEventArgs args)
+    private void CoreWindow_OnActivated(CoreWindow sender, Windows.UI.Core.WindowActivatedEventArgs args)
     {
         UpdateTrigger();
     }

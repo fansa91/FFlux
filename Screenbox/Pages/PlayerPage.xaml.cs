@@ -13,6 +13,7 @@ using Screenbox.Helpers;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.System;
+using Screenbox.Core.Helpers;
 using Windows.UI.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -43,7 +44,7 @@ public sealed partial class PlayerPage : Page
     {
         this.InitializeComponent();
         DataContext = Ioc.Default.GetRequiredService<PlayerPageViewModel>();
-        _delayFlyoutOpenTimer = DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _delayFlyoutOpenTimer = Windows.System.DispatcherQueue.GetForCurrentThread().CreateTimer();
 
         RegisterSeekBarPointerHandlers();
         UpdatePreviewType();

@@ -23,6 +23,7 @@ using Screenbox.Lively.Services;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.System;
+using Screenbox.Core.Helpers;
 
 namespace Screenbox.Lively.ViewModels;
 

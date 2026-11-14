@@ -75,7 +75,7 @@ public sealed partial class ChapterProgressBar : UserControl
     public ChapterProgressBar()
     {
         _logger = DefaultLogging.CreateLogger<ChapterProgressBar>();
-        _chaptersUpdateTimer = DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _chaptersUpdateTimer = Windows.System.DispatcherQueue.GetForCurrentThread().CreateTimer();
         ProgressItems = new ObservableCollection<ChapterViewModel>();
         this.InitializeComponent();
         SizeChanged += OnSizeChanged;

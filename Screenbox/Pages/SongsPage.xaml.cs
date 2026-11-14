@@ -31,7 +31,7 @@ public sealed partial class SongsPage : Page
         InitializeComponent();
         DataContext = Ioc.Default.GetRequiredService<SongsPageViewModel>();
         Common = Ioc.Default.GetRequiredService<CommonViewModel>();
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = Windows.System.DispatcherQueue.GetForCurrentThread();
     }
 
     private void ViewModelOnPropertyChanged(object? sender, PropertyChangedEventArgs e)

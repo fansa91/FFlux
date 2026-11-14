@@ -3,6 +3,7 @@ using CommunityToolkit.WinUI;
 using CommunityToolkit.WinUI.Behaviors;
 using Windows.Foundation.Collections;
 using Windows.System;
+using Screenbox.Core.Helpers;
 using Windows.UI.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -20,7 +21,7 @@ internal sealed partial class AutoFocusBehavior : BehaviorBase<Control>
 
     public AutoFocusBehavior()
     {
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = Windows.System.DispatcherQueue.GetForCurrentThread();
         _timer = _dispatcherQueue.CreateTimer();
     }
 

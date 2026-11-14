@@ -7,7 +7,8 @@ using Screenbox.Core;
 using Screenbox.Core.ViewModels;
 using Windows.Foundation;
 using Windows.System;
-using Windows.UI.Input;
+using Screenbox.Core.Helpers;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -42,7 +43,7 @@ public sealed partial class SeekBar : UserControl
         this.InitializeComponent();
         DataContext = Ioc.Default.GetRequiredService<SeekBarViewModel>();
         RegisterSeekBarPointerHandlers();
-        DispatcherQueue dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        DispatcherQueue dispatcherQueue = Windows.System.DispatcherQueue.GetForCurrentThread();
         _previewToolTipTimer = dispatcherQueue.CreateTimer();
         _previewToolTip = new ToolTip { Padding = new Thickness(8, 3, 8, 5), FontSize = 15, VerticalOffset = 13 };
 

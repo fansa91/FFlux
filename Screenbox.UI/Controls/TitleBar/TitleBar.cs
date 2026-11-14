@@ -131,7 +131,7 @@ public sealed partial class TitleBar : ContentControl
 
     protected override AutomationPeer OnCreateAutomationPeer()
     {
-        return new TitleBarAutomationPeer(this);
+        return new Screenbox.UI.Automation.Peers.TitleBarAutomationPeer(this);
     }
 
     [DynamicWindowsRuntimeCast(typeof(ColumnDefinition))]
@@ -243,9 +243,9 @@ public sealed partial class TitleBar : ContentControl
         _dragRegion = null;
     }
 
-    private void Window_OnActivated(object sender, WindowActivatedEventArgs e)
+    private void Window_OnActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs e)
     {
-        string stateName = e.WindowActivationState is CoreWindowActivationState.Deactivated
+        string stateName = e.WindowActivationState is Microsoft.UI.Xaml.WindowActivationState.Deactivated
             ? DeactivatedStateName
             : ActivatedStateName;
 

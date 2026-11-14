@@ -1,16 +1,20 @@
 using Windows.Foundation.Collections;
-using Windows.Storage;
 
 namespace Screenbox.Core.Services;
 
 /// <summary>
-/// Implements <see cref="ISettingsStorage"/> backed by UWP <see cref="ApplicationDataContainer.Values"/>.
+/// Implements <see cref="ISettingsStorage"/> backed by the Windows App SDK application
+/// data container. An unpackaged app has no package identity, so UWP's
+/// Windows.Storage.ApplicationData.Current throws 0x80073D54 here.
 /// </summary>
 public sealed class SettingsStorage : ISettingsStorage
 {
     private readonly IPropertySet _storage;
 
-    public SettingsStorage() : this(ApplicationData.Current.LocalSettings.Values)
+    public SettingsStorage() : this(
+        Microsoft.Windows.Storage.ApplicationData
+            .GetForUnpackaged("Screenbox", "Screenbox")
+            .LocalSettings.Values)
     {
     }
 

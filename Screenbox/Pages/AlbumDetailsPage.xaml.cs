@@ -9,7 +9,7 @@ using Screenbox.Core;
 using Screenbox.Core.ViewModels;
 using Windows.Storage.Streams;
 using Windows.UI;
-using Windows.UI.Composition;
+using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Hosting;
@@ -203,8 +203,8 @@ public sealed partial class AlbumDetailsPage : Page
         CompositionLinearGradientBrush gradientBrush = _compositor.CreateLinearGradientBrush();
         gradientBrush.EndPoint = new Vector2(0, 1);
         gradientBrush.MappingMode = CompositionMappingMode.Relative;
-        gradientBrush.ColorStops.Add(_compositor.CreateColorGradientStop(0.4f, Colors.White));
-        gradientBrush.ColorStops.Add(_compositor.CreateColorGradientStop(1, Colors.Transparent));
+        gradientBrush.ColorStops.Add(_compositor.CreateColorGradientStop(0.4f, Microsoft.UI.Colors.White));
+        gradientBrush.ColorStops.Add(_compositor.CreateColorGradientStop(1, Microsoft.UI.Colors.Transparent));
 
         CompositionMaskBrush maskBrush = _compositor.CreateMaskBrush();
         maskBrush.Source = imageBrush;

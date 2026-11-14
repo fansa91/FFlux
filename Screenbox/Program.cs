@@ -1,62 +1,51 @@
 using System;
+using System.IO;
+using System.Threading;
 using Screenbox;
-using Screenbox.Core.Contexts;
-using Screenbox.Core.Services;
-using Screenbox.Helpers;
-using Windows.ApplicationModel;
-using Windows.ApplicationModel.Activation;
 
 public static class Program
 {
-    // This example code shows how you could implement the required Main method to
-    // support multi-instance redirection. The minimum requirement is to call
-    // Application.Start with a new App object. Beyond that, you may delete the
-    // rest of the example code and replace it with your custom code if you wish.
-
+    // Unpackaged WinUI 3 entry point. The UWP AppInstance / IActivatedEventArgs model
+    // requires a package identity (0x80073D57 here), so multi-instance redirection and
+    // file activation have to be rebuilt on Microsoft.Windows.AppLifecycle plus the
+    // command line args below. Until that lands this starts a single window directly.
+    [STAThread]
     static void Main(string[] args)
     {
-        // If the Windows shell indicates a recommended instance, then
-        // the app can choose to redirect this activation to that instance instead.
-        if (AppInstance.RecommendedInstance != null)
-        {
-            AppInstance.RecommendedInstance.RedirectActivationTo();
-        }
-        else
-        {
-            AppInstance instance;
-            var generalSettings = new GeneralSettingsContext(new SettingsStorage());
-            var registeredInstances = AppInstance.GetInstances();
-            IActivatedEventArgs? activatedArgs = AppInstance.GetActivatedEventArgs();    // This is null on Xbox
-            bool isFileActivated = activatedArgs?.Kind == ActivationKind.File;
-            bool isFeatureEnabled = generalSettings.UseMultipleInstances;
-            bool isXbox = DeviceInfoHelper.IsXbox;
-            if ((!isXbox && isFeatureEnabled && isFileActivated) || registeredInstances.Count == 0)
-            {
-                string key = Guid.NewGuid().ToString();
-                instance = AppInstance.FindOrRegisterInstanceForKey(key);
-            }
-            else
-            {
-                instance = registeredInstances[0];
-            }
+        // args will carry files opened from Explorer / the command line.
+        _ = args;
 
-            if (instance.IsCurrentInstance)
+        WinRT.ComWrappersSupport.InitializeComWrappers();
+
+        Microsoft.UI.Xaml.Application.Start(p =>
+        {
+            _ = p;
+            try
             {
-                // If we successfully registered this instance, we can now just
-                // go ahead and do normal XAML initialization.
-                Microsoft.UI.Xaml.Application.Start(p =>
+                SynchronizationContext.SetSynchronizationContext(
+                    new Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext(
+                        Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()));
+                _ = new App();
+            }
+            catch (Exception ex)
+            {
+                // Application.Start swallows callback failures on some WinRT hosts, so
+                // persist the real startup exception before rethrowing.
+                try
                 {
-                    var context = new Windows.System.DispatcherQueueSynchronizationContext(Windows.System.DispatcherQueue.GetForCurrentThread());
-                    System.Threading.SynchronizationContext.SetSynchronizationContext(context);
-                    new App();
-                });
+                    string logPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "Screenbox", "startup-error.log");
+                    Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+                    File.WriteAllText(logPath, ex.ToString());
+                }
+                catch
+                {
+                    // Logging must never mask the original failure.
+                }
+
+                throw;
             }
-            else
-            {
-                // Some other instance has registered for this key, so we'll 
-                // redirect this activation to that instance instead.
-                instance.RedirectActivationTo();
-            }
-        }
+        });
     }
 }

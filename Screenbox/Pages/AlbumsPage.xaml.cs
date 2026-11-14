@@ -31,7 +31,7 @@ public sealed partial class AlbumsPage : Page
     public AlbumsPage()
     {
         this.InitializeComponent();
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = Windows.System.DispatcherQueue.GetForCurrentThread();
         DataContext = Ioc.Default.GetRequiredService<AlbumsPageViewModel>();
         Common = Ioc.Default.GetRequiredService<CommonViewModel>();
     }

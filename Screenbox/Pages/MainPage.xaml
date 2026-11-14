@@ -1,3 +1,4 @@
+<!--  WinUI 3 removed WinUI 2 BackdropMaterial; the Mica backdrop is configured on the Window via SystemBackdrop.  -->
 <Page
     x:Class="Screenbox.Pages.MainPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -19,7 +20,6 @@
     xmlns:templates="using:Screenbox.Templates"
     xmlns:triggers="using:Screenbox.Triggers"
     xmlns:ui="using:CommunityToolkit.WinUI"
-    muxc:BackdropMaterial.ApplyToRootOrPageBackground="True"
     Loaded="MainPage_Loaded"
     mc:Ignorable="d">
 

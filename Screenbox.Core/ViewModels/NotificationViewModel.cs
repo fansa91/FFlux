@@ -7,6 +7,7 @@ using CommunityToolkit.WinUI;
 using Screenbox.Core.Enums;
 using Screenbox.Core.Messages;
 using Windows.System;
+using Screenbox.Core.Helpers;
 
 namespace Screenbox.Core.ViewModels;
 
