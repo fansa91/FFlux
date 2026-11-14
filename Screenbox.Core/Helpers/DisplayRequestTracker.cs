@@ -3,20 +3,37 @@ using Windows.System.Display;
 
 namespace Screenbox.Core.Helpers;
 
+/// <summary>
+/// Keeps the display awake during playback.
+/// <para>
+/// <c>Windows.System.Display.DisplayRequest</c> requires a UWP CoreWindow and throws
+/// in an unpackaged WinUI 3 process. Construction is therefore best effort: when the
+/// request cannot be created, all calls become no-ops instead of breaking startup.
+/// </para>
+/// </summary>
 internal class DisplayRequestTracker
 {
     public bool IsActive => _requestCount > 0;
 
-    private readonly DisplayRequest _displayRequest;
+    private readonly DisplayRequest? _displayRequest;
     private int _requestCount;
 
     public DisplayRequestTracker()
     {
-        _displayRequest = new DisplayRequest();
+        try
+        {
+            _displayRequest = new DisplayRequest();
+        }
+        catch (Exception)
+        {
+            _displayRequest = null;
+        }
     }
 
     public void RequestActive()
     {
+        if (_displayRequest is null) return;
+
         lock (_displayRequest)
         {
             try
@@ -26,13 +43,15 @@ internal class DisplayRequestTracker
             }
             catch (Exception)
             {
-                // pass
+                // Display requests are best effort on desktop.
             }
         }
     }
 
     public void RequestRelease()
     {
+        if (_displayRequest is null) return;
+
         lock (_displayRequest)
         {
             if (_requestCount <= 0) return;
@@ -43,7 +62,7 @@ internal class DisplayRequestTracker
             }
             catch (Exception)
             {
-                // pass
+                // Display requests are best effort on desktop.
             }
         }
     }

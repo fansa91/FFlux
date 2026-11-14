@@ -16,6 +16,9 @@ using Screenbox.Core.Services;
 using Windows.Storage;
 using Windows.System;
 using Microsoft.UI.Xaml.Navigation;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -76,7 +79,7 @@ public sealed partial class VideosPageViewModel : ObservableRecipient,
         }
         catch (Exception e)
         {
-            folder = ApplicationData.Current.TemporaryFolder;
+            folder = StorageFolder.GetFolderFromPathAsync(AppPaths.TemporaryFolder).AsTask().GetAwaiter().GetResult();
             Messenger.Send(new NotificationMessage(NotificationLevel.Error, NotificationKind.None, message: e.Message));
             _logger.LogError(e, "Failed to resolve the first videos folder.");
             return false;

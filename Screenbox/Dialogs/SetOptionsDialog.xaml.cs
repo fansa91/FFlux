@@ -2,6 +2,7 @@ using System.Linq;
 using Screenbox.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Screenbox.Core.Helpers;
 
 // The Content Dialog item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -27,7 +28,7 @@ public sealed partial class SetOptionsDialog : ContentDialog
     {
         this.InitializeComponent();
         FlowDirection = GlobalizationHelper.GetFlowDirection();
-        RequestedTheme = ((FrameworkElement)Window.Current.Content).RequestedTheme;
+        RequestedTheme = ((FrameworkElement)WindowAccessor.Current.Content).RequestedTheme;
         OptionTextBoxPlaceholder = "--option=value";
         Options = existingOptions;
         OptionsTextBox.Text = Options;

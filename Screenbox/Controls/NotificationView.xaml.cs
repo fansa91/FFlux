@@ -17,8 +17,18 @@ public sealed partial class NotificationView : UserControl
 
     public NotificationView()
     {
-        this.InitializeComponent();
-        DataContext = Ioc.Default.GetRequiredService<NotificationViewModel>();
+        try
+        {
+            this.InitializeComponent();
+            DataContext = Ioc.Default.GetRequiredService<NotificationViewModel>();
+        }
+        catch (Exception ex)
+        {
+            // XAML loaders surface constructor failures as the opaque
+            // "Cannot create instance of type ..." error, so persist the real cause.
+            Screenbox.Helpers.StartupErrorLog.Write("NotificationView ctor failed: " + ex);
+            throw;
+        }
     }
 
     private ButtonBase? CreateActionButton(NotificationKind kind, string? actionContent, ICommand? actionCommand)

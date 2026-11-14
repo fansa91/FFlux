@@ -26,6 +26,8 @@ using Windows.Storage.Search;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 
 namespace Screenbox;
 
@@ -37,6 +39,8 @@ sealed partial class App : Application
     private readonly IServiceProvider _services;
     private readonly ILogger<App> _logger;
     private readonly ITelemetryService _telemetryService;
+    private Window? _window;
+    private DispatcherQueueTimer? _heartbeatTimer;
 
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -44,10 +48,13 @@ sealed partial class App : Application
     /// </summary>
     public App()
     {
+        StartupErrorLog.Write("App ctor");
         // Initialize Sentry SDK and immediately register error handlers before XAML is initialized
         _ = InitializeSentrySdk();
         UnhandledException += App_UnhandledException;
-        CoreApplication.UnhandledErrorDetected += CoreApplication_UnhandledErrorDetected;
+        // CoreApplication.UnhandledErrorDetected needs a UWP CoreApplication view, which an
+        // unpackaged WinUI 3 process does not have. Application.UnhandledException above is
+        // the supported hook; the helper below is retained for a future packaged build.
         GlobalizationHelper.SyncCurrentCultureWithAppLanguage();
 
         InitializeComponent();
@@ -60,6 +67,7 @@ sealed partial class App : Application
 
         _logger = _services.GetRequiredService<ILogger<App>>();
         _telemetryService = _services.GetRequiredService<ITelemetryService>();
+        StartupErrorLog.Write("App ctor done");
 
         // WinUI 3 has no Application.Suspending event. State is flushed on window close
         // instead; OnSuspending stays as a reusable helper until the lifecycle rewrite.
@@ -101,10 +109,17 @@ sealed partial class App : Application
             exception.Data[Mechanism.MechanismKey] = "Application.UnhandledException";
 
             // Capture the exception
+            StartupErrorLog.Write("Unhandled exception: " + exception);
             SentrySdk.CaptureException(exception);
 
-            // Flush the event immediately
-            SentrySdk.FlushAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
+            // Never block the UI dispatcher thread inside an exception callback: a
+            // synchronous flush here deadlocks the message loop and the process is
+            // then torn down by CoreMessaging as a stowed exception.
+            _ = SentrySdk.FlushAsync(TimeSpan.FromSeconds(2));
+
+            // Report and keep running. Without this the XAML framework rethrows and
+            // terminates the app even though the error was already captured.
+            e.Handled = true;
         }
     }
 
@@ -199,7 +214,7 @@ sealed partial class App : Application
             rootFrame.Navigate(typeof(MainPage), true);
         }
 
-        Window.Current.Activate();
+        _window?.Activate();
         var queueService = _services.GetRequiredService<IQueueService>();
         var generalSettings = _services.GetRequiredService<GeneralSettingsContext>();
 
@@ -228,9 +243,30 @@ sealed partial class App : Application
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs e)
     {
         _logger.LogInformation("App launched.");
+        StartupErrorLog.Write("OnLaunched entered");
+
+        // Application.Start does not create a window for a WinUI 3 desktop app. Register
+        // it before InitRootFrame assigns Content: TitleBar, state triggers and the
+        // navigation service all resolve the window while the XAML tree is built.
+        if (_window is null)
+        {
+            _window = new Window();
+            WindowAccessor.Register(_window);
+            Screenbox.UI.Controls.TitleBar.HostWindow = _window;
+            _window.Closed += (_, _) => StartupErrorLog.Write("Window closed");
+            try
+            {
+                _window.AppWindow.Destroying += (_, _) => StartupErrorLog.Write("AppWindow destroying");
+            }
+            catch (Exception ex)
+            {
+                StartupErrorLog.Write("AppWindow hook unavailable: " + ex.Message);
+            }
+            StartupErrorLog.Write("Window created");
+        }
 
         Frame rootFrame = InitRootFrame();
-        _ = StartupInitAsync();
+        StartupErrorLog.Write("Root frame ready");
 
         if (rootFrame.Content == null)
         {
@@ -238,8 +274,13 @@ sealed partial class App : Application
             rootFrame.Navigate(typeof(MainPage));
         }
 
-        // Ensure the current window is active
-        Window.Current.Activate();
+        _ = StartupInitAsync();
+        _window.Activate();
+        StartupErrorLog.Write("Window activated");
+        if (Environment.GetEnvironmentVariable("SCREENBOX_STARTUP_TRACE") == "1")
+        {
+            StartHeartbeat();
+        }
 
 #if DEBUG
         if (System.Diagnostics.Debugger.IsAttached)
@@ -255,12 +296,46 @@ sealed partial class App : Application
     }
 
     /// <summary>
+    /// A short-lived heartbeat tells us whether the WinUI dispatcher loop is still
+    /// processing work. Heartbeats that keep arriving while the process dies prove
+    /// the termination came from outside the managed message loop. Opt-in via
+    /// SCREENBOX_STARTUP_TRACE=1 so normal launches stay quiet.
+    /// </summary>
+    private void StartHeartbeat()
+    {
+        DispatcherQueue? queue = DispatcherQueue.GetForCurrentThread();
+        if (queue is null)
+        {
+            StartupErrorLog.Write("Heartbeat unavailable: no DispatcherQueue");
+            return;
+        }
+
+        DispatcherQueueTimer timer = queue.CreateTimer();
+        _heartbeatTimer = timer;
+        int ticks = 0;
+        timer.Interval = TimeSpan.FromSeconds(1);
+        timer.Tick += (_, _) =>
+        {
+            if (++ticks > 20)
+            {
+                timer.Stop();
+                return;
+            }
+            StartupErrorLog.Write("heartbeat " + ticks);
+        };
+        timer.Start();
+    }
+
+    /// <summary>
     /// Invoked when Navigation to a certain page fails
     /// </summary>
     /// <param name="sender">The Frame which failed navigation</param>
     /// <param name="e">Details about the navigation failure</param>
     void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
     {
+        // Persist the original parser/COM error before replacing it: the XAML loader
+        // otherwise reports only the opaque "Failed to load Page" exception.
+        StartupErrorLog.Write("Navigation to " + e.SourcePageType.FullName + " failed: " + e.Exception);
         throw new Exception("Failed to load Page " + e.SourcePageType.FullName);
     }
 
@@ -313,7 +388,7 @@ sealed partial class App : Application
     {
         // Do not repeat app initialization when the Window already has content,
         // just ensure that the window is active
-        if (Window.Current.Content is not Frame rootFrame)
+        if (WindowAccessor.Current.Content is not Frame rootFrame)
         {
             // Create a Frame to act as the navigation context and navigate to the first page
             rootFrame = new Frame();
@@ -321,16 +396,8 @@ sealed partial class App : Application
             rootFrame.NavigationFailed += OnNavigationFailed;
 
             // Place the frame in the current Window
-            Window.Current.Content = rootFrame;
+            WindowAccessor.Current.Content = rootFrame;
             SetMinWindowSize();
-
-            // Turn off overscan on Xbox
-            // https://learn.microsoft.com/en-us/windows/uwp/xbox-apps/turn-off-overscan
-            if (DeviceInfoHelper.IsXbox)
-            {
-                Windows.UI.ViewManagement.ApplicationView.GetForCurrentView()
-                    .SetDesiredBoundsMode(Windows.UI.ViewManagement.ApplicationViewBoundsMode.UseCoreWindow);
-            }
 
             // Check for RTL flow direction
             if (GlobalizationHelper.IsRightToLeftLanguage)

@@ -59,7 +59,7 @@
     <Grid>
         <sbuc:TitleBar
             x:Name="AppTitleBar"
-            Title="{x:Bind appModel:Package.Current.DisplayName}"
+            Title="Screenbox"
             Margin="{StaticResource AppTitleBarExpandedMargin}"
             ctAnimations:Implicit.HideAnimations="{StaticResource FadeOutImplicitAnimation}"
             ctAnimations:Implicit.ShowAnimations="{StaticResource FadeInImplicitAnimation}"

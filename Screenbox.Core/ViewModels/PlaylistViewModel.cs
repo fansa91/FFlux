@@ -17,6 +17,9 @@ using Screenbox.Core.Messages;
 using Screenbox.Core.Models;
 using Screenbox.Core.Services;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -82,7 +85,7 @@ public sealed partial class PlaylistViewModel : ObservableRecipient,
     {
         OnPropertyChanged(nameof(ItemsCount));
 
-        _playlistSaveTimer.Debounce(async () =>
+        _playlistSaveTimer.DebounceCore(async () =>
         {
             // Ensures the playlist is up to date when items are reordered.
             try

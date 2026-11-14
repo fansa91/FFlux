@@ -1,3 +1,4 @@
+using System;
 using Screenbox.UI.Automation.Peers;
 using Windows.ApplicationModel.Core;
 using Windows.UI.Core;
@@ -102,28 +103,34 @@ public sealed partial class TitleBar : ContentControl
     /// <summary>
     /// Initializes a new instance of the <see cref="TitleBar"/> class.
     /// </summary>
+    /// <summary>
+    /// The host window, set by App.OnLaunched before the first TitleBar is created.
+    /// Screenbox.UI intentionally has no reference to Screenbox.Core, so it cannot use
+    /// WindowAccessor directly.
+    /// </summary>
+    public static Window? HostWindow { get; set; }
+
     public TitleBar()
     {
         DefaultStyleKey = typeof(TitleBar);
         Unloaded += OnUnloaded;
 
-        if (CoreApplication.GetCurrentView().TitleBar is { } coreTitleBar)
+        // CoreApplication.GetCurrentView().TitleBar, ApplicationView.GetForCurrentView()
+        // and Window.Current all require a UWP CoreApplication view backed by package
+        // identity. In an unpackaged WinUI 3 desktop app only Window.SetTitleBar applies;
+        // the drag region is wired up in UpdateDragRegion once the template is in place.
+        _window = HostWindow;
+        if (_window is not null)
         {
-            _coreTitleBar = coreTitleBar;
-            coreTitleBar.ExtendViewIntoTitleBar = true;
-            coreTitleBar.LayoutMetricsChanged += CoreTitleBar_OnLayoutMetricsChanged;
-            //coreTitleBar.IsVisibleChanged += CoreTitleBar_OnIsVisibleChanged;
-        }
-
-        if (ApplicationView.GetForCurrentView().TitleBar is { } titleBar)
-        {
-            _applicationViewTitleBar = titleBar;
-        }
-
-        if (Window.Current is { } window)
-        {
-            _window = window;
-            window.Activated += Window_OnActivated;
+            _window.Activated += Window_OnActivated;
+            try
+            {
+                _window.ExtendsContentIntoTitleBar = true;
+            }
+            catch (Exception)
+            {
+                // Custom title bar is cosmetic; failing here must not break startup.
+            }
         }
 
         _flowDirectionCallbackToken = RegisterPropertyChangedCallback(FlowDirectionProperty, OnFlowDirectionChanged);
@@ -179,7 +186,15 @@ public sealed partial class TitleBar : ContentControl
     /// </summary>
     public void ResetToDefault()
     {
-        _window?.SetTitleBar(null);
+        try
+        {
+            _window?.SetTitleBar(null);
+        }
+        catch (Exception)
+        {
+            // Same XamlRoot constraint as UpdateDragRegion.
+        }
+
         if (_coreTitleBar is not null)
         {
             _coreTitleBar.ExtendViewIntoTitleBar = false;
@@ -315,13 +330,26 @@ public sealed partial class TitleBar : ContentControl
     {
         if (_window is null) return;
 
-        if (_dragRegion is not null)
+        // Window.SetTitleBar requires a UIElement that is already attached to a XamlRoot.
+        // OnApplyTemplate runs before the page is parented to the window, and calling it
+        // there raises E_INVALIDARG (0x80070057) from combase. Once that exception escapes
+        // a XAML callback WinUI turns it into an unrecoverable stowed exception
+        // (0xC000027B in CoreMessagingXP.dll). Keep the custom title bar best-effort;
+        // MainPage.Loaded calls RefreshDragRegion again after the tree is live.
+        try
         {
-            _window.SetTitleBar(_dragRegion);
+            if (_dragRegion is not null)
+            {
+                _window.SetTitleBar(_dragRegion);
+            }
+            else
+            {
+                _window.SetTitleBar(null);
+            }
         }
-        else
+        catch (Exception)
         {
-            _window.SetTitleBar(null);
+            // Cosmetic only; never let a title bar failure terminate the app.
         }
     }
 

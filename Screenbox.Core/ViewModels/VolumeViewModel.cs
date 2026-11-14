@@ -8,6 +8,9 @@ using Screenbox.Core.Messages;
 using Screenbox.Core.Playback;
 using Screenbox.Core.Services;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 

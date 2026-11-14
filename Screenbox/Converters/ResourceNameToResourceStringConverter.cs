@@ -4,7 +4,7 @@
 // Source: https://github.com/CommunityToolkit/Windows/blob/v8.2.250402/components/Converters/src/ResourceNameToResourceStringConverter.cs
 
 using System;
-using Windows.ApplicationModel.Resources;
+using Screenbox.Core.Helpers;
 using Microsoft.UI.Xaml.Data;
 
 namespace Screenbox.Converters;
@@ -14,8 +14,6 @@ namespace Screenbox.Converters;
 /// </summary>
 public sealed partial class ResourceNameToResourceStringConverter : IValueConverter
 {
-    private static readonly ResourceLoader _resourceLoader = ResourceLoader.GetForViewIndependentUse();
-
     /// <summary>
     /// Gets the localized resource string associated with the specified enum member.
     /// </summary>
@@ -37,13 +35,13 @@ public sealed partial class ResourceNameToResourceStringConverter : IValueConver
         string memberName = enumValue.ToString();
         string fullKey = $"{typeName}{memberName}";
 
-        string defaultResult = _resourceLoader.GetString(fullKey);
+        string defaultResult = AppResourceLoader.GetString(fullKey);
         if (!string.IsNullOrWhiteSpace(defaultResult))
         {
             return defaultResult;
         }
 
-        defaultResult = _resourceLoader.GetString(memberName);
+        defaultResult = AppResourceLoader.GetString(memberName);
         if (!string.IsNullOrWhiteSpace(defaultResult))
         {
             return defaultResult;
@@ -71,7 +69,7 @@ public sealed partial class ResourceNameToResourceStringConverter : IValueConver
             return stringValue.Substring(1);
         }
 
-        return _resourceLoader.GetString(stringValue);
+        return AppResourceLoader.GetString(stringValue);
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using Screenbox.Core.ViewModels;
 using Screenbox.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Screenbox.Core.Helpers;
 
 // The Content Dialog item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -27,6 +28,6 @@ public sealed partial class PropertiesDialog : ContentDialog, IPropertiesDialog
     {
         this.InitializeComponent();
         FlowDirection = GlobalizationHelper.GetFlowDirection();
-        RequestedTheme = ((FrameworkElement)Window.Current.Content).RequestedTheme;
+        RequestedTheme = ((FrameworkElement)WindowAccessor.Current.Content).RequestedTheme;
     }
 }

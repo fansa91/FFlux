@@ -26,6 +26,9 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -249,7 +252,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
 
             if (message.Duration != Timeout.InfiniteTimeSpan)
             {
-                _osdMessageTimer.Debounce(() =>
+                _osdMessageTimer.DebounceCore(() =>
                 {
                     IsOsdMessageVisible = false;
                 }, message.Duration);
@@ -271,7 +274,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
 
             if (message.Duration != Timeout.InfiniteTimeSpan)
             {
-                _osdBadgeTimer.Debounce(() =>
+                _osdBadgeTimer.DebounceCore(() =>
                 {
                     IsOsdBadgeVisible = false;
                 }, message.Duration);
@@ -384,7 +387,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
             MediaPlayer is null || MediaPlayer.PlaybackState is MediaPlaybackState.Paused)
             return;
 
-        _playPauseHoldTimer.Debounce(() =>
+        _playPauseHoldTimer.DebounceCore(() =>
         {
             _playbackRateBeforeHold = MediaPlayer.PlaybackRate;
             // If the rate is already faster than the holding speed, set it to twice the holding speed.
@@ -767,7 +770,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
             if (focused is Slider { IsFocusEngaged: true }) return false;
 
             // Do not hide controls while a popup is open.
-            bool isPopupOpen = VisualTreeHelper.GetOpenPopups(Window.Current).Any();
+            bool isPopupOpen = VisualTreeHelper.GetOpenPopups(WindowAccessor.Current).Any();
             if (isPopupOpen) return false;
         }
 
@@ -784,7 +787,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         if (PlayerVisibility != PlayerVisibilityState.Visible || AudioOnly) return;
 
         int delayInSeconds = _playerSettings.ControlsHideDelay;
-        _controlsVisibilityTimer.Debounce(() => TryHideControls(), TimeSpan.FromSeconds(delayInSeconds));
+        _controlsVisibilityTimer.DebounceCore(() => TryHideControls(), TimeSpan.FromSeconds(delayInSeconds));
     }
 
     private void OverrideControlsDelayHide(int delay = 400)
@@ -832,7 +835,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         MediaPlaybackState state = sender.PlaybackState;
         if (state == MediaPlaybackState.Opening)
         {
-            _openingTimer.Debounce(() => IsOpening = state == MediaPlaybackState.Opening, TimeSpan.FromSeconds(0.5));
+            _openingTimer.DebounceCore(() => IsOpening = state == MediaPlaybackState.Opening, TimeSpan.FromSeconds(0.5));
         }
 
         _dispatcherQueue.TryEnqueue(() =>

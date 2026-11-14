@@ -2,6 +2,9 @@ using System;
 using System.Runtime.CompilerServices;
 using Windows.Foundation;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.Helpers;
 
@@ -30,7 +33,7 @@ public static class DispatcherQueueExtensions
     /// the interval elapses. With <paramref name="immediate"/> set, the first call in a quiet
     /// window runs right away and later calls within the window only push the deadline out.
     /// </summary>
-    public static void Debounce(
+    public static void DebounceCore(
         this DispatcherQueueTimer timer,
         Action action,
         TimeSpan interval,

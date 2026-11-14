@@ -1,118 +1,160 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
 using Screenbox.Core.Contexts;
 using Screenbox.Core.Enums;
+using Screenbox.Core.Helpers;
 using Windows.Foundation;
-using Windows.Graphics.Display;
-using Windows.UI.Core;
-using Windows.UI.ViewManagement;
-using Windows.UI.WindowManagement;
-using Microsoft.UI.Xaml;
+using Windows.Graphics;
 
 namespace Screenbox.Core.Services;
 
+/// <summary>
+/// WinUI 3 implementation of <see cref="IWindowService"/>.
+/// <para>
+/// The UWP version used <c>ApplicationView.GetForCurrentView()</c>,
+/// <c>CoreWindow</c> and <c>ViewModePreferences</c>. All three need a CoreApplication
+/// view backed by package identity and throw in an unpackaged desktop app. This version
+/// uses <see cref="AppWindow"/> from the Windows App SDK instead; operations the desktop
+/// windowing API does not expose (compact overlay, cursor hiding) degrade gracefully.
+/// </para>
+/// </summary>
 public sealed class WindowService : IWindowService
 {
     public WindowViewMode ViewMode => _windowContext.ViewMode;
 
     private readonly WindowContext _windowContext;
-    private CoreCursor? _cursor;
+    private Window? _window;
 
     public WindowService(WindowContext windowContext)
     {
         _windowContext = windowContext;
-        Window.Current.SizeChanged += OnWindowSizeChanged;
+
+        // The service can be resolved before the window exists, so handle both orders.
+        WindowAccessor.WindowRegistered += OnWindowRegistered;
+        if (WindowAccessor.CurrentOrNull is { } existing) OnWindowRegistered(existing);
     }
 
-    private void OnWindowSizeChanged(object sender, Microsoft.UI.Xaml.WindowSizeChangedEventArgs e)
+    private void OnWindowRegistered(Window window)
     {
-        ApplicationView view = ApplicationView.GetForCurrentView();
-        if (_windowContext.ViewMode == WindowViewMode.FullScreen && !view.IsFullScreenMode)
+        if (_window is not null) _window.SizeChanged -= OnWindowSizeChanged;
+        _window = window;
+        window.SizeChanged += OnWindowSizeChanged;
+    }
+
+    private AppWindow? AppWindow
+    {
+        get
+        {
+            try
+            {
+                return _window?.AppWindow;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+    }
+
+    private void OnWindowSizeChanged(object sender, WindowSizeChangedEventArgs e)
+    {
+        if (_windowContext.ViewMode != WindowViewMode.FullScreen) return;
+
+        try
+        {
+            if (AppWindow?.Presenter?.Kind != AppWindowPresenterKind.FullScreen)
+                _windowContext.ViewMode = WindowViewMode.Default;
+        }
+        catch (Exception)
+        {
             _windowContext.ViewMode = WindowViewMode.Default;
+        }
     }
 
     public bool TryEnterFullScreen()
     {
-        ApplicationView? view = ApplicationView.GetForCurrentView();
-        if (view.TryEnterFullScreenMode())
+        try
         {
+            AppWindow? appWindow = AppWindow;
+            if (appWindow is null) return false;
+
+            appWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
             _windowContext.ViewMode = WindowViewMode.FullScreen;
             return true;
         }
-
-        return false;
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     public void ExitFullScreen()
     {
-        ApplicationView? view = ApplicationView.GetForCurrentView();
-        view?.ExitFullScreenMode();
+        try
+        {
+            AppWindow?.SetPresenter(AppWindowPresenterKind.Default);
+        }
+        catch (Exception)
+        {
+            // Best effort; the view mode is still reset below.
+        }
+
         if (_windowContext.ViewMode == WindowViewMode.FullScreen)
             _windowContext.ViewMode = WindowViewMode.Default;
     }
 
-    public async Task<bool> TryExitCompactLayoutAsync()
+    public Task<bool> TryExitCompactLayoutAsync()
     {
-        ApplicationView? view = ApplicationView.GetForCurrentView();
-        if (await view.TryEnterViewModeAsync(ApplicationViewMode.Default))
+        // WinUI 3 desktop has no ApplicationViewMode.CompactOverlay. Leaving a compact
+        // layout is therefore just restoring the default presenter.
+        try
         {
+            AppWindow?.SetPresenter(AppWindowPresenterKind.Default);
             if (_windowContext.ViewMode == WindowViewMode.Compact)
                 _windowContext.ViewMode = WindowViewMode.Default;
-            return true;
+            return Task.FromResult(true);
         }
-
-        return false;
+        catch (Exception)
+        {
+            return Task.FromResult(false);
+        }
     }
 
-    public async Task<bool> TryEnterCompactLayoutAsync(Size viewSize)
+    public Task<bool> TryEnterCompactLayoutAsync(Size viewSize)
     {
-        ApplicationView? view = ApplicationView.GetForCurrentView();
-        ViewModePreferences? preferences = ViewModePreferences.CreateDefault(ApplicationViewMode.CompactOverlay);
-        if (!viewSize.IsEmpty)
-        {
-            preferences.ViewSizePreference = ViewSizePreference.Custom;
-            preferences.CustomSize = viewSize;
-        }
-
-        if (await view.TryEnterViewModeAsync(ApplicationViewMode.CompactOverlay, preferences))
-        {
-            _windowContext.ViewMode = WindowViewMode.Compact;
-            return true;
-        }
-
-        return false;
+        // No compact-overlay presenter exists in unpackaged WinUI 3, so do not pretend
+        // a picture-in-picture mode is active.
+        _ = viewSize;
+        return Task.FromResult(false);
     }
 
     public Size GetMaxWindowSize()
     {
-        DisplayInformation displayInformation = DisplayInformation.GetForCurrentView();
-        ApplicationView view = ApplicationView.GetForCurrentView();
-        return GetMaxWindowSize(view, displayInformation);
-    }
-
-    private static Size GetMaxWindowSize(ApplicationView view, DisplayInformation displayInformation)
-    {
-        double maxWidth = displayInformation.ScreenWidthInRawPixels / displayInformation.RawPixelsPerViewPixel;
-        double maxHeight = (displayInformation.ScreenHeightInRawPixels / displayInformation.RawPixelsPerViewPixel) - 48;
-        if (Windows.Foundation.Metadata.ApiInformation.IsApiContractPresent("Windows.Foundation.UniversalApiContract", 8))
+        try
         {
-            DisplayRegion? displayRegion = view.GetDisplayRegions()[0]; // Active display region
-            maxWidth = displayRegion.WorkAreaSize.Width / displayInformation.RawPixelsPerViewPixel;
-            maxHeight = displayRegion.WorkAreaSize.Height / displayInformation.RawPixelsPerViewPixel;
+            DisplayArea? displayArea = DisplayArea.Primary;
+            if (displayArea is not null)
+            {
+                RectInt32 workArea = displayArea.WorkArea;
+                return new Size(Math.Max(320, workArea.Width - 16), Math.Max(240, workArea.Height - 16));
+            }
+        }
+        catch (Exception)
+        {
+            // Fall through to the conservative fallback.
         }
 
-        // Cannot use the full work area size. Subtract some padding.
-        maxHeight -= 16;
-        maxWidth -= 16;
-        return new Size(maxWidth, maxHeight);
+        return new Size(1600, 900);
     }
 
     public double ResizeWindow(Size desiredSize, double scalar = 1)
     {
-        if (scalar < 0 || desiredSize.IsEmpty) return -1;
-        ApplicationView view = ApplicationView.GetForCurrentView();
-        DisplayInformation displayInformation = DisplayInformation.GetForCurrentView();
-        Size maxWindowSize = GetMaxWindowSize(view, displayInformation);
+        if (scalar < 0 || desiredSize.IsEmpty || desiredSize.Width <= 0 || desiredSize.Height <= 0)
+            return -1;
+
+        Size maxWindowSize = GetMaxWindowSize();
         double maxWidth = maxWindowSize.Width;
         double maxHeight = maxWindowSize.Height;
 
@@ -128,28 +170,31 @@ public sealed class WindowService : IWindowService
         if (newWidth > maxWidth) newWidth = maxWidth;
         double newHeight = newWidth / aspectRatio;
         scalar = newWidth / desiredSize.Width;
-        if (view.TryResizeView(new Size(newWidth, newHeight)))
+
+        try
         {
+            AppWindow? appWindow = AppWindow;
+            if (appWindow is null) return -1;
+
+            appWindow.Resize(new SizeInt32(
+                (int)Math.Round(newWidth),
+                (int)Math.Round(newHeight)));
             return scalar;
         }
-
-        return -1;
+        catch (Exception)
+        {
+            return -1;
+        }
     }
 
     public void HideCursor()
     {
-        CoreWindow? coreWindow = Window.Current.CoreWindow;
-        if (coreWindow.PointerCursor?.Type == CoreCursorType.Arrow)
-        {
-            _cursor = coreWindow.PointerCursor;
-            coreWindow.PointerCursor = null;
-        }
+        // CoreWindow.PointerCursor is UWP-only. WinUI 3 requires an InputCursor attached
+        // to a specific UIElement, which this service does not own.
     }
 
     public void ShowCursor()
     {
-        CoreWindow? coreWindow = Window.Current.CoreWindow;
-        coreWindow.PointerCursor ??= _cursor;
+        // See HideCursor.
     }
 }
-

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Screenbox.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Screenbox.Core.Helpers;
 
 namespace Screenbox.Dialogs;
 
@@ -16,7 +17,7 @@ public sealed partial class RenamePlaylistDialog : ContentDialog
         this.DefaultStyleKey = typeof(ContentDialog);
         this.InitializeComponent();
         FlowDirection = GlobalizationHelper.GetFlowDirection();
-        RequestedTheme = ((FrameworkElement)Window.Current.Content).RequestedTheme;
+        RequestedTheme = ((FrameworkElement)WindowAccessor.Current.Content).RequestedTheme;
         PlaylistNameTextBox.Text = currentName;
         PlaylistNameTextBox.SelectAll();
     }

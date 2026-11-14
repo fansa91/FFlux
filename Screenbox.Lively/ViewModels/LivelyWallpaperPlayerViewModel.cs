@@ -24,6 +24,9 @@ using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.System;
 using Screenbox.Core.Helpers;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Lively.ViewModels;
 
@@ -83,7 +86,7 @@ public partial class LivelyWallpaperPlayerViewModel : ObservableRecipient,
     {
         if (e.PropertyName is nameof(MediaViewModel.Name) or nameof(MediaViewModel.MainArtist))
         {
-            _timer.Debounce(() => TrackUpdateRequested?.Invoke(this, EventArgs.Empty), TimeSpan.FromMilliseconds(50));
+            _timer.DebounceCore(() => TrackUpdateRequested?.Invoke(this, EventArgs.Empty), TimeSpan.FromMilliseconds(50));
         }
     }
 

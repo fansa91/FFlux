@@ -13,6 +13,9 @@ using Windows.Devices.Enumeration;
 using Windows.Storage;
 using Windows.Storage.Search;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.Coordinators;
 
@@ -270,7 +273,7 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
             }
         }
 
-        _musicRefreshTimer.Debounce(FetchAction, TimeSpan.FromMilliseconds(1000));
+        _musicRefreshTimer.DebounceCore(FetchAction, TimeSpan.FromMilliseconds(1000));
     }
 
     private void OnVideosQueryContentsChanged(object sender, object args)
@@ -287,7 +290,7 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
             }
         }
 
-        _videosRefreshTimer.Debounce(FetchAction, TimeSpan.FromMilliseconds(1000));
+        _videosRefreshTimer.DebounceCore(FetchAction, TimeSpan.FromMilliseconds(1000));
     }
 
     private void OnPortableStorageDeviceChanged(DeviceWatcher sender, DeviceInformationUpdate args)
@@ -307,7 +310,7 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
             }
         }
 
-        _storageDeviceRefreshTimer.Debounce(FetchAction, TimeSpan.FromMilliseconds(1000));
+        _storageDeviceRefreshTimer.DebounceCore(FetchAction, TimeSpan.FromMilliseconds(1000));
     }
 
     private void StartPortableStorageDeviceWatcher()

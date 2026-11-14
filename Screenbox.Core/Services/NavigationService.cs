@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Screenbox.Core.Helpers;
 
 namespace Screenbox.Core.Services;
 
@@ -26,7 +27,7 @@ public sealed class NavigationService : INavigationService
     {
         if (!_vmPageMapping.TryGetValue(vmType, out var pageType)) return;
 
-        Frame rootFrame = (Frame)Window.Current.Content;
+        Frame rootFrame = (Frame)WindowAccessor.Current.Content;
         if (rootFrame.Content is IContentFrame page)
         {
             page.NavigateContent(pageType, parameter);
@@ -40,7 +41,7 @@ public sealed class NavigationService : INavigationService
         if (!_vmPageMapping.TryGetValue(parentVmType, out var parentPageType)) return;
         if (!_vmPageMapping.TryGetValue(targetVmType, out var targetPageType)) return;
 
-        Frame rootFrame = (Frame)Window.Current.Content;
+        Frame rootFrame = (Frame)WindowAccessor.Current.Content;
         IContentFrame? page = rootFrame.Content as IContentFrame;
         while (page != null)
         {
@@ -60,7 +61,7 @@ public sealed class NavigationService : INavigationService
     {
         if (!_vmPageMapping.TryGetValue(vmType, out var pageType)) return;
 
-        Frame rootFrame = (Frame)Window.Current.Content;
+        Frame rootFrame = (Frame)WindowAccessor.Current.Content;
         IContentFrame? page = rootFrame.Content as IContentFrame;
         while (page != null)
         {

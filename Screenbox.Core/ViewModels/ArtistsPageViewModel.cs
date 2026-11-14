@@ -10,6 +10,9 @@ using Screenbox.Core.Contexts;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.Models;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -57,7 +60,7 @@ public sealed partial class ArtistsPageViewModel : BaseMusicContentViewModel,
         // Progressively update when it's still loading
         if (_libraryContext.IsLoadingMusic)
         {
-            _refreshTimer.Debounce(FetchArtists, TimeSpan.FromSeconds(5));
+            _refreshTimer.DebounceCore(FetchArtists, TimeSpan.FromSeconds(5));
         }
         else
         {

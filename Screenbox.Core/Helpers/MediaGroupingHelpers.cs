@@ -19,15 +19,8 @@ public static class MediaGroupingHelpers
 
     static MediaGroupingHelpers()
     {
-        string? overrideLanguage = null;
-        try
-        {
-            overrideLanguage = ApplicationLanguages.PrimaryLanguageOverride;
-        }
-        catch (Exception)
-        {
-            // Unpackaged environment (e.g. unit tests) lacks package identity
-        }
+        // ApplicationLanguages needs package identity; use the package-free override.
+        string? overrideLanguage = AppLanguageOverride.Current;
 
         _characterGroupings = string.IsNullOrWhiteSpace(overrideLanguage)
             ? new CharacterGroupings()

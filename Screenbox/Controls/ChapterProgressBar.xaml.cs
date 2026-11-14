@@ -11,6 +11,9 @@ using Windows.Media.Core;
 using Windows.System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 // The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
 
@@ -75,7 +78,7 @@ public sealed partial class ChapterProgressBar : UserControl
     public ChapterProgressBar()
     {
         _logger = DefaultLogging.CreateLogger<ChapterProgressBar>();
-        _chaptersUpdateTimer = Windows.System.DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _chaptersUpdateTimer = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().CreateTimer();
         ProgressItems = new ObservableCollection<ChapterViewModel>();
         this.InitializeComponent();
         SizeChanged += OnSizeChanged;
@@ -140,7 +143,7 @@ public sealed partial class ChapterProgressBar : UserControl
 
     private void ChaptersOnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        _chaptersUpdateTimer.Debounce(PopulateProgressItems, TimeSpan.FromMilliseconds(100));
+        _chaptersUpdateTimer.DebounceCore(PopulateProgressItems, TimeSpan.FromMilliseconds(100));
     }
 
     private void UpdateProgress()

@@ -1,7 +1,8 @@
+using System;
 using System.Globalization;
-using Windows.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Screenbox.Core.Helpers;
 
 namespace Screenbox.Helpers;
 
@@ -22,8 +23,12 @@ public static class GlobalizationHelper
     /// </summary>
     public static void SyncCurrentCultureWithAppLanguage()
     {
-        string languageOverride = ApplicationLanguages.PrimaryLanguageOverride;
-        if (!string.IsNullOrWhiteSpace(languageOverride))
+        // ApplicationLanguages.PrimaryLanguageOverride needs package identity and throws
+        // 0x80073D54 in an unpackaged process. The override now lives in AppLanguageOverride.
+        string languageOverride = AppLanguageOverride.Current;
+        if (string.IsNullOrWhiteSpace(languageOverride)) return;
+
+        try
         {
             var culture = new CultureInfo(languageOverride);
 
@@ -33,6 +38,10 @@ public static class GlobalizationHelper
             System.Threading.Thread.CurrentThread.CurrentCulture = culture;
             System.Threading.Thread.CurrentThread.CurrentUICulture = culture;
             IsRightToLeftLanguage = culture.TextInfo.IsRightToLeft;
+        }
+        catch (Exception)
+        {
+            // An unknown or stale tag must never block startup.
         }
     }
 

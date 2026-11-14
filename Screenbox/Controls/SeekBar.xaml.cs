@@ -13,6 +13,9 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 // The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
 
@@ -43,7 +46,7 @@ public sealed partial class SeekBar : UserControl
         this.InitializeComponent();
         DataContext = Ioc.Default.GetRequiredService<SeekBarViewModel>();
         RegisterSeekBarPointerHandlers();
-        DispatcherQueue dispatcherQueue = Windows.System.DispatcherQueue.GetForCurrentThread();
+        DispatcherQueue dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         _previewToolTipTimer = dispatcherQueue.CreateTimer();
         _previewToolTip = new ToolTip { Padding = new Thickness(8, 3, 8, 5), FontSize = 15, VerticalOffset = 13 };
 
@@ -96,7 +99,7 @@ public sealed partial class SeekBar : UserControl
         }
 
         ViewModel.ShouldShowPreview = true;
-        _previewToolTipTimer.Debounce(() => _previewToolTip.IsOpen = true, TimeSpan.FromMilliseconds(100));
+        _previewToolTipTimer.DebounceCore(() => _previewToolTip.IsOpen = true, TimeSpan.FromMilliseconds(100));
     }
 
     private void SeekBarSlider_OnPointerExited(object sender, PointerRoutedEventArgs e)

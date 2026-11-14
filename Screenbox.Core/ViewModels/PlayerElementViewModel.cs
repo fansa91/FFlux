@@ -18,6 +18,9 @@ using Windows.Media;
 using Windows.Media.Playback;
 using Windows.System;
 using Microsoft.UI.Input;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 
 namespace Screenbox.Core.ViewModels;
@@ -84,8 +87,8 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
         _pointerWheelTimer = _dispatcherQueue.CreateTimer();
         _requestTracker = new DisplayRequestTracker();
 
-        transportControlsService.TransportControls.ButtonPressed += TransportControlsOnButtonPressed;
-        transportControlsService.TransportControls.PlaybackPositionChangeRequested += TransportControlsOnPlaybackPositionChangeRequested;
+        if (transportControlsService.TransportControls is { } smtc0) smtc0.ButtonPressed += TransportControlsOnButtonPressed;
+        if (transportControlsService.TransportControls is { } smtc1) smtc1.PlaybackPositionChangeRequested += TransportControlsOnPlaybackPositionChangeRequested;
 
         Messenger.Register<ChangeAspectRatioMessage>(this);
     }
@@ -128,16 +131,9 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
         _viewSize = size;
         SetCropGeometry(_aspectRatio);
 
-        try
-        {
-            var displayInfo = DisplayInformation.GetForCurrentView();
-            _rawPixelsPerViewPixel = displayInfo.RawPixelsPerViewPixel;
-        }
-        catch (Exception e)
-        {
-            _rawPixelsPerViewPixel = 1.0;
-            _logger.LogError(e, "Failed to query the current display information.");
-        }
+        // DisplayInformation.GetForCurrentView() has no CoreWindow in an unpackaged
+        // WinUI 3 process (0x80070490); use the system DPI instead.
+        _rawPixelsPerViewPixel = AppDisplayScale.RawPixelsPerViewPixel;
     }
 
     public void OnClick()
@@ -153,7 +149,7 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
             return;
         }
 
-        _clickTimer.Debounce(() => ProcessPlayerGesture(_playerSettings.GestureTap, GestureStepAmount), TimeSpan.FromMilliseconds(200));
+        _clickTimer.DebounceCore(() => ProcessPlayerGesture(_playerSettings.GestureTap, GestureStepAmount), TimeSpan.FromMilliseconds(200));
     }
 
     public void OnManipulationCompleted()
@@ -188,7 +184,7 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
         {
             // Pointer wheel events can be fired in quick succession and still count as a single seek action from the user's perspective.
             // Debounce setting the time before manipulation to calculate the culmulative change correctly.
-            _pointerWheelTimer.Debounce(() => _timeBeforeManipulation = MediaPlayer.Position, TimeSpan.FromSeconds(1), true);
+            _pointerWheelTimer.DebounceCore(() => _timeBeforeManipulation = MediaPlayer.Position, TimeSpan.FromSeconds(1), true);
             Messenger.Send(new TimeChangeOverrideMessage(true));
             // For mouse wheel, each detent is 120. For touchpad, it can be a smaller value.
             var seekAmount = -(delta / 12.0);   // Each mouse wheel detent corresponds to a 10 second seek. Touchpad has more precision.

@@ -18,6 +18,10 @@ using Windows.Media.Core;
 using Windows.Media.Playback;
 using Windows.System;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
+using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -312,7 +316,7 @@ public sealed partial class SeekBarViewModel :
                 _seekDirection = isSeekingForward;
             }
 
-            _originalPositionTimer.Debounce(() => _originalPosition = currentPosition, TimeSpan.FromSeconds(1), true);
+            _originalPositionTimer.DebounceCore(() => _originalPosition = currentPosition, TimeSpan.FromSeconds(1), true);
         }
         else
         {
@@ -338,7 +342,7 @@ public sealed partial class SeekBarViewModel :
         if (!IsSeekable || MediaPlayer == null) return;
         if (debounce)
         {
-            _seekTimer.Debounce(() => MediaPlayer.Position = position, TimeSpan.FromMilliseconds(50));
+            _seekTimer.DebounceCore(() => MediaPlayer.Position = position, TimeSpan.FromMilliseconds(50));
         }
         else
         {
@@ -405,7 +409,7 @@ public sealed partial class SeekBarViewModel :
             return;
 
         // Only show buffering if it takes more than 0.5s
-        _bufferingTimer.Debounce(() => BufferingVisible = true, TimeSpan.FromSeconds(0.5));
+        _bufferingTimer.DebounceCore(() => BufferingVisible = true, TimeSpan.FromSeconds(0.5));
     }
 
     private void OnPositionChanged(IMediaPlayer sender, object? args)
@@ -420,7 +424,7 @@ public sealed partial class SeekBarViewModel :
     private void OnChapterChanged(IMediaPlayer sender, ValueChangedEventArgs<ChapterCue?> args)
     {
         // Small delay to prevent boundary retriggers.
-        _originalPositionTimer.Debounce(() =>
+        _originalPositionTimer.DebounceCore(() =>
         {
             CurrentChapterCue = args.NewValue;
         }, TimeSpan.FromMilliseconds(100));

@@ -20,6 +20,9 @@ using Screenbox.Core.Services;
 using Windows.Storage;
 using Windows.Storage.AccessCache;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -74,7 +77,7 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
     {
         if (_generalSettings.ShowRecent)
         {
-            _changeDebounceTimer.Debounce(DebouncedAction, TimeSpan.FromMilliseconds(100));
+            _changeDebounceTimer.DebounceCore(DebouncedAction, TimeSpan.FromMilliseconds(100));
 
             async void DebouncedAction()
             {
@@ -85,7 +88,18 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
 
     public async void OnLoaded()
     {
-        await UpdateContentAsync();
+        // async void exceptions are posted back to the WinUI SynchronizationContext,
+        // where CoreMessaging turns them into a process-killing stowed exception
+        // (0xC000027B) instead of routing them to Application.UnhandledException.
+        // Keep the home page best-effort.
+        try
+        {
+            await UpdateContentAsync();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to load home page content.");
+        }
     }
 
     private void Selection_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -128,8 +142,8 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
     [DynamicWindowsRuntimeCast(typeof(StorageFile))]
     private async Task UpdateRecentMediaAsync(bool loadMediaDetails)
     {
-        // Assume UI Thread
-        string[] tokens = StorageApplicationPermissions.MostRecentlyUsedList.Entries
+        // Assume UI Thread. AccessCache is package-backed and unavailable when unpackaged.
+        string[] tokens = AppAccessCache.GetRecentEntries()
             .OrderByDescending(x => x.Metadata)
             .Select(x => x.Token)
             .Where(t => !string.IsNullOrEmpty(t))
@@ -207,14 +221,7 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
         // Remove stale/inaccessible MRU tokens
         foreach (string token in tokensToRemove)
         {
-            try
-            {
-                StorageApplicationPermissions.MostRecentlyUsedList.Remove(token);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Failed to remove stale MRU token '{Token}'.", token);
-            }
+            AppAccessCache.RemoveFromRecent(token);
         }
 
         // Load media details & thumbnails for any items that need them
@@ -295,7 +302,7 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
             if (_recentContext.PathToMruMappings.Remove(media.Location, out var token))
             {
                 _recentContext.TokenToMediaMappings.Remove(token);
-                StorageApplicationPermissions.MostRecentlyUsedList.Remove(token);
+                AppAccessCache.RemoveFromRecent(token);
             }
         }
     }
@@ -356,9 +363,8 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
     {
         try
         {
-            var file = await StorageApplicationPermissions.MostRecentlyUsedList.GetFileAsync(token,
-                AccessCacheOptions.SuppressAccessTimeUpdate);
-            return (file, false);
+            StorageFile? file = await AppAccessCache.GetRecentFileAsync(token);
+            return file is null ? (null, true) : (file, false);
         }
         catch (UnauthorizedAccessException)
         {

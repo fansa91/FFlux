@@ -22,6 +22,9 @@ using Screenbox.Core.ViewModels;
 using Windows.Media;
 using Windows.Media.Playback;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.Coordinators;
 
@@ -121,8 +124,8 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
         _context.Items.CollectionChanged += OnCollectionChanged;
 
         // Wire transport controls buttons to commands.
-        _transportControlsService.TransportControls.ButtonPressed += TransportControlsOnButtonPressed;
-        _transportControlsService.TransportControls.AutoRepeatModeChangeRequested += TransportControlsOnAutoRepeatModeChangeRequested;
+        if (_transportControlsService.TransportControls is { } smtc0) smtc0.ButtonPressed += TransportControlsOnButtonPressed;
+        if (_transportControlsService.TransportControls is { } smtc1) smtc1.AutoRepeatModeChangeRequested += TransportControlsOnAutoRepeatModeChangeRequested;
 
         if (MediaPlayer is not null)
         {
@@ -333,7 +336,7 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
     private void HandleRepeatModeChanged(MediaPlaybackAutoRepeatMode value)
     {
         Messenger.Send(new RepeatModeChangedMessage(value));
-        _transportControlsService.TransportControls.AutoRepeatMode = value;
+        if (_transportControlsService.TransportControls is { } smtc2) smtc2.AutoRepeatMode = value;
         _playbackSettings.RepeatMode = value;
         RaiseCanNavigateChanged();
     }
@@ -640,8 +643,8 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
     /// </summary>
     private void RaiseCanNavigateChanged()
     {
-        _transportControlsService.TransportControls.IsNextEnabled = CanNext();
-        _transportControlsService.TransportControls.IsPreviousEnabled = CanPrevious();
+        if (_transportControlsService.TransportControls is { } smtc3) smtc3.IsNextEnabled = CanNext();
+        if (_transportControlsService.TransportControls is { } smtc4) smtc4.IsPreviousEnabled = CanPrevious();
         Messenger.Send(new QueueCanNavigateChangedMessage());
     }
 

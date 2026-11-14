@@ -149,15 +149,7 @@ public sealed class FilesService : IFilesService
     public void AddToRecent(IStorageItem item)
     {
         string metadata = DateTimeOffset.Now.ToUnixTimeSeconds().ToString();
-        try
-        {
-            StorageApplicationPermissions.MostRecentlyUsedList.Add(item, metadata);
-        }
-        catch (Exception)
-        {
-            // System.Exception: Element not found. (Exception from HRESULT: 0x80070490)
-            // Ownership issue?
-        }
+        AppAccessCache.AddToRecent(item, metadata);
     }
 
     public async Task AddToRecentAsync(IMediaSource? source, CancellationToken cancellationToken = default)
@@ -183,18 +175,8 @@ public sealed class FilesService : IFilesService
 
     private static async Task<StorageFolder> GetFrameCaptureFolderFromTokenAsync(string token)
     {
-        if (!string.IsNullOrEmpty(token)
-            && StorageApplicationPermissions.FutureAccessList.ContainsItem(token))
-        {
-            try
-            {
-                return await StorageApplicationPermissions.FutureAccessList.GetFolderAsync(token);
-            }
-            catch (Exception e) when (e is FileNotFoundException or UnauthorizedAccessException)
-            {
-                // Folder was moved, deleted, or access was revoked.
-            }
-        }
+        StorageFolder? tokenFolder = await AppAccessCache.GetFolderFromFutureAccessAsync(token);
+        if (tokenFolder is not null) return tokenFolder;
 
         try
         {

@@ -5,6 +5,7 @@
 
 using Windows.UI.ViewManagement;
 using Microsoft.UI.Xaml.Controls;
+using System;
 
 namespace Screenbox.Extensions;
 
@@ -41,6 +42,14 @@ public static class ApplicationViewExtensions
 
     private static ApplicationView? GetApplicationView()
     {
-        return ApplicationView.GetForCurrentView();
+        try
+        {
+            return ApplicationView.GetForCurrentView();
+        }
+        catch (Exception)
+        {
+            // Unpackaged WinUI 3 has no ApplicationView for the current view.
+            return null;
+        }
     }
 }

@@ -17,6 +17,9 @@ using Windows.Foundation;
 using Windows.Media.Playback;
 using Windows.Storage;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -442,7 +445,8 @@ public sealed partial class PlayerControlsViewModel : ObservableRecipient,
 
     private async Task<StorageFile> SaveSnapshotInternalAsync(IMediaPlayer mediaPlayer)
     {
-        StorageFolder tempFolder = await ApplicationData.Current.TemporaryFolder.CreateFolderAsync(
+        StorageFolder tempRoot = await StorageFolder.GetFolderFromPathAsync(AppPaths.TemporaryFolder);
+        StorageFolder tempFolder = await tempRoot.CreateFolderAsync(
             $"snapshot_{DateTimeOffset.Now.Ticks}",
             CreationCollisionOption.FailIfExists);
 

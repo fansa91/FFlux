@@ -1,17 +1,15 @@
 using System.Linq;
-using Windows.ApplicationModel.Resources;
+using Screenbox.Core.Helpers;
 
 namespace Screenbox.Core.Helpers;
 
 internal static class LanguageHelper
 {
-    private static readonly ResourceLoader Loader = ResourceLoader.GetForViewIndependentUse("Screenbox.Core/LanguageCodes");
-
     public static bool TryConvertISO6392ToISO6391(string threeLetterTag, out string twoLetterTag)
     {
         twoLetterTag = string.Empty;
         if (threeLetterTag.Length != 3) return false;
-        twoLetterTag = Loader.GetString(threeLetterTag);
+        twoLetterTag = AppResourceLoader.GetString(threeLetterTag);
         return !string.IsNullOrEmpty(twoLetterTag);
     }
 

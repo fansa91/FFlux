@@ -8,7 +8,11 @@ namespace Screenbox.Core.Services;
 
 public interface ISystemMediaTransportControlsService
 {
-    SystemMediaTransportControls TransportControls { get; }
+    /// <summary>
+    /// The system transport controls, or <see langword="null"/> in an unpackaged
+    /// WinUI 3 process where SMTC is unavailable. Consumers must null-check.
+    /// </summary>
+    SystemMediaTransportControls? TransportControls { get; }
     Task UpdateTransportControlsDisplayAsync(MediaViewModel? item);
     void UpdatePlaybackPosition(TimeSpan position, TimeSpan startTime, TimeSpan endTime);
     void UpdatePlaybackStatus(MediaPlaybackState state);

@@ -1,5 +1,5 @@
 using System;
-using Windows.ApplicationModel.Resources;
+using Screenbox.Core.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
@@ -229,7 +229,6 @@ public sealed partial class ErrorInfo : UserControl
 
 public sealed partial class ErrorInfoAutomationPeer : FrameworkElementAutomationPeer
 {
-    private readonly ResourceLoader _resourceLoader = ResourceLoader.GetForViewIndependentUse();
     private const string MoreErrorInfoString = "CriticalErrorMoreInformation";
     private const string ClassName = "ErrorInfo";
 
@@ -250,7 +249,7 @@ public sealed partial class ErrorInfoAutomationPeer : FrameworkElementAutomation
         {
             if (owner.NavigateUri != null)
             {
-                name = $"{owner.Message}; {_resourceLoader.GetString(MoreErrorInfoString)}:";
+                name = $"{owner.Message}; {AppResourceLoader.GetString(MoreErrorInfoString)}:";
             }
             else
             {
@@ -283,7 +282,7 @@ public sealed partial class ErrorInfoAutomationPeer : FrameworkElementAutomation
         var owner = (ErrorInfo)Owner;
         if (owner.NavigateUri != null)
         {
-            description = $"{_resourceLoader.GetString(MoreErrorInfoString)}: {owner.NavigateUri}";
+            description = $"{AppResourceLoader.GetString(MoreErrorInfoString)}: {owner.NavigateUri}";
         }
 
         return description;

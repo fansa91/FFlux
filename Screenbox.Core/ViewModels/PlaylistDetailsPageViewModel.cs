@@ -15,6 +15,9 @@ using Screenbox.Core.Models;
 using Screenbox.Core.Services;
 using Windows.Storage;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -76,7 +79,7 @@ public sealed partial class PlaylistDetailsPageViewModel : ObservableRecipient
     private void SourceItems_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         FirstItem = Source?.Items.FirstOrDefault();
-        _commandRefreshTimer.Debounce(() =>
+        _commandRefreshTimer.DebounceCore(() =>
         {
             PlayCommand.NotifyCanExecuteChanged();
             ShuffleAndPlayCommand.NotifyCanExecuteChanged();

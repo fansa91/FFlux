@@ -20,8 +20,8 @@ public class LivelyWallpaperService : ILivelyWallpaperService
 {
     public async Task<List<LivelyWallpaperModel>> GetAvailableVisualizersAsync()
     {
-        var localFolder = ApplicationData.Current.LocalFolder;
-        var installFolder = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
+        var localFolder = await StorageFolder.GetFolderFromPathAsync(Screenbox.Core.Helpers.AppPaths.LocalFolder);
+        var installFolder = Screenbox.Core.Helpers.AppPaths.InstalledLocation;
         var defaultVisualizerFolder = await StorageFolder.GetFolderFromPathAsync(Path.Combine(installFolder, "Assets", "Visualizers"));
         var userVisualizerFolder = await localFolder.CreateFolderAsync("Visualizers", CreationCollisionOption.OpenIfExists);
         var defaultVisualizers = await defaultVisualizerFolder.GetFoldersAsync();
@@ -48,7 +48,7 @@ public class LivelyWallpaperService : ILivelyWallpaperService
                 return null;
             }
 
-            var localFolder = ApplicationData.Current.LocalFolder;
+            var localFolder = await StorageFolder.GetFolderFromPathAsync(Screenbox.Core.Helpers.AppPaths.LocalFolder);
             var visualizersFolder =
                 await localFolder.CreateFolderAsync("Visualizers", CreationCollisionOption.OpenIfExists);
             var destinationFolder =

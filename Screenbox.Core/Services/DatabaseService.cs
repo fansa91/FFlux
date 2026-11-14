@@ -38,7 +38,7 @@ public sealed partial class DatabaseService : IDatabaseService
 
     private static string GetUwpFolderPath()
     {
-        return ApplicationData.Current.LocalFolder.Path;
+        return Screenbox.Core.Helpers.AppPaths.LocalFolder;
     }
 
     /// <inheritdoc/>

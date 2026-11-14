@@ -16,6 +16,9 @@ using Screenbox.Core.Services;
 using Windows.Storage;
 using Windows.Storage.Search;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -197,7 +200,7 @@ public partial class FolderViewPageViewModel : ObservableRecipient,
         uint fetchIndex = 0;
         while (_isActive)
         {
-            _loadingTimer.Debounce(() => IsLoading = true, TimeSpan.FromMilliseconds(800));
+            _loadingTimer.DebounceCore(() => IsLoading = true, TimeSpan.FromMilliseconds(800));
             IReadOnlyList<StorageFile> items = await query.GetFilesAsync(fetchIndex, 30);
             if (items.Count == 0) break;
             fetchIndex += (uint)items.Count;
@@ -223,7 +226,7 @@ public partial class FolderViewPageViewModel : ObservableRecipient,
         uint fetchIndex = 0;
         while (_isActive)
         {
-            _loadingTimer.Debounce(() => IsLoading = true, TimeSpan.FromMilliseconds(800));
+            _loadingTimer.DebounceCore(() => IsLoading = true, TimeSpan.FromMilliseconds(800));
             IReadOnlyList<IStorageItem> items = await itemQuery.GetItemsAsync(fetchIndex, 30);
             if (items.Count == 0) break;
             fetchIndex += (uint)items.Count;

@@ -10,6 +10,9 @@ using Screenbox.Core.Contexts;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.Models;
 using Windows.System;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -64,7 +67,7 @@ public sealed partial class AllVideosPageViewModel : ObservableRecipient,
         // Progressively update when it's still loading
         if (IsLoading)
         {
-            _timer.Debounce(UpdateVideos, TimeSpan.FromSeconds(5));
+            _timer.DebounceCore(UpdateVideos, TimeSpan.FromSeconds(5));
         }
         else
         {

@@ -22,6 +22,9 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -44,7 +47,7 @@ public sealed partial class PlayerPage : Page
     {
         this.InitializeComponent();
         DataContext = Ioc.Default.GetRequiredService<PlayerPageViewModel>();
-        _delayFlyoutOpenTimer = Windows.System.DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _delayFlyoutOpenTimer = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().CreateTimer();
 
         RegisterSeekBarPointerHandlers();
         UpdatePreviewType();
@@ -411,7 +414,7 @@ public sealed partial class PlayerPage : Page
     private void PlayQueueButton_OnDragEnter(object sender, DragEventArgs e)
     {
         if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
-        _delayFlyoutOpenTimer.Debounce(() => PlayQueueFlyout.ShowAt(PlayQueueButton), TimeSpan.FromMilliseconds(500));
+        _delayFlyoutOpenTimer.DebounceCore(() => PlayQueueFlyout.ShowAt(PlayQueueButton), TimeSpan.FromMilliseconds(500));
     }
 
     private void PlayQueueButton_OnDragLeave(object sender, DragEventArgs e)
@@ -514,7 +517,7 @@ public sealed partial class PlayerPage : Page
 
     private void WindowResizeKeyboardAccelerator_OnInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
-        var boundsRect = Window.Current.CoreWindow.Bounds;
+        var boundsRect = WindowAccessor.Current.Bounds;
 
         ViewModel.HandleResizeKey(args.KeyboardAccelerator.Key, args.KeyboardAccelerator.Modifiers, new Size(boundsRect.Width, boundsRect.Height));
         args.Handled = true;

@@ -34,15 +34,25 @@ public sealed partial class PlayerElement : UserControl
 
     public PlayerElement()
     {
-        this.InitializeComponent();
-        DataContext = Ioc.Default.GetRequiredService<PlayerElementViewModel>();
-
-        _gestureRecognizer = new GestureRecognizer
+        try
         {
-            GestureSettings = GestureSettings.Hold | GestureSettings.HoldWithMouse,
-        };
+            this.InitializeComponent();
+            DataContext = Ioc.Default.GetRequiredService<PlayerElementViewModel>();
 
-        _gestureRecognizer.Holding += GestureRecognizer_OnHolding;
+            _gestureRecognizer = new GestureRecognizer
+            {
+                GestureSettings = GestureSettings.Hold | GestureSettings.HoldWithMouse,
+            };
+
+            _gestureRecognizer.Holding += GestureRecognizer_OnHolding;
+        }
+        catch (Exception ex)
+        {
+            // XAML loaders surface constructor failures as the opaque
+            // "Cannot create instance of type ..." error, so persist the real cause.
+            Screenbox.Helpers.StartupErrorLog.Write("PlayerElement ctor failed: " + ex);
+            throw;
+        }
     }
 
     /// <summary>
@@ -50,11 +60,15 @@ public sealed partial class PlayerElement : UserControl
     /// </summary>
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Screenbox.Helpers.StartupErrorLog.Write("PlayerElement.Loaded entered");
         ViewModel.Initialize();
+        Screenbox.Helpers.StartupErrorLog.Write("PlayerElement.Loaded: ViewModel initialized");
         if (ViewModel.NativePlayer is { } player)
         {
             MediaPlayerView.SetMediaPlayer(player);
+            Screenbox.Helpers.StartupErrorLog.Write("PlayerElement.Loaded: MediaPlayer attached");
         }
+        Screenbox.Helpers.StartupErrorLog.Write("PlayerElement.Loaded done");
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)

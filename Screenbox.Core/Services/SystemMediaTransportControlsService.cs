@@ -3,38 +3,58 @@ using System;
 using System.Threading.Tasks;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.ViewModels;
-using Windows.ApplicationModel;
 using Windows.Media;
 using Windows.Media.Playback;
 using Windows.Storage;
 
 namespace Screenbox.Core.Services;
 
+/// <summary>
+/// Wraps SystemMediaTransportControls for playback integration.
+/// <para>
+/// <c>SystemMediaTransportControls.GetForCurrentView()</c> requires a UWP
+/// CoreApplication view backed by package identity and throws in an unpackaged
+/// WinUI 3 desktop process. When that happens this service becomes inert:
+/// <see cref="TransportControls"/> is <see langword="null"/> and every update is a
+/// no-op, so media playback and startup are unaffected.
+/// </para>
+/// </summary>
 public sealed class SystemMediaTransportControlsService : ISystemMediaTransportControlsService
 {
-    public SystemMediaTransportControls TransportControls { get; }
+    public SystemMediaTransportControls? TransportControls { get; }
 
     private DateTime _lastUpdated;
 
     public SystemMediaTransportControlsService()
     {
-        TransportControls = SystemMediaTransportControls.GetForCurrentView();
-        TransportControls.IsEnabled = true;
-        TransportControls.IsPlayEnabled = true;
-        TransportControls.IsPauseEnabled = true;
-        TransportControls.IsStopEnabled = true;
-        TransportControls.AutoRepeatMode = MediaPlaybackAutoRepeatMode.None;
-        TransportControls.PlaybackStatus = MediaPlaybackStatus.Closed;
-        TransportControls.DisplayUpdater.ClearAll();
+        try
+        {
+            SystemMediaTransportControls controls = SystemMediaTransportControls.GetForCurrentView();
+            controls.IsEnabled = true;
+            controls.IsPlayEnabled = true;
+            controls.IsPauseEnabled = true;
+            controls.IsStopEnabled = true;
+            controls.AutoRepeatMode = MediaPlaybackAutoRepeatMode.None;
+            controls.PlaybackStatus = MediaPlaybackStatus.Closed;
+            controls.DisplayUpdater.ClearAll();
+            TransportControls = controls;
+        }
+        catch (Exception)
+        {
+            // No SMTC in an unpackaged desktop process.
+            TransportControls = null;
+        }
 
         _lastUpdated = DateTime.MinValue;
     }
 
     public async Task UpdateTransportControlsDisplayAsync(MediaViewModel? item)
     {
+        if (TransportControls is null) return;
+
         SystemMediaTransportControlsDisplayUpdater displayUpdater = TransportControls.DisplayUpdater;
         displayUpdater.ClearAll();
-        displayUpdater.AppMediaId = Package.Current.DisplayName;
+        displayUpdater.AppMediaId = "Screenbox";
         if (item == null)
         {
             return;
@@ -73,13 +93,13 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
         }
         catch (Exception)
         {
-            // System.Exception: The request is not supported. The media type has not been initialized. Please provide a valid media type first in order to access these properties.
-            // Pass
+            // Some media types cannot be initialized; best effort only.
         }
     }
 
     public void UpdatePlaybackPosition(TimeSpan position, TimeSpan startTime, TimeSpan endTime)
     {
+        if (TransportControls is null) return;
         if (DateTime.Now - _lastUpdated < TimeSpan.FromSeconds(5)) return;
         _lastUpdated = DateTime.Now;
         SystemMediaTransportControlsTimelineProperties timelineProps = new()
@@ -96,14 +116,14 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
 
     public void UpdatePlaybackStatus(MediaPlaybackState state)
     {
+        if (TransportControls is null) return;
+
         switch (state)
         {
             case MediaPlaybackState.None:
                 TransportControls.PlaybackStatus = MediaPlaybackStatus.Stopped;
                 break;
             case MediaPlaybackState.Opening:
-                TransportControls.PlaybackStatus = MediaPlaybackStatus.Changing;
-                break;
             case MediaPlaybackState.Buffering:
                 TransportControls.PlaybackStatus = MediaPlaybackStatus.Changing;
                 break;
@@ -120,8 +140,9 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
 
     public void ClosePlayback()
     {
+        if (TransportControls is null) return;
+
         TransportControls.PlaybackStatus = MediaPlaybackStatus.Closed;
         TransportControls.DisplayUpdater.ClearAll();
     }
 }
-

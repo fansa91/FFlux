@@ -8,6 +8,9 @@ using Screenbox.Core.Enums;
 using Screenbox.Core.Messages;
 using Windows.System;
 using Screenbox.Core.Helpers;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -80,7 +83,7 @@ public sealed partial class NotificationViewModel : ObservableRecipient,
                 ActionCommand = message.ActionCommand;
            
             IsOpen = true;
-            _timer.Debounce(() => IsOpen = false, duration);
+            _timer.DebounceCore(() => IsOpen = false, duration);
         });
     }
 

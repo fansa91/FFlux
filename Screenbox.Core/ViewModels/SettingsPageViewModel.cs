@@ -18,6 +18,9 @@ using Windows.Storage;
 using Windows.Storage.AccessCache;
 using Windows.System;
 using Microsoft.UI.Xaml;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -232,13 +235,13 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
 
         // Release the previous entry so the FutureAccessList (capped at 1000 items) doesn't accumulate stale folders.
         string oldToken = PlayerSettings.FrameCaptureFolderToken;
-        if (!string.IsNullOrEmpty(oldToken) && StorageApplicationPermissions.FutureAccessList.ContainsItem(oldToken))
+        if (!string.IsNullOrEmpty(oldToken))
         {
-            StorageApplicationPermissions.FutureAccessList.Remove(oldToken);
+            AppAccessCache.RemoveFromFutureAccess(oldToken);
         }
 
-        string newToken = StorageApplicationPermissions.FutureAccessList.Add(folder, "frame-capture");
-        PlayerSettings.FrameCaptureFolderToken = newToken;
+        string? newToken = AppAccessCache.AddFolderToFutureAccess(folder, "frame-capture");
+        PlayerSettings.FrameCaptureFolderToken = newToken ?? string.Empty;
         FrameCaptureFolder = folder;
     }
 
@@ -260,7 +263,7 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
     private void ClearRecentHistory()
     {
         ClearRecentContext();
-        StorageApplicationPermissions.MostRecentlyUsedList.Clear();
+        AppAccessCache.ClearRecent();
     }
 
     private void ClearRecentContext()
@@ -335,7 +338,7 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
     private void OnPortableStorageDeviceChanged(DeviceWatcher sender, DeviceInformationUpdate args)
     {
         async void RefreshAction() => await UpdateRemovableStorageFoldersAsync();
-        _storageDeviceRefreshTimer.Debounce(RefreshAction, TimeSpan.FromMilliseconds(500));
+        _storageDeviceRefreshTimer.DebounceCore(RefreshAction, TimeSpan.FromMilliseconds(500));
     }
 
     private void UpdateLibraryLocations()

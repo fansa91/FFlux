@@ -8,6 +8,9 @@ using Windows.UI.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Behaviors;
 
@@ -21,7 +24,7 @@ internal sealed partial class AutoFocusBehavior : BehaviorBase<Control>
 
     public AutoFocusBehavior()
     {
-        _dispatcherQueue = Windows.System.DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         _timer = _dispatcherQueue.CreateTimer();
     }
 
@@ -55,7 +58,7 @@ internal sealed partial class AutoFocusBehavior : BehaviorBase<Control>
         _eventTriggered = true;
         if (!_focused)
         {
-            _timer.Debounce(() =>
+            _timer.DebounceCore(() =>
             {
                 if (AssociatedObject != null)
                 {
@@ -68,11 +71,20 @@ internal sealed partial class AutoFocusBehavior : BehaviorBase<Control>
     [DynamicWindowsRuntimeCast(typeof(FrameworkElement))]
     protected override void OnAssociatedObjectLoaded()
     {
-        // Check if Space key is still down
-        bool spaceDown = Window.Current.CoreWindow.GetKeyState(VirtualKey.Space).HasFlag(CoreVirtualKeyStates.Down);
-        bool enterDown = Window.Current.CoreWindow.GetKeyState(VirtualKey.Enter).HasFlag(CoreVirtualKeyStates.Down);
-        bool gamepadADown = Window.Current.CoreWindow.GetKeyState(VirtualKey.GamepadA).HasFlag(CoreVirtualKeyStates.Down);
-        bool triggered = spaceDown || enterDown || gamepadADown;
+        // CoreWindow.GetKeyState is UWP-only. InputKeyboardSource is the WinUI 3 equivalent
+        // and works on the current UI thread without a CoreApplication view.
+        bool triggered = false;
+        try
+        {
+            triggered =
+                Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Space).HasFlag(CoreVirtualKeyStates.Down) ||
+                Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Enter).HasFlag(CoreVirtualKeyStates.Down) ||
+                Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.GamepadA).HasFlag(CoreVirtualKeyStates.Down);
+        }
+        catch (Exception)
+        {
+            // Focus must still be applied if key state cannot be queried.
+        }
 
         // If yes than wait until key up then focus
         if (triggered && FocusManager.GetFocusedElement() is FrameworkElement element)

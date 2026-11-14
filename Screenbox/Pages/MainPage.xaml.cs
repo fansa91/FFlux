@@ -23,6 +23,9 @@ using NavigationViewDisplayMode = Microsoft.UI.Xaml.Controls.NavigationViewDispl
 using NavigationViewDisplayModeChangedEventArgs = Microsoft.UI.Xaml.Controls.NavigationViewDisplayModeChangedEventArgs;
 using NavigationViewItem = Microsoft.UI.Xaml.Controls.NavigationViewItem;
 using NavigationViewSelectionChangedEventArgs = Microsoft.UI.Xaml.Controls.NavigationViewSelectionChangedEventArgs;
+using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Pages;
 
@@ -41,7 +44,9 @@ public sealed partial class MainPage : Page, IContentFrame
 
     public MainPage()
     {
+        Screenbox.Helpers.StartupErrorLog.Write("MainPage ctor start");
         InitializeComponent();
+        Screenbox.Helpers.StartupErrorLog.Write("MainPage InitializeComponent done");
 
         _pages = new Dictionary<string, Type>
         {
@@ -62,7 +67,9 @@ public sealed partial class MainPage : Page, IContentFrame
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
+        Screenbox.Helpers.StartupErrorLog.Write("MainPage.OnNavigatedTo -> PlayerFrame.Navigate");
         PlayerFrame.Navigate(typeof(PlayerPage), e.Parameter);
+        Screenbox.Helpers.StartupErrorLog.Write("MainPage.OnNavigatedTo done");
         if (e.Parameter is true)
         {
             ViewModel.PlayerVisible = true;
@@ -91,16 +98,22 @@ public sealed partial class MainPage : Page, IContentFrame
 
     private void MainPage_Loaded(object sender, RoutedEventArgs e)
     {
-        Window.Current.Dispatcher.AcceleratorKeyActivated += CoreDispatcher_AcceleratorKeyActivated;
-        SystemNavigationManager.GetForCurrentView().BackRequested += System_BackRequested;
-        Window.Current.CoreWindow.PointerPressed += CoreWindow_PointerPressed;
+        Screenbox.Helpers.StartupErrorLog.Write("MainPage.Loaded entered");
+        // CoreDispatcher.AcceleratorKeyActivated, SystemNavigationManager.GetForCurrentView()
+        // and CoreWindow.PointerPressed all require a UWP view and throw without package
+        // identity. Back navigation is still served by the NavigationView back button and
+        // the gamepad/keyboard handlers on this page.
         ViewModel.NavigationViewDisplayMode = (Microsoft.UI.Xaml.Controls.NavigationViewDisplayMode)NavView.DisplayMode;
         if (!ViewModel.PlayerVisible)
         {
             AppTitleBar.RefreshDragRegion();
+            Screenbox.Helpers.StartupErrorLog.Write("MainPage.Loaded: drag region refreshed");
             NavView.SelectedItem = NavView.MenuItems[0];
+            Screenbox.Helpers.StartupErrorLog.Write("MainPage.Loaded: home selected");
             _ = ViewModel.FetchLibraries();
+            Screenbox.Helpers.StartupErrorLog.Write("MainPage.Loaded: FetchLibraries started");
         }
+        Screenbox.Helpers.StartupErrorLog.Write("MainPage.Loaded done");
     }
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -299,7 +312,7 @@ public sealed partial class MainPage : Page, IContentFrame
     {
         // Deferred to ensure IsPaneOpen reports the correct state
         // when closing the pane via gamepad.
-        _ = Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
+        Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()?.TryEnqueue(
             () => UpdateNavigationViewState(sender.DisplayMode, sender.IsPaneOpen));
     }
 

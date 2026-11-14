@@ -24,8 +24,10 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Disable generated Main for custom Main in Program.cs with multi-instancing support. -->
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
-    <!-- MRT Core still needs resources.pri in an unpackaged app; keep manual language control. -->
-    <EnableDefaultPriItems>false</EnableDefaultPriItems>
+    <!-- Keep the SDK default PRI items enabled. Disabling them here dropped every
+         XAML page, style and library theme resource from resources.pri, so every
+         ms-appx:/// lookup failed at startup in the unpackaged app. Only the
+         incomplete translations are filtered out below. -->
   </PropertyGroup>
 
   <ItemGroup Label="Unpackaged build">
@@ -65,8 +67,8 @@
   </ItemGroup>
 
   <ItemGroup Label="Localization">
-    <PRIResource Include="**\*.resw" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
-    <!-- Pending translations are explicitly removed. Remove the language below when a translation is complete. -->
+    <!-- Default PRI items already include **\*.resw. Only pending translations are
+         removed here. Remove the language below when a translation is complete. -->
     <PRIResource Remove="Strings\af-ZA\*.resw" />
     <PRIResource Remove="Strings\ca-ES\*.resw" />
     <PRIResource Remove="Strings\cs-CZ\*.resw" />
@@ -83,5 +85,21 @@
     <ProjectReference Include="..\Screenbox.Lively\Screenbox.Lively.csproj" />
     <ProjectReference Include="..\Screenbox.UI\Screenbox.UI.csproj" />
   </ItemGroup>
+
+  <!-- Unpackaged WinUI 3 resolves ms-appx:/// XAML against loose files next to the exe.
+       The XAML compiler emits library-relative URIs such as
+       ms-appx:///Controls/XamlControlsResources.xaml for x:Class dictionaries, while
+       the referenced class library lays its XBF files out under Screenbox.UI/. Mirror
+       them into the unqualified paths as well; the assembly-qualified copies are kept
+       for the Source="ms-appx:///Screenbox.UI/..." references inside those files. -->
+  <Target Name="FlattenLibraryXamlResources" AfterTargets="Build">
+    <ItemGroup>
+      <_LibraryXamlResource Include="$(OutDir)Screenbox.UI\**\*.xbf" />
+      <_LibraryXamlResource Include="$(OutDir)Screenbox.UI\**\*.xaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_LibraryXamlResource)"
+          DestinationFiles="@(_LibraryXamlResource->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

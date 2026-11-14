@@ -35,9 +35,9 @@ public sealed partial class TitleBarAutomationPeer : FrameworkElementAutomationP
         {
             var owner = (TitleBar)Owner;
             name = string.IsNullOrWhiteSpace(owner.Title)
-                // AppInfo.Current.DisplayInfo.DisplayName is only supported starting Windows 10.0.19041.
-                // Use Package.Current.DisplayName to work with 10.0.18362
-                ? Package.Current.DisplayName
+                // Package.Current.DisplayName needs package identity, which an unpackaged
+                // WinUI 3 app does not have. The assembly name is the display name here.
+                ? "Screenbox"
                 : owner.Title;
         }
 

@@ -7,6 +7,7 @@ using Windows.Globalization;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Navigation;
+using Screenbox.Core.Helpers;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -35,7 +36,7 @@ public sealed partial class SettingsPage : Page
 
     private string[] LanguageOptions => _languageOptions;
 
-    private static readonly string[] _languageOptions = [SystemDefaultLanguage, .. ApplicationLanguages.ManifestLanguages];
+    private static readonly string[] _languageOptions = [SystemDefaultLanguage, .. AppLanguageOverride.ShippedLanguages];
 
     public SettingsPage()
     {
@@ -71,7 +72,7 @@ public sealed partial class SettingsPage : Page
     [DynamicWindowsRuntimeCast(typeof(Frame))]
     private void ThemeComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (Window.Current.Content is Frame rootFrame)
+        if (WindowAccessor.Current.Content is Frame rootFrame)
         {
             rootFrame.RequestedTheme = ViewModel.GeneralSettings.Theme;
         }
@@ -79,7 +80,7 @@ public sealed partial class SettingsPage : Page
 
     private void LanguageComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        ApplicationLanguages.PrimaryLanguageOverride = ViewModel.Language;
+        AppLanguageOverride.Current = ViewModel.Language;
     }
 
     private void ChangeFrameCaptureLocationHyperlink_OnClick(Hyperlink sender, HyperlinkClickEventArgs args)
