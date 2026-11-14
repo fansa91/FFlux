@@ -22,9 +22,6 @@ using Screenbox.Core.ViewModels;
 using Windows.Media;
 using Windows.Media.Playback;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.Coordinators;
 
@@ -65,7 +62,7 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
     private readonly MediaViewModelFactory _mediaFactory;
     private readonly PlayerContext _playerContext;
     private readonly IPlayQueueBufferManager _bufferManager;
-    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IAppDispatcher _dispatcherQueue;
     private readonly ILogger<PlayQueueCoordinator> _logger;
 
     // Internal playlist model — separate from the observable context.Items collection.
@@ -110,7 +107,7 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
         _playerContext = playerContext;
         _bufferManager = bufferManager;
         _logger = logger;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
 
         _queueSession = new QueueSession { SessionId = Guid.Empty };
 

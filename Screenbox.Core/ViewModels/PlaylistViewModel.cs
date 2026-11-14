@@ -17,9 +17,6 @@ using Screenbox.Core.Messages;
 using Screenbox.Core.Models;
 using Screenbox.Core.Services;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -44,8 +41,8 @@ public sealed partial class PlaylistViewModel : ObservableRecipient,
 
     private readonly IPlaylistService _playlistService;
     private readonly MediaViewModelFactory _mediaFactory;
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _playlistSaveTimer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _playlistSaveTimer;
     private readonly ILogger<PlaylistViewModel> _logger;
 
     public PlaylistViewModel(
@@ -66,7 +63,7 @@ public sealed partial class PlaylistViewModel : ObservableRecipient,
         _playlistService = playlistService;
         _mediaFactory = mediaFactory;
         _logger = logger;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _playlistSaveTimer = _dispatcherQueue.CreateTimer();
 
         Items.CollectionChanged += Items_CollectionChanged;

@@ -1,40 +1,39 @@
 using System;
 using System.Runtime.CompilerServices;
-using Windows.Foundation;
-using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.Helpers;
 
+/// <summary>
+/// Dispatcher helpers written against <see cref="IAppDispatcher"/> so they work
+/// unchanged in the WinUI app and in a plain desktop test host.
+/// </summary>
 public static class DispatcherQueueExtensions
 {
-    private static readonly ConditionalWeakTable<DispatcherQueueTimer, DebounceState> DebounceStates = new();
+    private static readonly ConditionalWeakTable<IAppDispatcherTimer, DebounceState> DebounceStates = new();
 
-    public static bool TryExecuteOrEnqueue(this DispatcherQueue dispatcherQueue, DispatcherQueueHandler action)
+    /// <summary>
+    /// Runs <paramref name="action"/> inline when already on the UI thread,
+    /// otherwise posts it to the dispatcher.
+    /// </summary>
+    public static bool TryExecuteOrEnqueue(this IAppDispatcher dispatcher, Action action)
     {
-        if (dispatcherQueue.HasThreadAccess)
+        if (dispatcher.HasThreadAccess)
         {
             action();
             return true;
         }
-        else
-        {
-            return dispatcherQueue.TryEnqueue(action);
-        }
+
+        return dispatcher.TryEnqueue(action);
     }
 
     /// <summary>
     /// WinUI 3 compatibility shim for the CommunityToolkit <c>Debounce</c> helper.
-    /// CommunityToolkit.WinUI targets <c>Microsoft.UI.Dispatching.DispatcherQueueTimer</c>,
-    /// while Screenbox still uses the system <c>Windows.System.DispatcherQueue</c>, which is
-    /// valid in unpackaged WinUI 3 apps. Each call restarts the timer; the action runs once
-    /// the interval elapses. With <paramref name="immediate"/> set, the first call in a quiet
-    /// window runs right away and later calls within the window only push the deadline out.
+    /// Each call restarts the timer; the action runs once the interval elapses.
+    /// With <paramref name="immediate"/> set, the first call in a quiet window runs
+    /// right away and later calls within the window only push the deadline out.
     /// </summary>
     public static void DebounceCore(
-        this DispatcherQueueTimer timer,
+        this IAppDispatcherTimer timer,
         Action action,
         TimeSpan interval,
         bool immediate = false)
@@ -48,9 +47,9 @@ public static class DispatcherQueueExtensions
 
         if (state.Handler is null)
         {
-            state.Handler = (sender, _) =>
+            state.Handler = (_, _) =>
             {
-                sender.Stop();
+                timer.Stop();
                 state.ImmediateExecuted = false;
                 if (!state.Immediate)
                 {
@@ -78,6 +77,6 @@ public static class DispatcherQueueExtensions
         public Action? Action;
         public bool Immediate;
         public bool ImmediateExecuted;
-        public TypedEventHandler<DispatcherQueueTimer, object>? Handler;
+        public EventHandler? Handler;
     }
 }

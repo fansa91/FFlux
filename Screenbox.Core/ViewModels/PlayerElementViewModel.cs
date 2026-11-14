@@ -18,9 +18,6 @@ using Windows.Media;
 using Windows.Media.Playback;
 using Windows.System;
 using Microsoft.UI.Input;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 
 namespace Screenbox.Core.ViewModels;
@@ -57,9 +54,9 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
     private readonly IPlayerService _playerService;
     private readonly ISystemMediaTransportControlsService _transportControlsService;
     private readonly PlayerSettingsContext _playerSettings;
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _clickTimer;
-    private readonly DispatcherQueueTimer _pointerWheelTimer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _clickTimer;
+    private readonly IAppDispatcherTimer _pointerWheelTimer;
     private readonly DisplayRequestTracker _requestTracker;
     private readonly ILogger<PlayerElementViewModel> _logger;
     private bool _eventsSubscribed;
@@ -82,7 +79,7 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
         _playerSettings = playerSettings;
         _transportControlsService = transportControlsService;
         _logger = logger;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _clickTimer = _dispatcherQueue.CreateTimer();
         _pointerWheelTimer = _dispatcherQueue.CreateTimer();
         _requestTracker = new DisplayRequestTracker();

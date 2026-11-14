@@ -15,9 +15,6 @@ using Screenbox.Core.Models;
 using Screenbox.Core.Services;
 using Windows.Storage;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -37,7 +34,7 @@ public sealed partial class PlaylistDetailsPageViewModel : ObservableRecipient
     private readonly IPlaylistService _playlistService;
     private readonly IQueueService _queueService;
     private readonly MediaViewModelFactory _mediaFactory;
-    private readonly DispatcherQueueTimer _commandRefreshTimer;
+    private readonly IAppDispatcherTimer _commandRefreshTimer;
 
     public PlaylistDetailsPageViewModel(
         IFilesService filesService,
@@ -51,7 +48,7 @@ public sealed partial class PlaylistDetailsPageViewModel : ObservableRecipient
         _playlistService = playlistService;
         _queueService = queueService;
         _mediaFactory = mediaFactory;
-        _commandRefreshTimer = DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _commandRefreshTimer = AppDispatcher.Current.CreateTimer();
     }
 
     public void OnNavigatedTo(object? parameter)

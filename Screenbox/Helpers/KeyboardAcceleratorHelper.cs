@@ -220,7 +220,15 @@ public static class KeyboardAcceleratorHelper
 
     private static CoreVirtualKeyStates GetKeyState(VirtualKey key)
     {
-        var window = CoreWindow.GetForCurrentThread();
-        return window is null ? CoreVirtualKeyStates.None : window.GetKeyState(key);
+        // CoreWindow.GetKeyState is UWP-only and throws without package identity.
+        // InputKeyboardSource is the WinUI 3 equivalent (see AutoFocusBehavior).
+        try
+        {
+            return Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key);
+        }
+        catch (Exception)
+        {
+            return CoreVirtualKeyStates.None;
+        }
     }
 }

@@ -24,9 +24,6 @@ using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.System;
 using Screenbox.Core.Helpers;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Lively.ViewModels;
 
@@ -59,13 +56,13 @@ public partial class LivelyWallpaperPlayerViewModel : ObservableRecipient,
 
     private readonly ILivelyWallpaperService _livelyService;
     private readonly PlayerSettingsContext _playerSettings;
-    private readonly DispatcherQueueTimer _timer;
+    private readonly IAppDispatcherTimer _timer;
 
     public LivelyWallpaperPlayerViewModel(ILivelyWallpaperService livelyService, PlayerSettingsContext playerSettings)
     {
         _livelyService = livelyService;
         _playerSettings = playerSettings;
-        _timer = DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _timer = AppDispatcher.Current.CreateTimer();
 
         Messenger.Register<PropertyChangedMessage<LivelyWallpaperModel?>>(this);
         Messenger.Register<QueueCurrentItemChangedMessage>(this);

@@ -16,9 +16,6 @@ using Screenbox.Core.Services;
 using Windows.Storage;
 using Windows.System;
 using Microsoft.UI.Xaml.Navigation;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -34,7 +31,7 @@ public sealed partial class VideosPageViewModel : ObservableRecipient,
 
     private readonly List<StorageFolder> _breadcrumbLocations = new();
     private readonly LibraryContext _libraryContext;
-    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IAppDispatcher _dispatcherQueue;
     private readonly ILogger<VideosPageViewModel> _logger;
 
     public VideosPageViewModel(LibraryContext libraryContext, ILogger<VideosPageViewModel> logger)
@@ -42,7 +39,7 @@ public sealed partial class VideosPageViewModel : ObservableRecipient,
         _libraryContext = libraryContext;
         _logger = logger;
         HasVideos = true;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
 
         Messenger.Register<PropertyChangedMessage<VideosLibrary>>(this);
     }

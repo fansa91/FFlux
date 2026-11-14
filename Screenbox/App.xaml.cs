@@ -27,8 +27,6 @@ using Windows.Storage.Search;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 
 namespace Screenbox;
 
@@ -41,7 +39,7 @@ sealed partial class App : Application
     private readonly ILogger<App> _logger;
     private readonly ITelemetryService _telemetryService;
     private Window? _window;
-    private DispatcherQueueTimer? _heartbeatTimer;
+    private IAppDispatcherTimer? _heartbeatTimer;
 
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -312,14 +310,7 @@ sealed partial class App : Application
     /// </summary>
     private void StartHeartbeat()
     {
-        DispatcherQueue? queue = DispatcherQueue.GetForCurrentThread();
-        if (queue is null)
-        {
-            StartupErrorLog.Write("Heartbeat unavailable: no DispatcherQueue");
-            return;
-        }
-
-        DispatcherQueueTimer timer = queue.CreateTimer();
+        IAppDispatcherTimer timer = AppDispatcher.Current.CreateTimer();
         _heartbeatTimer = timer;
         int ticks = 0;
         timer.Interval = TimeSpan.FromSeconds(1);

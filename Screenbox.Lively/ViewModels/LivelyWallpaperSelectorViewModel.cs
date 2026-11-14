@@ -15,10 +15,6 @@ using Screenbox.Lively.Models;
 using Screenbox.Lively.Services;
 using Windows.Storage;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
-using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
 
 namespace Screenbox.Lively.ViewModels;
 
@@ -48,7 +44,7 @@ public sealed partial class LivelyWallpaperSelectorViewModel : ObservableRecipie
     private readonly ILivelyWallpaperService _wallpaperService;
     private readonly IFilesService _filesService;
     private readonly PlayerSettingsContext _playerSettings;
-    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IAppDispatcher _dispatcherQueue;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LivelyWallpaperSelectorViewModel"/> class.
@@ -58,7 +54,7 @@ public sealed partial class LivelyWallpaperSelectorViewModel : ObservableRecipie
         _wallpaperService = wallpaperService;
         _filesService = filesService;
         _playerSettings = playerSettings;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
 
         Messenger.Register<PropertyChangedMessage<LivelyWallpaperModel?>>(this);
     }
@@ -83,7 +79,7 @@ public sealed partial class LivelyWallpaperSelectorViewModel : ObservableRecipie
 
     public void Receive(PropertyChangedMessage<LivelyWallpaperModel?> message)
     {
-        _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => SelectedVisualizer = message.NewValue);
+        _dispatcherQueue.TryEnqueue(AppDispatcherPriority.Low, () => SelectedVisualizer = message.NewValue);
     }
 
     partial void OnSelectedVisualizerChanged(LivelyWallpaperModel? value)

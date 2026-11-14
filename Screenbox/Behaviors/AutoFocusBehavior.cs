@@ -8,9 +8,6 @@ using Windows.UI.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Behaviors;
 
@@ -19,12 +16,12 @@ internal sealed partial class AutoFocusBehavior : BehaviorBase<Control>
     private bool _focused;
     private bool _eventTriggered;
     private FrameworkElement? _deferredElement;
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _timer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _timer;
 
     public AutoFocusBehavior()
     {
-        _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _timer = _dispatcherQueue.CreateTimer();
     }
 

@@ -10,9 +10,7 @@ using Screenbox.Core.ViewModels;
 using Windows.System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Navigation;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
+using Screenbox.Core.Helpers;
 
 namespace Screenbox.Pages;
 
@@ -27,14 +25,14 @@ public sealed partial class SongsPage : Page
 
     private double _contentVerticalOffset;
 
-    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IAppDispatcher _dispatcherQueue;
 
     public SongsPage()
     {
         InitializeComponent();
         DataContext = Ioc.Default.GetRequiredService<SongsPageViewModel>();
         Common = Ioc.Default.GetRequiredService<CommonViewModel>();
-        _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
     }
 
     private void ViewModelOnPropertyChanged(object? sender, PropertyChangedEventArgs e)

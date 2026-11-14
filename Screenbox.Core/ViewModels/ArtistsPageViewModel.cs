@@ -10,9 +10,6 @@ using Screenbox.Core.Contexts;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.Models;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -25,13 +22,13 @@ public sealed partial class ArtistsPageViewModel : BaseMusicContentViewModel,
     public partial ArtistViewModel? ContextArtist { get; set; }
 
     private readonly LibraryContext _libraryContext;
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _refreshTimer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _refreshTimer;
 
     public ArtistsPageViewModel(LibraryContext libraryContext)
     {
         _libraryContext = libraryContext;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _refreshTimer = _dispatcherQueue.CreateTimer();
         PopulateGroups();
 

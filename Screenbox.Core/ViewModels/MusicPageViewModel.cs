@@ -9,9 +9,7 @@ using Screenbox.Core.Enums;
 using Screenbox.Core.Messages;
 using Screenbox.Core.Models;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
+using Screenbox.Core.Helpers;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -24,12 +22,12 @@ public sealed partial class MusicPageViewModel : ObservableRecipient,
     public bool LibraryLoaded => _libraryContext.MusicStorageLibrary != null;
 
     private readonly LibraryContext _libraryContext;
-    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IAppDispatcher _dispatcherQueue;
 
     public MusicPageViewModel(LibraryContext libraryContext)
     {
         _libraryContext = libraryContext;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         HasContent = true;
 
         Messenger.Register<PropertyChangedMessage<MusicLibrary>>(this);

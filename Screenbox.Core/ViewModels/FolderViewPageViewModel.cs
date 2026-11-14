@@ -16,9 +16,6 @@ using Screenbox.Core.Services;
 using Windows.Storage;
 using Windows.Storage.Search;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -44,8 +41,8 @@ public partial class FolderViewPageViewModel : ObservableRecipient,
     private readonly IFilesService _filesService;
     private readonly INavigationService _navigationService;
     private readonly StorageItemViewModelFactory _storageVmFactory;
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _loadingTimer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _loadingTimer;
     private readonly List<MediaViewModel> _playableItems = [];
     private bool _isActive;
     private object? _source;
@@ -56,7 +53,7 @@ public partial class FolderViewPageViewModel : ObservableRecipient,
         _filesService = filesService;
         _storageVmFactory = storageVmFactory;
         _navigationService = navigationService;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _loadingTimer = _dispatcherQueue.CreateTimer();
 
         Messenger.Register<RefreshFolderMessage>(this);

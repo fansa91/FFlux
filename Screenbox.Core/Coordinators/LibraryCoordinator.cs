@@ -13,9 +13,6 @@ using Windows.Devices.Enumeration;
 using Windows.Storage;
 using Windows.Storage.Search;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.Coordinators;
 
@@ -30,9 +27,9 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
     private readonly LibrarySettingsContext _librarySettings;
     private readonly ILogger<LibraryCoordinator> _logger;
 
-    private readonly DispatcherQueueTimer _musicRefreshTimer;
-    private readonly DispatcherQueueTimer _videosRefreshTimer;
-    private readonly DispatcherQueueTimer _storageDeviceRefreshTimer;
+    private readonly IAppDispatcherTimer _musicRefreshTimer;
+    private readonly IAppDispatcherTimer _videosRefreshTimer;
+    private readonly IAppDispatcherTimer _storageDeviceRefreshTimer;
 
     private readonly DeviceWatcher? _portableStorageDeviceWatcher;
 
@@ -55,7 +52,7 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
         _librarySettings = librarySettings;
         _logger = logger;
 
-        DispatcherQueue dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        IAppDispatcher dispatcherQueue = AppDispatcher.Current;
         _musicRefreshTimer = dispatcherQueue.CreateTimer();
         _videosRefreshTimer = dispatcherQueue.CreateTimer();
         _storageDeviceRefreshTimer = dispatcherQueue.CreateTimer();

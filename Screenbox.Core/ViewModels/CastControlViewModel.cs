@@ -8,9 +8,7 @@ using Screenbox.Core.Models;
 using Screenbox.Core.Playback;
 using Screenbox.Core.Services;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
+using Screenbox.Core.Helpers;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -30,7 +28,7 @@ public sealed partial class CastControlViewModel : ObservableObject
     private readonly PlayerContext _playerContext;
     private readonly CastContext _castContext;
     private readonly ICastService _castService;
-    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IAppDispatcher _dispatcherQueue;
     private readonly ILogger<CastControlViewModel> _logger;
 
     public CastControlViewModel(PlayerContext playerContext, CastContext castContext, ICastService castService,
@@ -39,7 +37,7 @@ public sealed partial class CastControlViewModel : ObservableObject
         _playerContext = playerContext;
         _castContext = castContext;
         _castService = castService;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _logger = logger;
         Renderers = new ObservableCollection<Renderer>();
     }

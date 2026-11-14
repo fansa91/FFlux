@@ -13,9 +13,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 // The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
 
@@ -36,7 +33,7 @@ public sealed partial class SeekBar : UserControl
     }
 
     internal SeekBarViewModel ViewModel => (SeekBarViewModel)DataContext;
-    private readonly DispatcherQueueTimer _previewToolTipTimer;
+    private readonly IAppDispatcherTimer _previewToolTipTimer;
     private Thumb? _seekBarThumb;
 
     private readonly ToolTip _previewToolTip;
@@ -46,7 +43,7 @@ public sealed partial class SeekBar : UserControl
         this.InitializeComponent();
         DataContext = Ioc.Default.GetRequiredService<SeekBarViewModel>();
         RegisterSeekBarPointerHandlers();
-        DispatcherQueue dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        IAppDispatcher dispatcherQueue = AppDispatcher.Current;
         _previewToolTipTimer = dispatcherQueue.CreateTimer();
         _previewToolTip = new ToolTip { Padding = new Thickness(8, 3, 8, 5), FontSize = 15, VerticalOffset = 13 };
 

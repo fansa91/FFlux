@@ -20,9 +20,6 @@ using Screenbox.Core.Services;
 using Windows.Storage;
 using Windows.Storage.AccessCache;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -42,8 +39,8 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
     private readonly ISourceMetadataService _sourceMetadataService;
     private readonly GeneralSettingsContext _generalSettings;
     private readonly IQueueService _queueService;
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _changeDebounceTimer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _changeDebounceTimer;
     private readonly ILogger<HomePageViewModel> _logger;
 
     public HomePageViewModel(
@@ -64,7 +61,7 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
         _generalSettings = generalSettings;
         _queueService = queueService;
         _logger = logger;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _changeDebounceTimer = _dispatcherQueue.CreateTimer();
 
         Selection.SetItemsSource(Recent);

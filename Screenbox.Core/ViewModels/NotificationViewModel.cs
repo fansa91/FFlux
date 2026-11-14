@@ -8,9 +8,6 @@ using Screenbox.Core.Enums;
 using Screenbox.Core.Messages;
 using Windows.System;
 using Screenbox.Core.Helpers;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -42,12 +39,12 @@ public sealed partial class NotificationViewModel : ObservableRecipient,
     [ObservableProperty]
     public partial ICommand? ActionCommand { get; set; }
 
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _timer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _timer;
 
     public NotificationViewModel()
     {
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _timer = _dispatcherQueue.CreateTimer();
 
         Messenger.Register<NotificationMessage>(this);

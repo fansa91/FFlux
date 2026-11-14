@@ -18,9 +18,6 @@ using Windows.Storage;
 using Windows.Storage.AccessCache;
 using Windows.System;
 using Microsoft.UI.Xaml;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -62,8 +59,8 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
     private readonly LibraryContext _libraryContext;
     private readonly RecentContext _recentContext;
     private readonly ILibraryCoordinator _libraryCoordinator;
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _storageDeviceRefreshTimer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _storageDeviceRefreshTimer;
     private readonly DeviceWatcher? _portableStorageDeviceWatcher;
     private readonly IPlaybackProgressTracker _playbackProgressTracker;
     private readonly ILogger<SettingsPageViewModel> _logger;
@@ -101,7 +98,7 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
         _libraryCoordinator = libraryCoordinator;
         _playbackProgressTracker = playbackProgressTracker;
         _logger = logger;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _storageDeviceRefreshTimer = _dispatcherQueue.CreateTimer();
         MusicLocations = new ObservableCollection<StorageFolder>();
         VideoLocations = new ObservableCollection<StorageFolder>();

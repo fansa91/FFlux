@@ -14,9 +14,6 @@ using Screenbox.Core.Helpers;
 using Screenbox.Core.Models;
 using Screenbox.Core.Services;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -32,15 +29,15 @@ public sealed partial class SongsPageViewModel : BaseMusicContentViewModel,
 
     private readonly LibraryContext _libraryContext;
     private readonly LibrarySettingsContext _librarySettings;
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _refreshTimer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _refreshTimer;
 
     public SongsPageViewModel(LibraryContext libraryContext, LibrarySettingsContext librarySettings)
     {
         _libraryContext = libraryContext;
         _librarySettings = librarySettings;
         SortBy = _librarySettings.SongsSortOrder;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _refreshTimer = _dispatcherQueue.CreateTimer();
 
         Messenger.Register<PropertyChangedMessage<MusicLibrary>>(this);

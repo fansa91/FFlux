@@ -26,9 +26,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -106,12 +103,12 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
 
     private IMediaPlayer? MediaPlayer => _playerContext.MediaPlayer;
 
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _openingTimer;
-    private readonly DispatcherQueueTimer _controlsVisibilityTimer;
-    private readonly DispatcherQueueTimer _osdMessageTimer;
-    private readonly DispatcherQueueTimer _osdBadgeTimer;
-    private readonly DispatcherQueueTimer _playPauseHoldTimer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _openingTimer;
+    private readonly IAppDispatcherTimer _controlsVisibilityTimer;
+    private readonly IAppDispatcherTimer _osdMessageTimer;
+    private readonly IAppDispatcherTimer _osdBadgeTimer;
+    private readonly IAppDispatcherTimer _playPauseHoldTimer;
     private readonly IWindowService _windowService;
     private readonly PlayerSettingsContext _playerSettings;
     private readonly GeneralSettingsContext _generalSettings;
@@ -141,7 +138,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         _playbackMetadataService = playbackMetadataService;
         _playerContext = playerContext;
         _mediaFactory = mediaFactory;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _openingTimer = _dispatcherQueue.CreateTimer();
         _controlsVisibilityTimer = _dispatcherQueue.CreateTimer();
         _osdMessageTimer = _dispatcherQueue.CreateTimer();

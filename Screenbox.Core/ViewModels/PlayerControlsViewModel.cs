@@ -17,9 +17,6 @@ using Windows.Foundation;
 using Windows.Media.Playback;
 using Windows.Storage;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -68,7 +65,7 @@ public sealed partial class PlayerControlsViewModel : ObservableRecipient,
 
     private IMediaPlayer? MediaPlayer => _playerContext.MediaPlayer;
 
-    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IAppDispatcher _dispatcherQueue;
     private readonly IWindowService _windowService;
     private readonly PlayerSettingsContext _playerSettings;
     private readonly PlayerContext _playerContext;
@@ -85,7 +82,7 @@ public sealed partial class PlayerControlsViewModel : ObservableRecipient,
         IWindowService windowService,
         PlayerContext playerContext)
     {
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _windowService = windowService;
         _playerSettings = playerSettings;
         _playerContext = playerContext;

@@ -18,10 +18,6 @@ using Windows.Media.Core;
 using Windows.Media.Playback;
 using Windows.System;
 using Microsoft.UI.Xaml.Controls.Primitives;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
-using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -64,10 +60,10 @@ public sealed partial class SeekBarViewModel :
 
     private readonly PlaybackSettingsContext _playbackSettings;
     private readonly PlayerContext _playerContext;
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _bufferingTimer;
-    private readonly DispatcherQueueTimer _seekTimer;
-    private readonly DispatcherQueueTimer _originalPositionTimer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _bufferingTimer;
+    private readonly IAppDispatcherTimer _seekTimer;
+    private readonly IAppDispatcherTimer _originalPositionTimer;
     private readonly IPlaybackProgressTracker _playbackProgressTracker;
     private TimeSpan _originalPosition;
     private TimeSpan _lastTrackedPosition;
@@ -81,7 +77,7 @@ public sealed partial class SeekBarViewModel :
         _playbackSettings = playbackSettings;
         _playbackProgressTracker = playbackProgressTracker;
         _playerContext = playerContext;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _bufferingTimer = _dispatcherQueue.CreateTimer();
         _seekTimer = _dispatcherQueue.CreateTimer();
         _originalPositionTimer = _dispatcherQueue.CreateTimer();
@@ -278,7 +274,7 @@ public sealed partial class SeekBarViewModel :
         {
             if (media.IsPlaying)
             {
-                _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => SetPlayerPosition(lastPosition, false));
+                _dispatcherQueue.TryEnqueue(AppDispatcherPriority.Low, () => SetPlayerPosition(lastPosition, false));
                 _lastTrackedPosition = TimeSpan.Zero;
             }
             else
@@ -364,7 +360,7 @@ public sealed partial class SeekBarViewModel :
         if (args.NewValue is not (MediaPlaybackState.None or MediaPlaybackState.Opening) &&
             _lastTrackedPosition > TimeSpan.Zero)
         {
-            _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            _dispatcherQueue.TryEnqueue(AppDispatcherPriority.Low, () =>
             {
                 SetPlayerPosition(_lastTrackedPosition, false);
                 _lastTrackedPosition = TimeSpan.Zero;

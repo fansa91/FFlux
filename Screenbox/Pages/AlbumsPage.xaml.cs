@@ -10,9 +10,7 @@ using Screenbox.Core.ViewModels;
 using Windows.System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Navigation;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
+using Screenbox.Core.Helpers;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -27,14 +25,14 @@ public sealed partial class AlbumsPage : Page
 
     internal CommonViewModel Common { get; }
 
-    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IAppDispatcher _dispatcherQueue;
 
     private double _contentVerticalOffset;
 
     public AlbumsPage()
     {
         this.InitializeComponent();
-        _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         DataContext = Ioc.Default.GetRequiredService<AlbumsPageViewModel>();
         Common = Ioc.Default.GetRequiredService<CommonViewModel>();
     }

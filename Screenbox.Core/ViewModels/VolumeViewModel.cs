@@ -8,9 +8,7 @@ using Screenbox.Core.Messages;
 using Screenbox.Core.Playback;
 using Screenbox.Core.Services;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
+using Screenbox.Core.Helpers;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -25,7 +23,7 @@ public sealed partial class VolumeViewModel : ObservableRecipient,
 
     private IMediaPlayer? MediaPlayer => _playerContext.MediaPlayer;
 
-    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IAppDispatcher _dispatcherQueue;
     private readonly PlaybackSettingsContext _playbackSettings;
     private readonly PlayerContext _playerContext;
 
@@ -36,7 +34,7 @@ public sealed partial class VolumeViewModel : ObservableRecipient,
         Volume = playbackSettings.Volume;
         MaxVolume = playbackSettings.MaxVolume;
         IsMute = Volume == 0;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
 
         if (MediaPlayer != null)
         {

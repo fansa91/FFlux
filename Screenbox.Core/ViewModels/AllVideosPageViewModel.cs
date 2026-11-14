@@ -10,9 +10,6 @@ using Screenbox.Core.Contexts;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.Models;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -27,13 +24,13 @@ public sealed partial class AllVideosPageViewModel : ObservableRecipient,
     public ObservableCollection<MediaViewModel> Videos { get; }
 
     private readonly LibraryContext _libraryContext;
-    private readonly DispatcherQueue _dispatcherQueue;
-    private readonly DispatcherQueueTimer _timer;
+    private readonly IAppDispatcher _dispatcherQueue;
+    private readonly IAppDispatcherTimer _timer;
 
     public AllVideosPageViewModel(LibraryContext libraryContext)
     {
         _libraryContext = libraryContext;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
         _timer = _dispatcherQueue.CreateTimer();
         Videos = new ObservableCollection<MediaViewModel>();
 

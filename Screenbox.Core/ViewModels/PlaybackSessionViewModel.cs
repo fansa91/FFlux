@@ -7,9 +7,7 @@ using Screenbox.Core.Events;
 using Screenbox.Core.Messages;
 using Screenbox.Core.Playback;
 using Windows.System;
-using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
-using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
-using DispatcherQueueHandler = Microsoft.UI.Dispatching.DispatcherQueueHandler;
+using Screenbox.Core.Helpers;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -30,12 +28,12 @@ public sealed partial class PlaybackSessionViewModel : ObservableRecipient,
     private IMediaPlayer? MediaPlayer => _playerContext.MediaPlayer;
 
     private readonly PlayerContext _playerContext;
-    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly IAppDispatcher _dispatcherQueue;
 
     public PlaybackSessionViewModel(PlayerContext playerContext)
     {
         _playerContext = playerContext;
-        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _dispatcherQueue = AppDispatcher.Current;
 
         PlaybackRate = 1.0;
         AudioTimingOffset = 0.0;
