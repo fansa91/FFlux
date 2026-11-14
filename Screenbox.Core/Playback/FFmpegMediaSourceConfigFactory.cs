@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using FFmpegInteropX;
+using Screenbox.Core.Helpers;
 using Windows.Foundation.Collections;
 
 namespace Screenbox.Core.Playback;
@@ -26,6 +28,23 @@ public static class FFmpegMediaSourceConfigFactory
     /// <returns>A ready to use <see cref="MediaSourceConfig"/>.</returns>
     public static MediaSourceConfig Create(IEnumerable<string>? options = null)
     {
+        // The decoder decision happens while the source is being opened, so raise FFmpeg's log
+        // level here, before CreateFrom*Async. In practice this bundled build only surfaces
+        // info-level messages, so VideoStreamInfo.DecoderEngine (logged when the media opens)
+        // remains the authoritative answer for "did hardware decoding actually engage".
+        if (PlaybackTrace.Enabled)
+        {
+            try
+            {
+                FFmpegInteropLogging.SetLogLevel(LogLevel.Debug);
+                PlaybackTrace.Write("FFmpegInteropLogging level -> Debug");
+            }
+            catch (Exception ex)
+            {
+                PlaybackTrace.Write("FFmpegInteropLogging level failed", ex);
+            }
+        }
+
         MediaSourceConfig config = new();
 
         // VideoDecoderMode.Automatic is the FFmpegInteropX D3D11VA path: it uses the
@@ -33,11 +52,15 @@ public static class FFmpegMediaSourceConfigFactory
         // falls back to the FFmpeg software decoder otherwise.
         config.Video.VideoDecoderMode = VideoDecoderMode.Automatic;
 
-        // FastSeek jumps to the nearest keyframe. FFmpegMediaSource.PlaybackSession must be
-        // assigned to MediaPlayer.PlaybackSession for this to take effect; FFmpegMediaPlayer
-        // does that as soon as the source is opened.
-        config.General.FastSeek = true;
-        config.General.FastSeekCleanAudio = true;
+        // FastSeek resolves a seek to the nearest keyframe instead of decoding up to the exact
+        // position. Measured against the test corpus it is fast (17-63ms to resume) but wildly
+        // imprecise: a 2s GOP lands up to one full GOP early, and a single-GOP file (x264's
+        // default keyint of 250 frames) sends every seek back to 0. Precise seeking resumes in
+        // a comparable time for local media, so it is the default. Set SCREENBOX_FAST_SEEK=1 to
+        // opt back into keyframe seeking for slow/remote sources.
+        bool fastSeek = Environment.GetEnvironmentVariable("SCREENBOX_FAST_SEEK") == "1";
+        config.General.FastSeek = fastSeek;
+        config.General.FastSeekCleanAudio = fastSeek;
 
         // 0 means "use the number of logical CPU cores" in FFmpegInteropX.
         config.Video.MaxDecoderThreads = 0;

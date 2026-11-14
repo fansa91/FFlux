@@ -15,7 +15,8 @@ public static class PlaybackTrace
 
     public static readonly bool Enabled =
         Environment.GetEnvironmentVariable("SCREENBOX_PLAYBACK_TRACE") == "1" ||
-        Environment.GetEnvironmentVariable("SCREENBOX_STARTUP_TRACE") == "1";
+        Environment.GetEnvironmentVariable("SCREENBOX_STARTUP_TRACE") == "1" ||
+        Environment.GetEnvironmentVariable("SCREENBOX_PLAYBACK_PROBE") == "1";
 
     private static readonly string LogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

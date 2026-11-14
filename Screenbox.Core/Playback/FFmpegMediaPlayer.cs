@@ -253,6 +253,7 @@ public sealed class FFmpegMediaPlayer : IMediaPlayer
     private double _subtitleDelay;
     private int _generation;
     private bool _isClosed;
+    private bool _audioDelayNeedsReapply;
 
     private MediaPlaybackSession? Session => _player.PlaybackSession;
 
@@ -324,6 +325,20 @@ public sealed class FFmpegMediaPlayer : IMediaPlayer
     {
         RefreshCapabilities();
         PlaybackTrace.Write($"MediaOpened: {NaturalVideoWidth}x{NaturalVideoHeight}, duration={_player.PlaybackSession?.NaturalDuration}, state={PlaybackState}");
+
+        // Which decoder FFmpeg actually picked decides whether hardware acceleration is
+        // really in play; a silent software fallback otherwise looks identical.
+        if (PlaybackTrace.Enabled && _ffmpegSource?.CurrentVideoStream is { } video)
+        {
+            PlaybackTrace.Write($"Decoder: engine={video.DecoderEngine} hw={video.HardwareDecoderStatus} " +
+                                $"codec={video.CodecName} {video.PixelWidth}x{video.PixelHeight}");
+        }
+
+        if (_playbackItem is { } item)
+        {
+            PlaybackProbe.TryStart(this, item);
+        }
+
         MediaOpened?.Invoke(this, EventArgs.Empty);
     }
 
@@ -359,6 +374,15 @@ public sealed class FFmpegMediaPlayer : IMediaPlayer
 
     private void OnPositionChanged(MediaPlaybackSession sender, object? args)
     {
+        // An audio track switch re-opens the stream on a background demuxer thread, so the
+        // audio delay can only be re-applied once decoding has settled. The first position
+        // tick after the switch is a good enough signal for that.
+        if (_audioDelayNeedsReapply)
+        {
+            _audioDelayNeedsReapply = false;
+            ApplyAudioDelay();
+        }
+
         TimeSpan position = sender.Position;
         TimeSpan oldValue = _lastPosition;
         _lastPosition = position;
@@ -450,6 +474,7 @@ public sealed class FFmpegMediaPlayer : IMediaPlayer
     private void AudioTracksOnSelectedIndexChanged(Windows.Media.Core.ISingleSelectMediaTrackList sender, object? args)
     {
         _playbackItem?.AudioTracks.ApplySelection(sender.SelectedIndex);
+        _audioDelayNeedsReapply = _audioDelay != 0;
     }
 
     private void VideoTracksOnSelectedIndexChanged(Windows.Media.Core.ISingleSelectMediaTrackList sender, object? args)
@@ -464,7 +489,25 @@ public sealed class FFmpegMediaPlayer : IMediaPlayer
 
     private void ApplyAudioDelay()
     {
-        if (_ffmpegSource?.CurrentAudioStream is { } audioStream)
+        if (_ffmpegSource is null) return;
+
+        // CurrentAudioStream goes null as soon as the playback item switches audio tracks,
+        // so fall back to whichever stream the demuxer now reports as active. Without this,
+        // the audio delay silently stops working after a track switch.
+        AudioStreamInfo? audioStream = _ffmpegSource.CurrentAudioStream;
+        if (audioStream is null)
+        {
+            foreach (AudioStreamInfo stream in _ffmpegSource.AudioStreams)
+            {
+                if (stream.IsActive)
+                {
+                    audioStream = stream;
+                    break;
+                }
+            }
+        }
+
+        if (audioStream is not null)
         {
             _ffmpegSource.SetStreamDelay(audioStream, TimeSpan.FromMilliseconds(_audioDelay));
         }
