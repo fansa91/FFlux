@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Nullable>enable</Nullable>
-    <UseUwp>true</UseUwp>
+    <!-- No UseUwp: the net11.0-windows10.0.* TFM supplies the Windows SDK WinRT projection. -->
     <Platforms>x86;x64;arm64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <DefaultLanguage>en-US</DefaultLanguage>
@@ -15,14 +15,17 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.4.2" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="CommunityToolkit.Uwp.Extensions" Version="8.2.251219" />
-    <!-- FFmpegInteropX.UWP is the UWP-flavoured top-level package for .NET 9+ UWP apps.
-         It pulls in FFmpegInteropX.UWP.Lib (the WinRT component) and
-         FFmpegInteropX.UWP.FFmpeg (avcodec/avformat/avutil/swscale/swresample DLLs).
-         The older FFmpegInteropX + FFmpegInteropX.FFmpegUWP pair targets .NET Native only. -->
-    <PackageReference Include="FFmpegInteropX.UWP" Version="2.1.0.81200" />
+    <PackageReference Include="CommunityToolkit.WinUI.Extensions" Version="8.2.251219" />
+    <!-- Top-level FFmpegInteropX resolves to FFmpegInteropX.Desktop.Lib +
+         FFmpegInteropX.Desktop.FFmpeg for WinUI 3 / desktop projects.
+         The FFmpegMediaSource API is identical to the UWP flavour, so
+         FFmpegMediaPlayer / FFmpegPlaybackItem need no code changes. -->
+    <PackageReference Include="FFmpegInteropX" Version="2.1.0.81200" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="11.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
+    <!-- Temporary: NavigationService still uses Window.Current (UWP). Remove this
+         reference once it is replaced by an injected window abstraction. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
   </ItemGroup>
 </Project>

@@ -2,7 +2,9 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <Nullable>enable</Nullable>
-    <UseUwp>true</UseUwp>
+    <!-- WinUI 3 / Windows App SDK. UseUwp belongs to the UWP project model and is gone. -->
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>MSIX</WindowsPackageType>
     <Platforms>x86;x64;arm64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <DefaultLanguage>en-US</DefaultLanguage>
@@ -38,18 +40,23 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Uwp.Animations" Version="8.2.251219" />
-    <PackageReference Include="CommunityToolkit.Uwp.Behaviors" Version="8.2.251219" />
-    <PackageReference Include="CommunityToolkit.Uwp.Controls.Primitives" Version="8.2.251219" />
-    <PackageReference Include="CommunityToolkit.Uwp.Controls.SettingsControls" Version="8.2.251219" />
-    <PackageReference Include="CommunityToolkit.Uwp.Converters" Version="8.2.251219" />
-    <PackageReference Include="CommunityToolkit.Uwp.Extensions" Version="8.2.251219" />
-    <!-- The app project must also reference the UWP FFmpeg build so its DLLs are packaged. -->
-    <PackageReference Include="FFmpegInteropX.UWP" Version="2.1.0.81200" />
+    <!-- WinUI 3 counterparts of the former CommunityToolkit.Uwp.* packages.
+         Versions match (8.2.251219) and the CLR/XAML namespaces were already
+         CommunityToolkit.WinUI.*, so XAML prefixes need no changes. -->
+    <PackageReference Include="CommunityToolkit.WinUI.Animations" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.WinUI.Behaviors" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.Primitives" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.WinUI.Converters" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.WinUI.Extensions" Version="8.2.251219" />
+    <!-- Top-level FFmpegInteropX selects the Desktop lib/FFmpeg build for WinUI 3.
+         The FFmpegMediaSource API is unchanged; only the packaged binaries differ. -->
+    <PackageReference Include="FFmpegInteropX" Version="2.1.0.81200" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0" />
-    <PackageReference Include="Microsoft.UI.Xaml" Version="2.8.7" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Uwp.Managed" Version="3.0.1" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="3.0.1" />
     <PackageReference Include="Sentry.Extensions.Logging" Version="6.12.1" />
     <PackageReference Include="ReswPlus" Version="0.6.1" />
   </ItemGroup>

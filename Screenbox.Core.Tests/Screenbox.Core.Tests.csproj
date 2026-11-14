@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <UseUwp>true</UseUwp>
+    <!-- No UseUwp: TUnit runs as a plain desktop test host. -->
     <DefaultLanguage>en-US</DefaultLanguage>
     <IsAotCompatible>true</IsAotCompatible>
     <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
@@ -17,6 +17,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="11.0.0" />
+    <!-- Tests still reference ElementTheme / ItemIndexRange. Once those are
+         abstracted away, this reference can be dropped. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
     <PackageReference Include="TUnit" Version="1.75.0" />
   </ItemGroup>
 
