@@ -1,0 +1,147 @@
+name: Release
+
+# The only pipeline in this repository. Pushing a vX.Y.Z tag builds both
+# distributions and publishes them on the GitHub release for that tag.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, without the leading v (e.g. 0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: '11.0.x'
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  APP_PROJ_PATH: FFlux
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 不依赖：自带 .NET 运行时和 Windows App SDK，解压即用
+          - flavour: self-contained
+            self_contained: true
+            winappsdk_self_contained: true
+            publish_aot: true
+          # 依赖：体积小，需要机器上装好 .NET 运行时与 Windows App Runtime
+          - flavour: framework-dependent
+            self_contained: false
+            winappsdk_self_contained: false
+            publish_aot: false
+    outputs:
+      version: ${{ steps.app_version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'nuget.config') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Resolve version
+        id: app_version
+        shell: pwsh
+        env:
+          VERSION_REF: ${{ inputs.version || github.ref_name }}
+        run: |
+          # Accepts "0.1.0" (manual run) and "v0.1.0" (tag push). MAJOR.MINOR.PATCH only.
+          $version = $env:VERSION_REF -replace '^v', ''
+          if ($version -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
+              throw "Invalid version '$env:VERSION_REF'. Use vMAJOR.MINOR.PATCH, for example v0.1.0."
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "Version to stamp into the app: $version"
+
+      # Version is the only thing the pipeline injects: it lands in the assembly
+      # metadata (AssemblyInformationalVersion -> shown on the Settings page), in the
+      # exe's file properties, and in the artefact names. Every other build flag keeps
+      # the repository default: PublishAot=true and WindowsAppSDKSelfContained=true for
+      # the standalone build, and both off for the framework-dependent one (AOT output
+      # cannot run without its own runtime, so it has to go together).
+      - name: Publish ${{ matrix.flavour }}
+        shell: pwsh
+        run: |
+          dotnet publish "$env:APP_PROJ_PATH/FFlux.csproj" `
+            -c Release `
+            -r win-x64 `
+            -p:Platform=x64 `
+            -p:Version=${{ steps.app_version.outputs.version }} `
+            -p:SelfContained=${{ matrix.self_contained }} `
+            -p:WindowsAppSDKSelfContained=${{ matrix.winappsdk_self_contained }} `
+            -p:PublishAot=${{ matrix.publish_aot }} `
+            -p:ContinuousIntegrationBuild=true `
+            -p:PublishDir="${{ github.workspace }}\artifacts\${{ matrix.flavour }}\" `
+            --nologo
+
+      - name: Package ${{ matrix.flavour }}
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:GITHUB_WORKSPACE "artifacts/${{ matrix.flavour }}"
+          $name = "FFlux-${{ steps.app_version.outputs.version }}-win-x64-${{ matrix.flavour }}"
+          $zip = Join-Path $env:GITHUB_WORKSPACE "$name.zip"
+
+          if (-not (Test-Path (Join-Path $source "FFlux.exe"))) {
+              throw "Publish output does not contain FFlux.exe: $source"
+          }
+
+          Compress-Archive -Path (Join-Path $source '*') -DestinationPath $zip -CompressionLevel Optimal
+          "$name.zip: $([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB"
+
+      - name: Upload ${{ matrix.flavour }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: FFlux-${{ matrix.flavour }}
+          path: FFlux-${{ steps.app_version.outputs.version }}-win-x64-${{ matrix.flavour }}.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download builds
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          ls -lh dist
+          cat > notes.md <<EOF
+          同一个 FFlux $VERSION，两种打包方式，功能完全一致。
+
+          | 下载 | 运行时要求 |
+          | --- | --- |
+          | \`FFlux-$VERSION-win-x64-self-contained.zip\` | 无。解压后直接运行 \`FFlux.exe\` |
+          | \`FFlux-$VERSION-win-x64-framework-dependent.zip\` | 需预装 .NET 11 桌面运行时与 Windows App Runtime 2.6 |
+
+          系统要求：Windows 10 1903（build 18362）及以上，x64。
+          EOF
+          gh release create "v$VERSION" dist/*.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "FFlux v$VERSION" \
+            --notes-file notes.md
