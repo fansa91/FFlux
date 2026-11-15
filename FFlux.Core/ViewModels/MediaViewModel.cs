@@ -263,10 +263,16 @@ public sealed partial class MediaViewModel : ObservableRecipient
 
         if (file is not null)
         {
-            using var source = await GetThumbnailSourceAsync(file);
+            // Video frames only come from the shell with a video-shaped mode: SingleItem answers a
+            // video with the generic file-type icon, while VideosView decodes an actual frame.
+            ThumbnailMode mode = GetShellThumbnailMode(MediaType);
+
+            // 640 covers a 300dp tile on a 2x display; asking for the full frame is wasted work
+            // because the thumbnail is decoded down to the tile height anyway.
+            using var source = await GetThumbnailSourceAsync(file, mode, 640);
             if (source is null)
             {
-                PlaybackTrace.Write("thumbnail: no shell thumbnail");
+                PlaybackTrace.Write($"thumbnail: no shell thumbnail ({mode})");
                 return;
             }
 
@@ -286,7 +292,7 @@ public sealed partial class MediaViewModel : ObservableRecipient
                 return;
             }
 
-            PlaybackTrace.Write("thumbnail: shell thumbnail decoded");
+            PlaybackTrace.Write($"thumbnail: shell thumbnail decoded ({mode})");
             Thumbnail = image;
         }
         else if (MediaInfo.ArtworkUri is { } artworkUri)
@@ -346,17 +352,32 @@ public sealed partial class MediaViewModel : ObservableRecipient
         return null;
     }
 
-    private static async Task<IRandomAccessStream?> GetThumbnailSourceAsync(StorageFile file)
+    /// <summary>
+    /// Picks the shell thumbnail mode for a media type.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ThumbnailMode.SingleItem"/> is wrong for video: the shell answers a video request
+    /// in that mode with the generic file-type icon, so the tile showed no frame at all. A
+    /// video-shaped mode (<see cref="ThumbnailMode.VideosView"/>) decodes an actual frame.
+    /// </remarks>
+    public static ThumbnailMode GetShellThumbnailMode(MediaPlaybackType mediaType) =>
+        mediaType == MediaPlaybackType.Video ? ThumbnailMode.VideosView : ThumbnailMode.SingleItem;
+
+    private static async Task<IRandomAccessStream?> GetThumbnailSourceAsync(
+        StorageFile file,
+        ThumbnailMode mode = ThumbnailMode.SingleItem,
+        uint requestedSize = 1280)
     {
         if (!file.IsAvailable)
             return null;
 
         try
         {
-            // Use SingleItem mode to retrieve embedded album art with original aspect ratio.
+            // SingleItem returns embedded album art with the original aspect ratio, which is what
+            // the album page needs; a video needs VideosView to get a frame instead of an icon.
             // https://learn.microsoft.com/windows/apps/develop/files/thumbnails
             StorageItemThumbnail? source =
-                await file.GetThumbnailAsync(ThumbnailMode.SingleItem, requestedSize: 1280, ThumbnailOptions.UseCurrentScale);
+                await file.GetThumbnailAsync(mode, requestedSize, ThumbnailOptions.UseCurrentScale);
             if (source is { Type: ThumbnailType.Image })
             {
                 return source;

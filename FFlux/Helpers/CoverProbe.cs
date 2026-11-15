@@ -37,30 +37,25 @@ internal static class CoverProbe
         try
         {
             ILibraryService libraryService = Ioc.Default.GetRequiredService<ILibraryService>();
-            StorageLibrary library = await libraryService.InitializeMusicLibraryAsync();
-            StorageFolder? root = library.Folders.FirstOrDefault();
-            if (root is null)
+
+            StorageLibrary musicLibrary = await libraryService.InitializeMusicLibraryAsync();
+            if (musicLibrary.Folders.FirstOrDefault() is { } musicRoot)
+            {
+                await InspectRootAsync(musicRoot, FilesHelpers.SupportedAudioFormats.ToArray(), InspectAsync);
+            }
+            else
             {
                 Log("no music library root");
-                return;
             }
 
-            QueryOptions options = new(CommonFileQuery.OrderByTitle, FilesHelpers.SupportedAudioFormats.ToArray())
+            StorageLibrary videosLibrary = await libraryService.InitializeVideosLibraryAsync();
+            if (videosLibrary.Folders.FirstOrDefault() is { } videosRoot)
             {
-                IndexerOption = IndexerOption.DoNotUseIndexer
-            };
-            StorageFileQueryResult query = root.CreateFileQueryWithOptions(options);
-            IReadOnlyList<StorageFile> files = await query.GetFilesAsync(0, 2);
-            Log($"root='{root.Path}' sample={files.Count}");
-            if (files.Count == 0)
-            {
-                Log("query returned no files");
-                return;
+                await InspectRootAsync(videosRoot, FilesHelpers.SupportedVideoFormats.ToArray(), InspectShellAsync);
             }
-
-            foreach (StorageFile file in files)
+            else
             {
-                await InspectAsync(file);
+                Log("no videos library root");
             }
         }
         catch (Exception ex)
@@ -69,11 +64,41 @@ internal static class CoverProbe
         }
     }
 
-    private static async Task InspectAsync(StorageFile file)
+    private static async Task InspectRootAsync(
+        StorageFolder root,
+        string[] formats,
+        Func<StorageFile, Task> inspect)
+    {
+        QueryOptions options = new(CommonFileQuery.OrderByTitle, formats)
+        {
+            IndexerOption = IndexerOption.DoNotUseIndexer
+        };
+        StorageFileQueryResult query = root.CreateFileQueryWithOptions(options);
+        IReadOnlyList<StorageFile> files = await query.GetFilesAsync(0, 2);
+        Log($"root='{root.Path}' sample={files.Count}");
+        foreach (StorageFile file in files)
+        {
+            await inspect(file);
+        }
+    }
+
+    /// <summary>
+    /// Reports the shell thumbnail outcome only. Used for videos, where the album art sources do
+    /// not apply and the shell is the whole story.
+    /// </summary>
+    private static async Task InspectShellAsync(StorageFile file)
     {
         Log($"file='{file.Name}' available={file.IsAvailable}");
+        await InspectShellThumbnailsAsync(file);
+    }
 
-        foreach (ThumbnailMode mode in new[] { ThumbnailMode.SingleItem, ThumbnailMode.MusicView, ThumbnailMode.PicturesView })
+    private static async Task InspectShellThumbnailsAsync(StorageFile file)
+    {
+        foreach (ThumbnailMode mode in new[]
+                 {
+                     ThumbnailMode.SingleItem, ThumbnailMode.VideosView,
+                     ThumbnailMode.MusicView, ThumbnailMode.PicturesView
+                 })
         {
             try
             {
@@ -115,6 +140,13 @@ internal static class CoverProbe
                 Log($"  {mode}: FAILED {ex.GetType().Name} hr=0x{ex.HResult:X8}: {ex.Message}");
             }
         }
+    }
+
+    private static async Task InspectAsync(StorageFile file)
+    {
+        Log($"file='{file.Name}' available={file.IsAvailable}");
+
+        await InspectShellThumbnailsAsync(file);
 
         try
         {
