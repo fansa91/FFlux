@@ -17,23 +17,47 @@ namespace Screenbox.Core.Helpers;
 /// </summary>
 public static class AppDispatcher
 {
+    private static readonly object DefaultLock = new();
     private static IAppDispatcher? _provider;
-
-    private static readonly Lazy<IAppDispatcher> WinUIDefault = new(static () =>
-    {
-        WinUIDispatcherQueue? queue = WinUIDispatcherQueue.GetForCurrentThread();
-        if (queue is null)
-        {
-            throw new InvalidOperationException(
-                "No WinUI DispatcherQueue is available on the current thread. " +
-                "Call AppDispatcher.SetProvider(...) when hosting Core outside a WinUI XAML application.");
-        }
-
-        return new WinUIAppDispatcher(queue);
-    });
+    private static IAppDispatcher? _default;
 
     /// <summary>The dispatcher for the current host.</summary>
-    public static IAppDispatcher Current => _provider ?? WinUIDefault.Value;
+    public static IAppDispatcher Current => _provider ?? GetOrCreateDefault();
+
+    /// <summary>
+    /// Resolves and pins the WinUI dispatcher on the calling (UI) thread. Call once from the
+    /// application constructor, before any background / COM callback can be the first caller of
+    /// <see cref="Current"/>.
+    /// </summary>
+    /// <remarks>
+    /// A <c>Lazy&lt;T&gt;</c> used to back this lookup. Its factory throws when the first caller
+    /// happens to be a thread-pool thread (no DispatcherQueue there), and Lazy permanently caches
+    /// that failure - so one early background callback would make every later UI-thread lookup
+    /// throw for the rest of the process. The explicit lock below never caches a failed lookup.
+    /// </remarks>
+    public static void InitializeForCurrentThread() => _ = GetOrCreateDefault();
+
+    private static IAppDispatcher GetOrCreateDefault()
+    {
+        lock (DefaultLock)
+        {
+            if (_default is not null) return _default;
+
+            WinUIDispatcherQueue? queue = WinUIDispatcherQueue.GetForCurrentThread();
+            if (queue is null)
+            {
+                // Deliberately not cached: this call is allowed to fail on a worker thread, and
+                // the next call from the real UI thread must still be able to succeed.
+                throw new InvalidOperationException(
+                    "No WinUI DispatcherQueue is available on the current thread. " +
+                    "Call AppDispatcher.SetProvider(...) when hosting Core outside a WinUI XAML application, " +
+                    "or AppDispatcher.InitializeForCurrentThread() on the UI thread at startup.");
+            }
+
+            _default = new WinUIAppDispatcher(queue);
+            return _default;
+        }
+    }
 
     /// <summary>
     /// Overrides the dispatcher implementation. Intended for test hosts and
@@ -46,7 +70,14 @@ public static class AppDispatcher
     }
 
     /// <summary>Restores the WinUI-backed default (mainly for test isolation).</summary>
-    public static void Reset() => _provider = null;
+    public static void Reset()
+    {
+        lock (DefaultLock)
+        {
+            _provider = null;
+            _default = null;
+        }
+    }
 
     private sealed class WinUIAppDispatcher(WinUIDispatcherQueue queue) : IAppDispatcher
     {

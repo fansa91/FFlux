@@ -120,9 +120,15 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
         // Keep internal QueueSession model in sync with the observable Items collection.
         _context.Items.CollectionChanged += OnCollectionChanged;
 
-        // Wire transport controls buttons to commands.
-        if (_transportControlsService.TransportControls is { } smtc0) smtc0.ButtonPressed += TransportControlsOnButtonPressed;
-        if (_transportControlsService.TransportControls is { } smtc1) smtc1.AutoRepeatModeChangeRequested += TransportControlsOnAutoRepeatModeChangeRequested;
+        // The system media transport controls session belongs to
+        // SystemMediaTransportControlsService; it is the sole ButtonPressed subscriber.
+        // Subscribing here as well used to run Next/Previous twice per key press (once on the
+        // UI dispatcher, once on the native MTA callback thread), racing on _queueSession.
+        // Only the repeat-mode request, which has no equivalent in the service, is wired here.
+        if (_transportControlsService.TransportControls is { } smtc)
+        {
+            smtc.AutoRepeatModeChangeRequested += TransportControlsOnAutoRepeatModeChangeRequested;
+        }
 
         if (MediaPlayer is not null)
         {
@@ -147,7 +153,7 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
     /// Clears the queue first unless <see cref="PlayMediaMessage.Existing"/> is true,
     /// in which case the item is played from within the current queue.
     /// </summary>
-    public async void Receive(PlayMediaMessage message)
+    public void Receive(PlayMediaMessage message)
     {
         if (MediaPlayer is null)
         {
@@ -155,7 +161,9 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
             return;
         }
 
-        await ProcessPlayMediaAsync(message);
+        FireAndForget.Run(
+            () => ProcessPlayMediaAsync(message),
+            "PlayQueueCoordinator.Receive(PlayMediaMessage)");
     }
 
     private async Task ProcessPlayMediaAsync(PlayMediaMessage message)
@@ -233,7 +241,12 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
     /// Re-subscribes to media events on the new player and replays any
     /// deferred play request that arrived before the player was ready.
     /// </summary>
-    public async void Receive(PropertyChangedMessage<IMediaPlayer?> message)
+    public void Receive(PropertyChangedMessage<IMediaPlayer?> message) =>
+        FireAndForget.Run(
+            () => HandleMediaPlayerChangedAsync(message),
+            "PlayQueueCoordinator.Receive(PropertyChangedMessage<IMediaPlayer?>)");
+
+    private async Task HandleMediaPlayerChangedAsync(PropertyChangedMessage<IMediaPlayer?> message)
     {
         if (message.Sender is not PlayerContext) return;
         if (message.OldValue is { } oldPlayer)
@@ -286,7 +299,12 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
     /// handles <see cref="PlayQueueContext.ShuffleMode"/> and <see cref="PlayQueueContext.RepeatMode"/>
     /// changes.
     /// </summary>
-    private async void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e) =>
+        FireAndForget.Run(
+            () => HandleContextPropertyChangedAsync(e),
+            "PlayQueueCoordinator.OnContextPropertyChanged");
+
+    private async Task HandleContextPropertyChangedAsync(PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
@@ -974,55 +992,31 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
         });
     }
 
-    private async void OnEndReached(IMediaPlayer sender, object? args)
+    private void OnEndReached(IMediaPlayer sender, object? args)
     {
-        // MediaEnded arrives on a WinRT callback thread. Escape it via Task.Run before
-        // touching Position or advancing playback, so the session can transition freely.
-        await Task.Run(async () =>
-        {
-            try
-            {
-                var result = _playbackControlService.HandleMediaEnded(_queueSession, _context.RepeatMode);
-                if (result is not null)
-                {
-                    await ApplyNavigationResultAsync(result);
-                }
-                else if (_context.RepeatMode == MediaPlaybackAutoRepeatMode.Track)
-                {
-                    // Track repeat — restart from the beginning.
-                    sender.Position = TimeSpan.Zero;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to advance playlist on media ended");
-            }
-        });
+        // MediaEnded arrives on a WinRT callback thread. The old code escaped it with Task.Run,
+        // which then mutated observable queue state and called MediaPlayer from the thread pool.
+        // Hopping to the dispatcher instead keeps all of that on the UI thread, and the guard
+        // stops any exception from escaping back into CoreMessaging as a fatal stowed exception.
+        _dispatcherQueue.TryExecuteGuarded(
+            () => FireAndForget.Run(
+                () => HandleEndReachedAsync(sender),
+                "PlayQueueCoordinator.OnEndReached"),
+            ex => _logger.LogError(ex, "Failed to dispatch media-ended handling"));
     }
 
-    private void TransportControlsOnButtonPressed(SystemMediaTransportControls sender, SystemMediaTransportControlsButtonPressedEventArgs args)
+    private async Task HandleEndReachedAsync(IMediaPlayer sender)
     {
-        // SystemMediaTransportControls events fire on a background MTA worker thread;
-        // marshal to the UI thread so playlist navigation and MediaPlayer calls stay thread-safe.
-        _dispatcherQueue.TryEnqueue(async () =>
+        var result = _playbackControlService.HandleMediaEnded(_queueSession, _context.RepeatMode);
+        if (result is not null)
         {
-            try
-            {
-                switch (args.Button)
-                {
-                    case SystemMediaTransportControlsButton.Next:
-                        await NextAsync();
-                        break;
-                    case SystemMediaTransportControlsButton.Previous:
-                        await PreviousAsync();
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to handle transport controls button {Button}", args.Button);
-            }
-        });
+            await ApplyNavigationResultAsync(result);
+        }
+        else if (_context.RepeatMode == MediaPlaybackAutoRepeatMode.Track)
+        {
+            // Track repeat - restart from the beginning.
+            sender.Position = TimeSpan.Zero;
+        }
     }
 
     private void TransportControlsOnAutoRepeatModeChangeRequested(SystemMediaTransportControls sender, AutoRepeatModeChangeRequestedEventArgs args)
@@ -1034,8 +1028,9 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
         }
 
         // SystemMediaTransportControls events fire on a background MTA worker thread;
-        // marshal observable context updates to the UI thread.
-        _dispatcherQueue.TryExecuteOrEnqueue(Update);
+        // marshal observable context updates to the UI thread and never let a failure escape.
+        _dispatcherQueue.TryExecuteGuarded(Update,
+            ex => _logger.LogError(ex, "Failed to apply the requested repeat mode"));
     }
 
     /// <summary>

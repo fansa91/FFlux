@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Screenbox.Core.Contexts;
 using Screenbox.Core.Coordinators;
 using Screenbox.Core.Factories;
@@ -98,7 +99,8 @@ public static class ServiceHelpers
             return new SystemMediaTransportControlsService(
                 player.NativePlayer,
                 provider.GetRequiredService<PlayQueueContext>(),
-                provider.GetRequiredService<PlayerContext>());
+                provider.GetRequiredService<PlayerContext>(),
+                logger: provider.GetService<ILogger<SystemMediaTransportControlsService>>());
         });
         services.AddSingleton<IPlaybackControlService, PlaybackControlService>();
         services.AddSingleton<IQueueService, QueueService>();

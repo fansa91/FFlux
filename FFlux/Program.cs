@@ -78,7 +78,20 @@ public static class Program
             AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
         }
 
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => StartupErrorLog.Write("ProcessExit");
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            StartupErrorLog.Write("ProcessExit");
+            StartupErrorLog.Shutdown();
+        };
+
+        // Application.UnhandledException only sees exceptions raised on the XAML dispatcher.
+        // Anything escaping a thread-pool / native callback thread terminates the process
+        // directly; this hook is the only place that can leave a stack trace behind so a
+        // "random crash" can actually be diagnosed. It cannot prevent the termination.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            StartupErrorLog.Write(
+                $"AppDomain.UnhandledException (IsTerminating={e.IsTerminating}): {e.ExceptionObject}");
+
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {
             StartupErrorLog.Write("UnobservedTaskException: " + e.Exception);
@@ -103,8 +116,15 @@ public static class Program
             if (!interesting) return;
             if (Interlocked.Increment(ref _firstChanceCount) > MaxFirstChanceEntries) return;
 
+            // The exception's own stack stops at the throw site. The *ambient* stack shows which
+            // startup stage or native callback actually triggered it, which is what is needed to
+            // place a COM exception such as 0x80070490. Opt-in because it is verbose.
+            string ambient = Environment.GetEnvironmentVariable("FFLUX_FC_STACK") == "1"
+                ? $"{Environment.NewLine}--- ambient stack ---{Environment.NewLine}{Environment.StackTrace}"
+                : string.Empty;
+
             StartupErrorLog.Write(
-                $"[FC] {ex.GetType().FullName} hr=0x{ex.HResult:X8} {ex.Message}{Environment.NewLine}{ex.StackTrace}");
+                $"[FC] {ex.GetType().FullName} hr=0x{ex.HResult:X8} {ex.Message}{Environment.NewLine}{ex.StackTrace}{ambient}");
         }
         finally
         {

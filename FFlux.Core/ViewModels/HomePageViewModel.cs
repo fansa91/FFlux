@@ -80,12 +80,28 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
     {
         if (_generalSettings.ShowRecent)
         {
-            _changeDebounceTimer.DebounceCore(DebouncedAction, TimeSpan.FromMilliseconds(100));
+            _changeDebounceTimer.DebounceCore(RefreshRecentSafely, TimeSpan.FromMilliseconds(100));
+        }
+    }
 
-            async void DebouncedAction()
-            {
-                await UpdateRecentMediaAsync(false).ConfigureAwait(false);
-            }
+    /// <summary>
+    /// The debounce timer invokes this on the UI dispatcher. It must stay a plain void method:
+    /// the old <c>async void</c> callback resumed on the thread pool (ConfigureAwait(false)),
+    /// where an exception from the recent-list refresh had no SynchronizationContext to report
+    /// to and terminated the process without any log entry.
+    /// </summary>
+    private void RefreshRecentSafely() => _ = RefreshRecentAsync();
+
+    private async Task RefreshRecentAsync()
+    {
+        try
+        {
+            // ConfigureAwait(true) keeps the observable Recent collection on the UI thread.
+            await UpdateRecentMediaAsync(false);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to refresh the recent media list.");
         }
     }
 

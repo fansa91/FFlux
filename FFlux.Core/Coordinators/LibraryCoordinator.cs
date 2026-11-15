@@ -72,18 +72,16 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
         }
     }
 
-    public async void Receive(SettingChangedMessage<LibrarySettingsContext, bool> message)
+    public void Receive(SettingChangedMessage<LibrarySettingsContext, bool> message) =>
+        FireAndForget.Run(
+            () => HandleSettingChangedAsync(message),
+            "LibraryCoordinator.Receive(SettingChangedMessage)");
+
+    private async Task HandleSettingChangedAsync(SettingChangedMessage<LibrarySettingsContext, bool> message)
     {
         if (message.PropertyName is nameof(LibrarySettingsContext.UseIndexer) or nameof(LibrarySettingsContext.SearchRemovableStorage))
         {
-            try
-            {
-                await RefreshWatchersAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to refresh library watchers after setting change.");
-            }
+            await RefreshWatchersAsync();
         }
     }
 
@@ -345,56 +343,29 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
 
     private void OnMusicQueryContentsChanged(object sender, object args)
     {
-        async void FetchAction()
-        {
-            try
-            {
-                await FetchMusicAsync();
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Failed to refresh the music library after a contents change notification.");
-            }
-        }
-
-        _musicRefreshTimer.DebounceCore(FetchAction, TimeSpan.FromMilliseconds(1000));
+        _musicRefreshTimer.DebounceCore(
+            () => FireAndForget.Run(() => FetchMusicAsync(), "LibraryCoordinator.OnMusicQueryContentsChanged"),
+            TimeSpan.FromMilliseconds(1000));
     }
 
     private void OnVideosQueryContentsChanged(object sender, object args)
     {
-        async void FetchAction()
-        {
-            try
-            {
-                await FetchVideosAsync();
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Failed to refresh the videos library after a contents change notification.");
-            }
-        }
-
-        _videosRefreshTimer.DebounceCore(FetchAction, TimeSpan.FromMilliseconds(1000));
+        _videosRefreshTimer.DebounceCore(
+            () => FireAndForget.Run(() => FetchVideosAsync(), "LibraryCoordinator.OnVideosQueryContentsChanged"),
+            TimeSpan.FromMilliseconds(1000));
     }
 
     private void OnPortableStorageDeviceChanged(DeviceWatcher sender, DeviceInformationUpdate args)
     {
         if (!SearchRemovableStorage) return;
 
-        async void FetchAction()
-        {
-            try
+        _storageDeviceRefreshTimer.DebounceCore(
+            () => FireAndForget.Run(async () =>
             {
                 await FetchVideosAsync();
                 await FetchMusicAsync();
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Failed to refresh libraries after a portable storage device change.");
-            }
-        }
-
-        _storageDeviceRefreshTimer.DebounceCore(FetchAction, TimeSpan.FromMilliseconds(1000));
+            }, "LibraryCoordinator.OnPortableStorageDeviceChanged"),
+            TimeSpan.FromMilliseconds(1000));
     }
 
     private void StartPortableStorageDeviceWatcher()

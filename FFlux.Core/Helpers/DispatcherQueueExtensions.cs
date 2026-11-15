@@ -27,6 +27,66 @@ public static class DispatcherQueueExtensions
     }
 
     /// <summary>
+    /// Runs a WinRT / COM event callback on the UI thread and guarantees that no exception
+    /// escapes back into the native caller.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// SMTC button presses, seek requests and MediaPlayer events are raised on a background
+    /// MTA worker thread. An exception thrown there never reaches
+    /// <c>Application.UnhandledException</c>: CoreMessaging wraps it as a stowed exception
+    /// (0xC000027B) and terminates the process without a managed stack. That is what makes
+    /// these failures look like a random crash with no log entry.
+    /// </para>
+    /// <para>
+    /// The guard covers both hazards at once: the body runs on the dispatcher (so observable
+    /// collections and bound view models are never touched cross-thread), and every throw —
+    /// including one from <c>HasThreadAccess</c> / <c>TryEnqueue</c> during shutdown — is
+    /// swallowed and passed to <paramref name="onError"/> for diagnostics.
+    /// </para>
+    /// </remarks>
+    public static bool TryExecuteGuarded(
+        this IAppDispatcher dispatcher,
+        Action action,
+        Action<Exception>? onError = null)
+    {
+        void Report(Exception ex)
+        {
+            try
+            {
+                onError?.Invoke(ex);
+            }
+            catch (Exception)
+            {
+                // Reporting must never become the exception that escapes the callback.
+            }
+        }
+
+        void Guarded()
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                Report(ex);
+            }
+        }
+
+        try
+        {
+            return dispatcher.TryExecuteOrEnqueue(Guarded);
+        }
+        catch (Exception ex)
+        {
+            // HasThreadAccess / TryEnqueue can fail while the dispatcher is being torn down.
+            Report(ex);
+            return false;
+        }
+    }
+
+    /// <summary>
     /// WinUI 3 compatibility shim for the CommunityToolkit <c>Debounce</c> helper.
     /// Each call restarts the timer; the action runs once the interval elapses.
     /// With <paramref name="immediate"/> set, the first call in a quiet window runs

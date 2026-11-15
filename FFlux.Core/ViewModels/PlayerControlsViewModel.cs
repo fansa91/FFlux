@@ -154,7 +154,12 @@ public sealed partial class PlayerControlsViewModel : ObservableRecipient,
         }
     }
 
-    public async void Receive(TrackNavigationMessage message)
+    public void Receive(TrackNavigationMessage message) =>
+        FireAndForget.Run(
+            () => NavigateAsync(message),
+            "PlayerControlsViewModel.Receive(TrackNavigationMessage)");
+
+    private async Task NavigateAsync(TrackNavigationMessage message)
     {
         if (MediaPlayer is null)
             return;

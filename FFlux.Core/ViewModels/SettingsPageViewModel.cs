@@ -384,8 +384,11 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
 
     private void OnPortableStorageDeviceChanged(DeviceWatcher sender, DeviceInformationUpdate args)
     {
-        async void RefreshAction() => await UpdateRemovableStorageFoldersAsync();
-        _storageDeviceRefreshTimer.DebounceCore(RefreshAction, TimeSpan.FromMilliseconds(500));
+        _storageDeviceRefreshTimer.DebounceCore(
+            () => FireAndForget.Run(
+                () => UpdateRemovableStorageFoldersAsync(),
+                "SettingsPageViewModel.OnPortableStorageDeviceChanged"),
+            TimeSpan.FromMilliseconds(500));
     }
 
     /// <summary>

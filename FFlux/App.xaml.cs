@@ -52,6 +52,16 @@ sealed partial class App : Application
         // before anything reads settings, the database, or the thumbnail cache.
         AppDataMigration.MigrationResult migration = AppDataMigration.Run();
         StartupErrorLog.Write($"App ctor; data migration: {migration.Message} (migrated={migration.Migrated} skipped={migration.Skipped} failed={migration.Failed})");
+
+        // The App constructor runs on the XAML UI thread. Pin the dispatcher here so a background
+        // COM callback can never be the first caller and poison the lookup for the whole process.
+        AppDispatcher.InitializeForCurrentThread();
+
+        // Every fire-and-forget task in Core is observed; failures land in the startup log instead
+        // of escaping as a fatal stowed exception.
+        FireAndForget.SetErrorHandler((context, ex) =>
+            StartupErrorLog.Write($"FireAndForget [{context}] failed: {ex}"));
+
         // Initialize Sentry SDK and immediately register error handlers before XAML is initialized
         _ = InitializeSentrySdk();
         UnhandledException += App_UnhandledException;
@@ -86,15 +96,19 @@ sealed partial class App : Application
         }
         catch (Exception ex)
         {
-            // Tell Sentry this was an unhandled exception
-            ex.Data[Mechanism.HandledKey] = false;
-            ex.Data[Mechanism.MechanismKey] = "CoreApplication.UnhandledErrorDetected";
+            StartupErrorLog.Write("CoreApplication.UnhandledErrorDetected: " + ex);
 
-            // Capture the exception
-            SentrySdk.CaptureException(ex);
+            if (SentryEnabled)
+            {
+                // Tell Sentry this was an unhandled exception
+                ex.Data[Mechanism.HandledKey] = false;
+                ex.Data[Mechanism.MechanismKey] = "CoreApplication.UnhandledErrorDetected";
 
-            // Flush the event immediately
-            SentrySdk.FlushAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
+                SentrySdk.CaptureException(ex);
+
+                // Flush the event immediately
+                SentrySdk.FlushAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
+            }
 
             throw;
         }
@@ -107,18 +121,21 @@ sealed partial class App : Application
         var exception = e.Exception;
         if (exception != null)
         {
-            // Tell Sentry this was an unhandled exception
-            exception.Data[Mechanism.HandledKey] = false;
-            exception.Data[Mechanism.MechanismKey] = "Application.UnhandledException";
-
-            // Capture the exception
             StartupErrorLog.Write("Unhandled exception: " + exception);
-            SentrySdk.CaptureException(exception);
 
-            // Never block the UI dispatcher thread inside an exception callback: a
-            // synchronous flush here deadlocks the message loop and the process is
-            // then torn down by CoreMessaging as a stowed exception.
-            _ = SentrySdk.FlushAsync(TimeSpan.FromSeconds(2));
+            if (SentryEnabled)
+            {
+                // Tell Sentry this was an unhandled exception
+                exception.Data[Mechanism.HandledKey] = false;
+                exception.Data[Mechanism.MechanismKey] = "Application.UnhandledException";
+
+                SentrySdk.CaptureException(exception);
+
+                // Never block the UI dispatcher thread inside an exception callback: a
+                // synchronous flush here deadlocks the message loop and the process is
+                // then torn down by CoreMessaging as a stowed exception.
+                _ = SentrySdk.FlushAsync(TimeSpan.FromSeconds(2));
+            }
 
             // Report and keep running. Without this the XAML framework rethrows and
             // terminates the app even though the error was already captured.
@@ -138,13 +155,16 @@ sealed partial class App : Application
             builder.AddDebug();
             builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
 #endif
-            builder.AddSentry(options =>
+            if (SentryEnabled)
             {
-                ConfigureSentryOptions(options);
-                options.InitializeSdk = false;
-                options.MinimumEventLevel = Microsoft.Extensions.Logging.LogLevel.Error;
-                options.MinimumBreadcrumbLevel = Microsoft.Extensions.Logging.LogLevel.Information;
-            });
+                builder.AddSentry(options =>
+                {
+                    ConfigureSentryOptions(options);
+                    options.InitializeSdk = false;
+                    options.MinimumEventLevel = Microsoft.Extensions.Logging.LogLevel.Error;
+                    options.MinimumBreadcrumbLevel = Microsoft.Extensions.Logging.LogLevel.Information;
+                });
+            }
         });
 
         // Services
@@ -177,8 +197,21 @@ sealed partial class App : Application
         return services.BuildServiceProvider();
     }
 
+    /// <summary>
+    /// The public build ships with an empty DSN. Sentry's envelope serializers rely on reflection,
+    /// which Native AOT trims; initializing an SDK that can never send anything only adds startup
+    /// cost and a possible first-use failure. Keep it completely out of the disabled path.
+    /// </summary>
+    private static bool SentryEnabled => !string.IsNullOrWhiteSpace(Secrets.SentryDsn);
+
     private static IDisposable InitializeSentrySdk()
     {
+        if (!SentryEnabled)
+        {
+            StartupErrorLog.Write("Sentry disabled (no DSN configured)");
+            return NoopDisposable.Instance;
+        }
+
         var initRef = SentrySdk.Init(options => ConfigureSentryOptions(options));
 
         SentrySdk.ConfigureScope(scope =>
@@ -195,8 +228,15 @@ sealed partial class App : Application
         options.SampleRate = 1.0f;
         options.IsGlobalModeEnabled = true;
         options.AutoSessionTracking = true;
-        // Unpackaged apps have no Package.Current; use the assembly version instead.
-        options.Release = $"screenbox@{typeof(App).Assembly.GetName().Version?.ToString(3) ?? "0.0.0"}";
+        // Unpackaged apps have no Package.Current; the informational version stamped by the
+        // release pipeline is the real product version (and the brand is FFlux, not Screenbox).
+        options.Release = $"fflux@{AppVersion.Product}";
+    }
+
+    private sealed class NoopDisposable : IDisposable
+    {
+        public static readonly NoopDisposable Instance = new();
+        public void Dispose() { }
     }
 
     private void SetMinWindowSize()

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.Extensions.Logging;
 using Screenbox.Core.Contexts;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.MediaSources;
@@ -56,16 +57,32 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
 
     private readonly PlayerContext? _playerContext;
 
+    private readonly IAppDispatcher _dispatcher;
+
+    private readonly ILogger<SystemMediaTransportControlsService>? _logger;
+
+    /// <summary>
+    /// The stream behind the published thumbnail must outlive the display updater. Keep the
+    /// last one alive and release it when the next cover replaces it.
+    /// </summary>
+    private InMemoryRandomAccessStream? _thumbnailStream;
+
     private DateTime _lastPositionUpdate;
 
     public SystemMediaTransportControlsService(
         NativeMediaPlayer player,
         PlayQueueContext? queue = null,
-        PlayerContext? playerContext = null)
+        PlayerContext? playerContext = null,
+        IAppDispatcher? dispatcher = null,
+        ILogger<SystemMediaTransportControlsService>? logger = null)
     {
         _lastPositionUpdate = DateTime.MinValue;
         _queue = queue;
         _playerContext = playerContext;
+        // Resolve on the constructing (UI) thread. AppDispatcher.Current falls back to
+        // GetForCurrentThread(), which is null on the MTA callback threads these events use.
+        _dispatcher = dispatcher ?? AppDispatcher.Current;
+        _logger = logger;
 
         try
         {
@@ -109,19 +126,33 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
         SystemMediaTransportControls sender,
         PlaybackPositionChangeRequestedEventArgs args)
     {
-        if (_playerContext?.MediaPlayer is { } player)
-        {
-            player.Position = args.RequestedPlaybackPosition;
-        }
+        // Copy the value out of the COM event args: they are only valid for the duration of
+        // this callback, which runs on an MTA worker thread.
+        TimeSpan requested = args.RequestedPlaybackPosition;
+        _dispatcher.TryExecuteGuarded(
+            () =>
+            {
+                if (_playerContext?.MediaPlayer is { } player)
+                {
+                    player.Position = requested;
+                }
+            },
+            Report);
     }
 
     private void OnButtonPressed(
         SystemMediaTransportControls sender,
         SystemMediaTransportControlsButtonPressedEventArgs args)
     {
+        SystemMediaTransportControlsButton button = args.Button;
+        _dispatcher.TryExecuteGuarded(() => HandleButton(button), Report);
+    }
+
+    private void HandleButton(SystemMediaTransportControlsButton button)
+    {
         IMediaPlayer? player = _playerContext?.MediaPlayer;
 
-        switch (args.Button)
+        switch (button)
         {
             case SystemMediaTransportControlsButton.Play:
                 player?.Play();
@@ -139,7 +170,9 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
                 if (player is not null) player.Position -= TimeSpan.FromSeconds(10);
                 break;
             // Track navigation goes through the messenger so it follows the play queue and the
-            // same path the in-app buttons use.
+            // same path the in-app buttons use. PlayQueueCoordinator deliberately does NOT
+            // subscribe to ButtonPressed any more: two handlers on the same session used to
+            // advance the queue twice, once from the UI thread and once from this callback.
             case SystemMediaTransportControlsButton.Next:
                 WeakReferenceMessenger.Default.Send(new TrackNavigationMessage(TrackNavigationDirection.Next));
                 break;
@@ -149,6 +182,9 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
         }
     }
 
+    private void Report(Exception ex) =>
+        _logger?.LogWarning(ex, "System media transport controls callback failed.");
+
     /// <summary>
     /// Keeps the flyout in step with the queue instead of relying on the playback coordinator's
     /// post-processing, which returns early whenever the current item moved on before it ran.
@@ -156,7 +192,8 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
     private void OnQueuePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(PlayQueueContext.CurrentItem)) return;
-        _ = RefreshDisplayAsync(_queue?.CurrentItem);
+        MediaViewModel? item = _queue?.CurrentItem;
+        _dispatcher.TryExecuteGuarded(() => _ = RefreshDisplayAsync(item), Report);
     }
 
     private async Task RefreshDisplayAsync(MediaViewModel? item)
@@ -290,10 +327,11 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
     /// from the container (already extracted while playing) or from a cover image sitting next
     /// to the file.
     /// </remarks>
-    private static async Task ApplyThumbnailAsync(
+    private async Task ApplyThumbnailAsync(
         SystemMediaTransportControlsDisplayUpdater displayUpdater,
         MediaViewModel item)
     {
+        InMemoryRandomAccessStream? stream = null;
         try
         {
             byte[]? artwork = item.MediaInfo is { } mediaInfo ? mediaInfo.ArtworkData : null;
@@ -306,7 +344,12 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
 
             if (artwork is not { Length: > 0 }) return;
 
-            var stream = new InMemoryRandomAccessStream();
+            // UpdateDisplayCoreAsync calls ClearAll() first, so the old stream is no longer
+            // referenced by the updater. Every track used to leak one of these (a cover can be
+            // almost a megabyte), so keep exactly one alive and release the previous one.
+            ReleaseThumbnailStream();
+
+            stream = new InMemoryRandomAccessStream();
             using (var writer = new DataWriter(stream))
             {
                 writer.WriteBytes(artwork);
@@ -316,60 +359,100 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
 
             stream.Seek(0);
             displayUpdater.Thumbnail = RandomAccessStreamReference.CreateFromStream(stream);
+            _thumbnailStream = stream;
+            stream = null;
         }
         catch (Exception)
         {
             // A missing thumbnail only costs the flyout its artwork.
+        }
+        finally
+        {
+            stream?.Dispose();
+        }
+    }
+
+    private void ReleaseThumbnailStream()
+    {
+        InMemoryRandomAccessStream? previous = Interlocked.Exchange(ref _thumbnailStream, null);
+        try
+        {
+            previous?.Dispose();
+        }
+        catch (Exception)
+        {
+            // The native stream may still carry references during session teardown.
         }
     }
 
     public void UpdatePlaybackPosition(TimeSpan position, TimeSpan startTime, TimeSpan endTime)
     {
         if (TransportControls is null) return;
-        if (DateTime.Now - _lastPositionUpdate < PositionUpdateInterval) return;
-        _lastPositionUpdate = DateTime.Now;
+        // PositionChanged is raised from the player's WinRT callback thread. Marshalling it
+        // keeps the timeline update off that thread; the throttle stays inside so a burst of
+        // events cannot flood the dispatcher queue.
+        _dispatcher.TryExecuteGuarded(
+            () =>
+            {
+                if (TransportControls is null) return;
+                DateTime now = DateTime.Now;
+                if (now - _lastPositionUpdate < PositionUpdateInterval) return;
+                _lastPositionUpdate = now;
 
-        SystemMediaTransportControlsTimelineProperties timelineProps = new()
-        {
-            StartTime = startTime,
-            MinSeekTime = startTime,
-            Position = position,
-            MaxSeekTime = endTime,
-            EndTime = endTime
-        };
+                SystemMediaTransportControlsTimelineProperties timelineProps = new()
+                {
+                    StartTime = startTime,
+                    MinSeekTime = startTime,
+                    Position = position,
+                    MaxSeekTime = endTime,
+                    EndTime = endTime
+                };
 
-        TransportControls.UpdateTimelineProperties(timelineProps);
+                TransportControls.UpdateTimelineProperties(timelineProps);
+            },
+            Report);
     }
 
     public void UpdatePlaybackStatus(MediaPlaybackState state)
     {
         if (TransportControls is null) return;
-
-        switch (state)
-        {
-            case MediaPlaybackState.None:
-                TransportControls.PlaybackStatus = MediaPlaybackStatus.Stopped;
-                break;
-            case MediaPlaybackState.Opening:
-            case MediaPlaybackState.Buffering:
-                TransportControls.PlaybackStatus = MediaPlaybackStatus.Changing;
-                break;
-            case MediaPlaybackState.Playing:
-                TransportControls.PlaybackStatus = MediaPlaybackStatus.Playing;
-                break;
-            case MediaPlaybackState.Paused:
-                TransportControls.PlaybackStatus = MediaPlaybackStatus.Paused;
-                break;
-            default:
-                break;
-        }
+        _dispatcher.TryExecuteGuarded(
+            () =>
+            {
+                if (TransportControls is null) return;
+                switch (state)
+                {
+                    case MediaPlaybackState.None:
+                        TransportControls.PlaybackStatus = MediaPlaybackStatus.Stopped;
+                        break;
+                    case MediaPlaybackState.Opening:
+                    case MediaPlaybackState.Buffering:
+                        TransportControls.PlaybackStatus = MediaPlaybackStatus.Changing;
+                        break;
+                    case MediaPlaybackState.Playing:
+                        TransportControls.PlaybackStatus = MediaPlaybackStatus.Playing;
+                        break;
+                    case MediaPlaybackState.Paused:
+                        TransportControls.PlaybackStatus = MediaPlaybackStatus.Paused;
+                        break;
+                    default:
+                        break;
+                }
+            },
+            Report);
     }
 
     public void ClosePlayback()
     {
         if (TransportControls is null) return;
-
-        TransportControls.PlaybackStatus = MediaPlaybackStatus.Closed;
-        TransportControls.DisplayUpdater.ClearAll();
+        _dispatcher.TryExecuteGuarded(
+            () =>
+            {
+                if (TransportControls is null) return;
+                TransportControls.PlaybackStatus = MediaPlaybackStatus.Closed;
+                TransportControls.DisplayUpdater.ClearAll();
+                ReleaseThumbnailStream();
+            },
+            Report);
     }
 }

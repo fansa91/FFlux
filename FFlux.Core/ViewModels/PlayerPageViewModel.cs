@@ -188,10 +188,10 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         Messenger.Register<PropertyChangedMessage<WindowViewMode>>(this);
     }
 
-    public async void Receive(DragDropMessage message)
-    {
-        await OnDropAsync(message.Data);
-    }
+    public void Receive(DragDropMessage message) =>
+        FireAndForget.Run(
+            () => OnDropAsync(message.Data),
+            "PlayerPageViewModel.Receive(DragDropMessage)");
 
     public void Receive(VisualizerChangedMessage message)
     {
