@@ -2,9 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Screenbox.Core.Helpers;
+using TUnit.Core;
 
 namespace Screenbox.Core.Tests;
 
+// All three cases install/reset the process-wide error sink. Running them concurrently makes
+// one case clear another's handler before its background task has reported the failure.
+[NotInParallel]
 public class FireAndForgetTests
 {
     [Test]
