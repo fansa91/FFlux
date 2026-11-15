@@ -194,6 +194,13 @@ jobs:
 
           系统要求：Windows 10 1903（build 18362）及以上，x64。
           EOF
+
+          # A tag can be re-pointed at a fixed commit, which leaves the previous release
+          # sitting on the same tag name. Replace it instead of failing with "already exists".
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "v$VERSION" --repo "$GITHUB_REPOSITORY" --yes
+          fi
+
           gh release create "v$VERSION" dist/*.zip \
             --repo "$GITHUB_REPOSITORY" \
             --title "FFlux v$VERSION" \
