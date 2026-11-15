@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Navigation;
 using Screenbox.Core.Helpers;
+using Screenbox.Helpers;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -65,14 +66,8 @@ public sealed partial class SettingsPage : Page
 
     private static string FormatVersionLabel()
     {
-        string version;
-        try
-        {
-            version = typeof(SettingsPage).Assembly.GetName().Version is { } v
-                ? $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}"
-                : string.Empty;
-        }
-        catch (Exception)
+        string version = AppVersion.Product;
+        if (string.IsNullOrEmpty(version))
         {
             return string.Empty;
         }

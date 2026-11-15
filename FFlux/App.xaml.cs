@@ -247,7 +247,7 @@ sealed partial class App : Application
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs e)
     {
         _logger.LogInformation("App launched.");
-        StartupErrorLog.Write("OnLaunched entered");
+        StartupErrorLog.Write($"OnLaunched entered (FFlux {AppVersion.Product})");
 
         // Application.Start does not create a window for a WinUI 3 desktop app. Register
         // it before InitRootFrame assigns Content: TitleBar, state triggers and the
