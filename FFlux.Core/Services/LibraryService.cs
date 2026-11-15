@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -241,32 +241,39 @@ public sealed class LibraryService : ILibraryService
         StorageLibraryChangeTracker? libraryChangeTracker = library.ChangeTracker;
         StorageLibraryChangeReader? changeReader = null;
 
-        // Without package identity the library reports no change tracker, so a cached snapshot can
-        // never be checked against what is actually on disk. Rescanning is then the only correct
-        // answer - a stale cache would hide every file the user has added since the last fetch.
-        // The same holds once a hand-added folder is in play: the tracker only reports on the
-        // folders Windows knows about, so a change in those folders would go unnoticed.
-        useCache = useCache
+        // An unpackaged process has no StorageLibraryChangeTracker. The old code then declared the
+        // cache unusable and re-parsed every container on every launch, which made a large library
+        // take minutes to appear. Instead, validate the cached snapshot against cheap size /
+        // last-modified fingerprints and re-parse only new or changed files. A hand-added folder
+        // disables the Windows tracker too, but the fingerprint scan covers those folders as well.
+        bool trackerUsable = useCache
             && libraryChangeTracker is not null
             && !SystemInformation.IsXbox
             && !await HasExtraRootsAsync(MediaPlaybackType.Music);
-        bool hasCache = false;
 
+        bool hasCache = false;
         List<MediaViewModel> cachedSongs = new();
         List<MediaViewModel> songs = new();
+        Dictionary<string, MediaViewModel> reusable = new(StringComparer.OrdinalIgnoreCase);
+        IReadOnlyDictionary<string, FileStampDto>? knownStamps = null;
+        Dictionary<string, FileStampDto> currentStamps = new(StringComparer.OrdinalIgnoreCase);
+
         if (useCache)
         {
             RawCacheLoadResultDto cacheResult = await LoadRawMusicCacheAsync(cancellationToken);
             List<string> folderPaths = cacheResult.FolderPaths;
             List<RawMediaRecordDto> rawRecords = cacheResult.Records;
-            if (rawRecords.Count > 0)
+            if (rawRecords.Count > 0 && !AreLibraryPathsChanged(folderPaths, scope.Roots))
             {
                 songs = CreateSongsFromRawRecords(rawRecords);
-                hasCache = !AreLibraryPathsChanged(folderPaths, scope.Roots);
-
-                if (hasCache)
+                cachedSongs = new List<MediaViewModel>(songs);
+                foreach (MediaViewModel song in songs)
                 {
-                    cachedSongs = new List<MediaViewModel>(songs);
+                    reusable[song.Location] = song;
+                }
+
+                if (trackerUsable)
+                {
                     try
                     {
                         libraryChangeTracker!.Enable();
@@ -277,6 +284,10 @@ public sealed class LibraryService : ILibraryService
                     {
                         _logger.LogError(e, "Failed to resolve music library changes from the change tracker.");
                     }
+                }
+                else
+                {
+                    knownStamps = await LoadFileStampsSafelyAsync(MediaPlaybackType.Music);
                 }
             }
         }
@@ -290,12 +301,14 @@ public sealed class LibraryService : ILibraryService
             // One folder can be reached twice when a hand-added folder overlaps a library folder on
             // a different casing or through a symlink; the set keeps the list free of duplicates.
             var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            await BatchFetchMusicAsync(scope.Queries, songs, visited, albumFactory, artistFactory, cancellationToken, progress);
+            await BatchFetchMusicAsync(scope.Queries, songs, visited, albumFactory, artistFactory,
+                cancellationToken, progress, reusable, knownStamps, currentStamps);
 
             if (SearchRemovableStorage && await KnownFolderAccess.HasAccessAsync(KnownFolderId.RemovableDevices))
             {
                 IReadOnlyList<StorageFileQueryResult> removableQueries = [CreateRemovableStorageMusicQuery()];
-                await BatchFetchMusicAsync(removableQueries, songs, visited, albumFactory, artistFactory, cancellationToken, progress);
+                await BatchFetchMusicAsync(removableQueries, songs, visited, albumFactory, artistFactory,
+                    cancellationToken, progress, reusable, knownStamps, currentStamps);
             }
         }
         else
@@ -320,9 +333,20 @@ public sealed class LibraryService : ILibraryService
             albumFactory.UnknownAlbum,
             artistFactory.UnknownArtist);
 
-        if (!hasCache || !songs.SequenceEqual(cachedSongs))
+        // A fingerprint scan produces the same files in query order, not database order, so the
+        // old SequenceEqual check always reported "changed" and rewrote the whole cache. Compare
+        // path sets and the fingerprints themselves instead.
+        bool cacheDirty = !hasCache
+            || !LibraryCacheDiff.HaveSamePaths(songs.Select(s => s.Location), cachedSongs.Select(s => s.Location))
+            || (currentStamps.Count > 0 && LibraryCacheDiff.HaveStampsChanged(knownStamps, currentStamps));
+        if (cacheDirty)
         {
             await CacheSongsAsync(scope.Roots, songs, cancellationToken);
+        }
+
+        if (currentStamps.Count > 0)
+        {
+            await SaveFileStampsSafelyAsync(MediaPlaybackType.Music, currentStamps);
         }
 
         if (hasCache && changeReader != null)
@@ -347,29 +371,36 @@ public sealed class LibraryService : ILibraryService
         StorageLibraryChangeTracker? libraryChangeTracker = library.ChangeTracker;
         StorageLibraryChangeReader? changeReader = null;
 
-        // See FetchMusicAsync: no identity means no change tracker, and a cache that cannot be
-        // validated has to be treated as missing. Hand-added folders invalidate it as well.
-        useCache = useCache
+        // See FetchMusicAsync: unpackaged builds have no change tracker, so validate the cached
+        // snapshot with file fingerprints instead of re-parsing every video container.
+        bool trackerUsable = useCache
             && libraryChangeTracker is not null
             && !SystemInformation.IsXbox
             && !await HasExtraRootsAsync(MediaPlaybackType.Video);
-        bool hasCache = false;
 
+        bool hasCache = false;
         List<MediaViewModel> cachedVideos = new();
         List<MediaViewModel> videos = new();
+        Dictionary<string, MediaViewModel> reusable = new(StringComparer.OrdinalIgnoreCase);
+        IReadOnlyDictionary<string, FileStampDto>? knownStamps = null;
+        Dictionary<string, FileStampDto> currentStamps = new(StringComparer.OrdinalIgnoreCase);
+
         if (useCache)
         {
             RawCacheLoadResultDto cacheResult = await LoadRawVideoCacheAsync(cancellationToken);
             List<string> folderPaths = cacheResult.FolderPaths;
             List<RawMediaRecordDto> rawRecords = cacheResult.Records;
-            if (rawRecords.Count > 0)
+            if (rawRecords.Count > 0 && !AreLibraryPathsChanged(folderPaths, scope.Roots))
             {
                 videos = CreateVideosFromRawRecords(rawRecords);
-                hasCache = !AreLibraryPathsChanged(folderPaths, scope.Roots);
-
-                if (hasCache)
+                cachedVideos = new List<MediaViewModel>(videos);
+                foreach (MediaViewModel video in videos)
                 {
-                    cachedVideos = new List<MediaViewModel>(videos);
+                    reusable[video.Location] = video;
+                }
+
+                if (trackerUsable)
+                {
                     try
                     {
                         libraryChangeTracker!.Enable();
@@ -381,6 +412,10 @@ public sealed class LibraryService : ILibraryService
                         _logger.LogError(e, "Failed to resolve video library changes from the change tracker.");
                     }
                 }
+                else
+                {
+                    knownStamps = await LoadFileStampsSafelyAsync(MediaPlaybackType.Video);
+                }
             }
         }
 
@@ -388,12 +423,14 @@ public sealed class LibraryService : ILibraryService
         {
             videos = new List<MediaViewModel>();
             var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            await BatchFetchVideosAsync(scope.Queries, videos, visited, cancellationToken, progress);
+            await BatchFetchVideosAsync(scope.Queries, videos, visited,
+                cancellationToken, progress, reusable, knownStamps, currentStamps);
 
             if (SearchRemovableStorage && await KnownFolderAccess.HasAccessAsync(KnownFolderId.RemovableDevices))
             {
                 IReadOnlyList<StorageFileQueryResult> removableQueries = [CreateRemovableStorageVideosQuery()];
-                await BatchFetchVideosAsync(removableQueries, videos, visited, cancellationToken, progress);
+                await BatchFetchVideosAsync(removableQueries, videos, visited,
+                    cancellationToken, progress, reusable, knownStamps, currentStamps);
             }
         }
         else
@@ -404,9 +441,17 @@ public sealed class LibraryService : ILibraryService
             }
         }
 
-        if (!hasCache || !videos.SequenceEqual(cachedVideos))
+        bool cacheDirty = !hasCache
+            || !LibraryCacheDiff.HaveSamePaths(videos.Select(v => v.Location), cachedVideos.Select(v => v.Location))
+            || (currentStamps.Count > 0 && LibraryCacheDiff.HaveStampsChanged(knownStamps, currentStamps));
+        if (cacheDirty)
         {
             await CacheVideosAsync(scope.Roots, videos, cancellationToken);
+        }
+
+        if (currentStamps.Count > 0)
+        {
+            await SaveFileStampsSafelyAsync(MediaPlaybackType.Video, currentStamps);
         }
 
         if (hasCache && changeReader != null)
@@ -633,7 +678,10 @@ public sealed class LibraryService : ILibraryService
         AlbumViewModelFactory albumFactory,
         ArtistViewModelFactory artistFactory,
         CancellationToken cancellationToken,
-        IProgress<MusicLibrary>? progress)
+        IProgress<MusicLibrary>? progress,
+        IReadOnlyDictionary<string, MediaViewModel>? reusable = null,
+        IReadOnlyDictionary<string, FileStampDto>? knownStamps = null,
+        IDictionary<string, FileStampDto>? currentStamps = null)
     {
         DateTime lastReport = DateTime.MinValue;
         foreach (StorageFileQueryResult query in queries)
@@ -654,9 +702,37 @@ public sealed class LibraryService : ILibraryService
                     cancellationToken.ThrowIfCancellationRequested();
                     if (!visited.Add(file.Path)) continue;
 
-                    MediaViewModel song = _mediaFactory.Create(file);
-                    song.IsFromLibrary = true;
-                    await song.LoadDetailsAsync(_sourceMetadataService, cancellationToken);
+                    FileStampDto? stamp = currentStamps is not null
+                        ? await ReadFileStampAsync(file)
+                        : null;
+                    if (stamp is not null) currentStamps![file.Path] = stamp;
+
+                    MediaViewModel? cached = null;
+                    bool unchanged = false;
+                    if (reusable is not null && knownStamps is not null && stamp is not null
+                        && reusable.TryGetValue(file.Path, out cached)
+                        && knownStamps.TryGetValue(file.Path, out FileStampDto? old)
+                        && old.Size == stamp.Size
+                        && old.ModifiedTicks == stamp.ModifiedTicks)
+                    {
+                        unchanged = true;
+                    }
+
+                    MediaViewModel song;
+                    if (unchanged && cached is not null)
+                    {
+                        // Metadata came from the cache; only the album / artist associations have
+                        // to be rebuilt. This is what removes the FFmpeg parse from every launch.
+                        song = cached;
+                        song.IsFromLibrary = true;
+                    }
+                    else
+                    {
+                        song = _mediaFactory.Create(file);
+                        song.IsFromLibrary = true;
+                        await song.LoadDetailsAsync(_sourceMetadataService, cancellationToken);
+                    }
+
                     albumFactory.AddSong(song);
                     artistFactory.AddSong(song);
                     song.Album = albumFactory.SongsToAlbums[song];
@@ -681,7 +757,10 @@ public sealed class LibraryService : ILibraryService
         List<MediaViewModel> target,
         HashSet<string> visited,
         CancellationToken cancellationToken,
-        IProgress<VideosLibrary>? progress)
+        IProgress<VideosLibrary>? progress,
+        IReadOnlyDictionary<string, MediaViewModel>? reusable = null,
+        IReadOnlyDictionary<string, FileStampDto>? knownStamps = null,
+        IDictionary<string, FileStampDto>? currentStamps = null)
     {
         DateTime lastReport = DateTime.MinValue;
         foreach (StorageFileQueryResult query in queries)
@@ -700,9 +779,35 @@ public sealed class LibraryService : ILibraryService
                     cancellationToken.ThrowIfCancellationRequested();
                     if (!visited.Add(file.Path)) continue;
 
-                    MediaViewModel video = _mediaFactory.Create(file);
-                    video.IsFromLibrary = true;
-                    await video.LoadDetailsAsync(_sourceMetadataService, cancellationToken);
+                    FileStampDto? stamp = currentStamps is not null
+                        ? await ReadFileStampAsync(file)
+                        : null;
+                    if (stamp is not null) currentStamps![file.Path] = stamp;
+
+                    MediaViewModel? cached = null;
+                    bool unchanged = false;
+                    if (reusable is not null && knownStamps is not null && stamp is not null
+                        && reusable.TryGetValue(file.Path, out cached)
+                        && knownStamps.TryGetValue(file.Path, out FileStampDto? old)
+                        && old.Size == stamp.Size
+                        && old.ModifiedTicks == stamp.ModifiedTicks)
+                    {
+                        unchanged = true;
+                    }
+
+                    MediaViewModel video;
+                    if (unchanged && cached is not null)
+                    {
+                        video = cached;
+                        video.IsFromLibrary = true;
+                    }
+                    else
+                    {
+                        video = _mediaFactory.Create(file);
+                        video.IsFromLibrary = true;
+                        await video.LoadDetailsAsync(_sourceMetadataService, cancellationToken);
+                    }
+
                     target.Add(video);
                 }
 
@@ -858,6 +963,55 @@ public sealed class LibraryService : ILibraryService
     /// <summary>
     /// Whether the folder set the cache was built from still matches the folders that are scanned now.
     /// </summary>
+    private async Task<IReadOnlyDictionary<string, FileStampDto>> LoadFileStampsSafelyAsync(MediaPlaybackType mediaType)
+    {
+        try
+        {
+            return await _databaseService.LoadFileStampsAsync(mediaType);
+        }
+        catch (Exception e)
+        {
+            // No baseline means every file gets parsed once - slow, but always correct.
+            _logger.LogError(e, "Failed to load the {MediaType} file fingerprints.", mediaType);
+            return new Dictionary<string, FileStampDto>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private async Task SaveFileStampsSafelyAsync(
+        MediaPlaybackType mediaType,
+        IReadOnlyDictionary<string, FileStampDto> stamps)
+    {
+        try
+        {
+            await _databaseService.SaveFileStampsAsync(mediaType, stamps);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _logger.LogError(e, "Failed to save the {MediaType} file fingerprints.", mediaType);
+        }
+    }
+
+    /// <summary>Reads the prefetched size / last-modified pair. Much cheaper than opening the container.</summary>
+    private static async Task<FileStampDto?> ReadFileStampAsync(StorageFile file)
+    {
+        try
+        {
+            BasicProperties properties = await file.GetBasicPropertiesAsync();
+            return new FileStampDto
+            {
+                Path = file.Path,
+                Size = (long)properties.Size,
+                ModifiedTicks = properties.DateModified.UtcTicks
+            };
+        }
+        catch (Exception)
+        {
+            // A locked or vanishing file is treated as changed so its metadata is re-read, and no
+            // stamp is recorded so the next scan tries again.
+            return null;
+        }
+    }
+
     private static bool AreLibraryPathsChanged(IReadOnlyCollection<string> cachedFolderPaths, IReadOnlyList<StorageFolder> roots)
     {
         var paths = roots.Select(f => f.Path).ToList();

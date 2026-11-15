@@ -63,6 +63,9 @@ public sealed partial class DatabaseService
             "artist", "album", "album_artist", "composers", "genre", "track_number", "bitrate",
             "subtitle", "producers", "writers", "width", "height", "video_bitrate");
         EnsureReplaceableTable(connection, "playback_progress", CreatePlaybackProgressSql, "location", "position_ticks");
+        // Derived data, but kept separate from media_records so adding a fingerprint column does
+        // not force the whole metadata cache to be dropped and rebuilt.
+        ExecuteNonQuery(connection, CreateFileStampsSql);
         // User data, so it is never dropped on schema drift: the table only ever gains a column
         // through an explicit migration.
         ExecuteNonQuery(connection, CreateLibraryRootsSql);
@@ -74,6 +77,12 @@ public sealed partial class DatabaseService
         migrationComplete = await TryImportLegacyPlaylistsAsync(connection);
         transaction.Commit();
         ExecuteNonQuery(connection, "PRAGMA foreign_keys=ON;");
+
+        // Each library scan rewrites its whole cache in one transaction. Without an explicit
+        // checkpoint the WAL keeps growing between sessions (it had reached ~2 MB on the dev
+        // machine); startup is the one moment where no other connection is open, so TRUNCATE is
+        // safe here and gives the next launch a clean file.
+        ExecuteNonQuery(connection, "PRAGMA wal_checkpoint(TRUNCATE);");
 
         if (migrationComplete)
         {
@@ -96,6 +105,7 @@ public sealed partial class DatabaseService
         ExecuteNonQuery(connection, CreateLibraryFoldersSql);
         ExecuteNonQuery(connection, CreateMediaRecordsSql);
         ExecuteNonQuery(connection, CreatePlaybackProgressSql);
+        ExecuteNonQuery(connection, CreateFileStampsSql);
         ExecuteNonQuery(connection, CreateLibraryRootsSql);
         ExecuteNonQuery(connection, CreatePlaylistsSql);
         ExecuteNonQuery(connection, CreatePlaylistItemsSql);
@@ -398,6 +408,20 @@ public sealed partial class DatabaseService
         CREATE TABLE IF NOT EXISTS playback_progress (
             location      TEXT    PRIMARY KEY,
             position_ticks INTEGER NOT NULL
+        );
+        """;
+
+    /// <summary>
+    /// Size and last-modified per media file. In an unpackaged process there is no
+    /// <c>StorageLibraryChangeTracker</c>, so these fingerprints are the only way to tell whether
+    /// the cached metadata is still valid without re-parsing every container.
+    /// </summary>
+    private const string CreateFileStampsSql = """
+        CREATE TABLE IF NOT EXISTS media_file_stamps (
+            path           TEXT    PRIMARY KEY,
+            media_type     INTEGER NOT NULL,
+            file_size      INTEGER NOT NULL,
+            modified_ticks INTEGER NOT NULL
         );
         """;
 

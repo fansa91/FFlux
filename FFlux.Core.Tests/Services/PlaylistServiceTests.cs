@@ -16,6 +16,8 @@ public class PlaylistServiceTests
 
         public Task InitializeAsync() => Task.CompletedTask;
         public Task<RawCacheLoadResultDto> LoadLibraryCacheAsync(MediaPlaybackType mediaType) => throw new NotImplementedException();
+        public Task<IReadOnlyDictionary<string, FileStampDto>> LoadFileStampsAsync(MediaPlaybackType mediaType) => Task.FromResult<IReadOnlyDictionary<string, FileStampDto>>(new Dictionary<string, FileStampDto>());
+        public Task SaveFileStampsAsync(MediaPlaybackType mediaType, IReadOnlyDictionary<string, FileStampDto> stamps) => Task.CompletedTask;
         public Task SaveMusicCacheAsync(IReadOnlyList<string> folderPaths, IReadOnlyList<MusicCacheRecordDto> records) => throw new NotImplementedException();
         public Task SaveVideoCacheAsync(IReadOnlyList<string> folderPaths, IReadOnlyList<VideoCacheRecordDto> records) => throw new NotImplementedException();
         public Task ReplacePlaybackProgressAsync(IReadOnlyList<MediaPlaybackProgress> snapshot) => throw new NotImplementedException();

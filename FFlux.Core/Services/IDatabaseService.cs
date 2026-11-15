@@ -22,6 +22,15 @@ public interface IDatabaseService
     /// </summary>
     Task<RawCacheLoadResultDto> LoadLibraryCacheAsync(MediaPlaybackType mediaType);
 
+    /// <summary>
+    /// Loads the cheap size / last-modified fingerprints that let a scan reuse cached metadata
+    /// when the Windows change tracker is unavailable (unpackaged builds).
+    /// </summary>
+    Task<IReadOnlyDictionary<string, FileStampDto>> LoadFileStampsAsync(MediaPlaybackType mediaType);
+
+    /// <summary>Differentially updates the file fingerprints for one media type.</summary>
+    Task SaveFileStampsAsync(MediaPlaybackType mediaType, IReadOnlyDictionary<string, FileStampDto> stamps);
+
     /// <summary>Saves the complete cached music snapshot to the database.</summary>
     Task SaveMusicCacheAsync(IReadOnlyList<string> folderPaths, IReadOnlyList<MusicCacheRecordDto> records);
 

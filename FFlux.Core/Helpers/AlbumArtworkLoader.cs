@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using FFmpegInteropX;
 using Screenbox.Core.Playback;
@@ -55,23 +56,123 @@ public static class AlbumArtworkLoader
     private static readonly ConcurrentDictionary<string, bool> NoEmbeddedArtworkCache =
         new(StringComparer.OrdinalIgnoreCase);
 
+    // Decoded bytes, keyed by the *image source* path (the cover file, or the track itself when
+    // the art is embedded). An album shares one cover across all of its tracks, so keying by the
+    // track would keep N identical copies of the same bitmap alive.
+    private static readonly ArtworkByteCache ArtworkCache = new();
+
+    // Track path -> image source path. Lets the next track of an album hit the byte cache without
+    // repeating the folder lookup.
+    private static readonly ConcurrentDictionary<string, string> SourceKeyByTrack =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    // Coalesces concurrent requests for the same track. Thumbnail, now-playing and SMTC flyout
+    // all ask at nearly the same moment; without this they would each decode independently.
+    private static readonly ConcurrentDictionary<string, Lazy<Task<byte[]?>>> InFlight =
+        new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Returns the raw bytes of the album art for <paramref name="file"/>, or <see langword="null"/>
-    /// when no source produced an image.
+    /// when no source produced an image. The returned array is shared with the cache and must be
+    /// treated as read-only.
     /// </summary>
-    public static async Task<byte[]?> LoadAsync(StorageFile file)
+    public static Task<byte[]?> LoadAsync(StorageFile file)
     {
         ArgumentNullException.ThrowIfNull(file);
 
+        string trackPath = SafePath(file);
+        if (trackPath.Length == 0) return LoadCoreAsync(file, string.Empty);
+
+        if (SourceKeyByTrack.TryGetValue(trackPath, out string? sourceKey)
+            && ArtworkCache.TryGet(sourceKey) is { } cached)
+        {
+            return Task.FromResult<byte[]?>(cached);
+        }
+
+        Lazy<Task<byte[]?>> lazy = InFlight.GetOrAdd(
+            trackPath,
+            _ => new Lazy<Task<byte[]?>>(
+                () => LoadCoreAsync(file, trackPath),
+                LazyThreadSafetyMode.ExecutionAndPublication));
+
+        return AwaitAndReleaseAsync(trackPath, lazy);
+    }
+
+    private static async Task<byte[]?> AwaitAndReleaseAsync(string trackPath, Lazy<Task<byte[]?>> lazy)
+    {
+        try
+        {
+            return await lazy.Value.ConfigureAwait(false);
+        }
+        finally
+        {
+            if (InFlight.TryGetValue(trackPath, out Lazy<Task<byte[]?>>? current)
+                && ReferenceEquals(current, lazy))
+            {
+                InFlight.TryRemove(trackPath, out _);
+            }
+        }
+    }
+
+    private static async Task<byte[]?> LoadCoreAsync(StorageFile file, string trackPath)
+    {
         if (await FindCoverFileAsync(file) is { } coverFile)
         {
+            string coverPath = SafePath(coverFile);
+            string key = coverPath.Length > 0 ? coverPath : trackPath;
+            if (key.Length > 0 && ArtworkCache.TryGet(key) is { } hit)
+            {
+                RememberSource(trackPath, key);
+                return hit;
+            }
+
             if (await ReadAllBytesAsync(coverFile) is { Length: > 0 } coverData)
             {
+                if (key.Length > 0)
+                {
+                    ArtworkCache.Store(key, coverData);
+                    RememberSource(trackPath, key);
+                }
+
                 return coverData;
             }
         }
 
-        return await ExtractEmbeddedArtworkAsync(file);
+        byte[]? artwork = await ExtractEmbeddedArtworkAsync(file);
+        if (artwork is { Length: > 0 } && trackPath.Length > 0)
+        {
+            ArtworkCache.Store(trackPath, artwork);
+            RememberSource(trackPath, trackPath);
+        }
+
+        return artwork;
+    }
+
+    private static void RememberSource(string trackPath, string sourceKey)
+    {
+        if (trackPath.Length > 0) SourceKeyByTrack[trackPath] = sourceKey;
+    }
+
+    private static string SafePath(StorageFile file)
+    {
+        try
+        {
+            return file.Path ?? string.Empty;
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>Drops every in-memory artwork lookup. Intended for tests and low-memory scenarios.</summary>
+    public static void ClearCaches()
+    {
+        CoverFileCache.Clear();
+        NoEmbeddedArtworkCache.Clear();
+        SourceKeyByTrack.Clear();
+        InFlight.Clear();
+        ArtworkCache.Clear();
     }
 
     /// <summary>

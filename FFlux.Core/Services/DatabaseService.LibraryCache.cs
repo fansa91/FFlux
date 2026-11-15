@@ -109,6 +109,9 @@ public sealed partial class DatabaseService
         }
 
         transaction.Commit();
+        // PASSIVE never blocks on a reader; it folds the just-written pages back so the WAL does
+        // not grow for the whole lifetime of a long session.
+        ExecuteNonQuery(connection, "PRAGMA wal_checkpoint(PASSIVE);");
     }
 
     /// <inheritdoc/>
@@ -172,6 +175,7 @@ public sealed partial class DatabaseService
         }
 
         transaction.Commit();
+        ExecuteNonQuery(connection, "PRAGMA wal_checkpoint(PASSIVE);");
     }
 
     private static RawMediaRecordDto ReadRawRecord(SqliteDataReader reader)
