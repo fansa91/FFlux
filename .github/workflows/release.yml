@@ -95,6 +95,57 @@ jobs:
             -p:PublishDir="${{ github.workspace }}\artifacts\${{ matrix.flavour }}" `
             --nologo
 
+      # A folder publish does not collect the WinUI runtime assets by itself: the XAML
+      # compiler writes App.xbf, the page XBFs and resources.pri straight into the build
+      # output, and none of them are MSBuild Content items. The project mirrors them into
+      # the publish folder (CopyUnpackagedRuntimeAssetsToPublish), so verify the result
+      # here rather than shipping a zip that exits before its first window.
+      - name: Verify publish layout
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:GITHUB_WORKSPACE "artifacts/${{ matrix.flavour }}"
+          $required = @(
+            'FFlux.exe'
+            'App.xbf'
+            'resources.pri'
+            'Controls/PlayerControls.xbf'
+            'Pages/HomePage.xbf'
+            'Assets/DefaultAudioVisual.png'
+            'Assets/Fonts/ScreenboxFluentIcons.ttf'
+          )
+          $missing = $required | Where-Object { -not (Test-Path (Join-Path $source $_)) }
+          if ($missing) {
+              throw "Publish output is missing runtime assets: $($missing -join ', ')"
+          }
+          $count = (Get-ChildItem $source -Recurse -File).Count
+          "Publish layout OK: $count files"
+
+      # Best-effort runtime proof: start the published folder and wait for the startup
+      # heartbeat written by Program.cs. Deliberately non-blocking, because a hosted runner
+      # may lack the desktop or graphics stack WinUI 3 wants; the layout check above is the
+      # hard gate and the log is printed either way.
+      - name: Smoke test ${{ matrix.flavour }}
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $source = Join-Path $env:GITHUB_WORKSPACE "artifacts/${{ matrix.flavour }}"
+          $log = Join-Path $env:LOCALAPPDATA 'FFlux\startup-error.log'
+          Remove-Item $log -ErrorAction SilentlyContinue
+          $env:FFLUX_STARTUP_TRACE = '1'
+
+          $proc = Start-Process -FilePath (Join-Path $source 'FFlux.exe') -WorkingDirectory $source -PassThru
+          Start-Sleep -Seconds 25
+          $alive = -not $proc.HasExited
+          if ($alive) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+
+          $beats = 0
+          if (Test-Path $log) {
+              $beats = @(Select-String -Path $log -Pattern 'heartbeat' -SimpleMatch).Count
+              Get-Content $log -Tail 30
+          }
+          "alive=$alive heartbeats=$beats"
+          if (-not $alive -or $beats -lt 3) { throw "Application did not reach a running state." }
+
       - name: Package ${{ matrix.flavour }}
         shell: pwsh
         run: |

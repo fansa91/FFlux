@@ -129,4 +129,46 @@
           SkipUnchangedFiles="true" />
   </Target>
 
+  <!-- A folder publish does not collect the WinUI runtime assets.
+       Everything above writes into $(OutDir), but none of it is an MSBuild Content item, so
+       the publish pipeline (which copies resolved assemblies plus Content/None items) leaves
+       it all behind. The published folder therefore had FFlux.exe and every DLL but no
+       App.xbf, no page XBFs, no resources.pri and no Assets folder, so the app died on the
+       first ms-appx:/// lookup with no window and no error log of its own. Mirror the build
+       output into the publish folder so both directory layouts are equally runnable.
+       Theme dictionaries (*.xaml) are needed next to their XBF siblings: unpackaged WinUI
+       resolves ResourceDictionary Source against the loose files, not only against the PRI. -->
+  <Target Name="CopyUnpackagedRuntimeAssetsToPublish"
+          AfterTargets="Publish"
+          Condition="'$(PublishDir)' != ''">
+    <PropertyGroup>
+      <_UnpackagedPublishRoot>$(PublishDir)</_UnpackagedPublishRoot>
+      <_UnpackagedPublishRoot Condition="!HasTrailingSlash('$(_UnpackagedPublishRoot)')">$(_UnpackagedPublishRoot)\</_UnpackagedPublishRoot>
+    </PropertyGroup>
+
+    <!-- XBF / XAML / PRI, keeping their paths relative to the output folder. The PRI include is
+         deliberately flat: language subfolders ship their own resources.pri and are already
+         copied by the publish pipeline. -->
+    <ItemGroup>
+      <_UnpackagedXamlAsset Include="$(OutDir)*.pri" />
+      <_UnpackagedXamlAsset Include="$(OutDir)**\*.xbf" />
+      <_UnpackagedXamlAsset Include="$(OutDir)**\*.xaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_UnpackagedXamlAsset)"
+          DestinationFiles="@(_UnpackagedXamlAsset->'$(_UnpackagedPublishRoot)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+
+    <!-- Loose assets (cover art, fonts, Lively wallpaper payloads). The glob is rooted at the
+         Assets folder, so RecursiveDir is relative to it and the prefix has to be re-added.
+         .cs is excluded: one visualizer source file is marked CopyToOutputDirectory and would
+         otherwise ship as dead weight. -->
+    <ItemGroup>
+      <_UnpackagedLooseAsset Include="$(OutDir)Assets\**\*"
+                             Exclude="$(OutDir)Assets\**\*.cs" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_UnpackagedLooseAsset)"
+          DestinationFiles="@(_UnpackagedLooseAsset->'$(_UnpackagedPublishRoot)Assets\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>
