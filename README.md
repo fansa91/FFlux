@@ -67,9 +67,11 @@ dotnet publish FFlux/FFlux.csproj -c Release -r win-x64 -p:Platform=x64 `
 发布流程只有一条：[`.github/workflows/release.yml`](.github/workflows/release.yml)。推一个 `v` 开头的 tag 就会触发构建，并把上面两个 zip 挂到对应版本的 Release 上。
 
 ```shell
-git tag v0.1.1
-git push origin v0.1.1
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
+
+把 `X.Y.Z` 换成 `<Version>` 里的值。发版前先在 `Directory.Build.props` 改版本号并提交，再打同名 tag。
 
 tag 里的版本号会通过 `-p:Version=` 注入编译，写进程序集元数据，所以设置页底部显示的版本、`FFlux.exe` 文件属性里的版本、zip 文件名三者始终一致。
 
