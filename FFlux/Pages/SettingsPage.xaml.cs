@@ -38,16 +38,59 @@ public sealed partial class SettingsPage : Page
 
     private static readonly string[] _languageOptions = [SystemDefaultLanguage, .. AppLanguageOverride.ShippedLanguages];
 
+    /// <summary>
+    /// The "Version x.y.z" caption of the About section.
+    /// </summary>
+    /// <remarks>
+    /// The ReswPlus <c>VersionText</c> macro reads <c>Package.Current</c>, which throws
+    /// <c>0x80073D54</c> in an unpackaged process - and the binding evaluated on page load, so
+    /// opening the settings page crashed the app. The format string is read from the resource file
+    /// directly and filled with the assembly version instead.
+    /// </remarks>
+    private string VersionLabel { get; }
+
     public SettingsPage()
     {
         this.InitializeComponent();
         DataContext = Ioc.Default.GetRequiredService<SettingsPageViewModel>();
         Common = Ioc.Default.GetRequiredService<CommonViewModel>();
 
+        VersionLabel = FormatVersionLabel();
+
         var helpText = Strings.Resources.VlcCommandLineHelpText;
         PlaybackOptionsHelpTextParts = helpText.Contains("{0}")
             ? helpText.Split("{0}").Select(s => s.Trim()).Take(2).ToArray()
             : new[] { helpText, string.Empty };
+    }
+
+    private static string FormatVersionLabel()
+    {
+        string version;
+        try
+        {
+            version = typeof(SettingsPage).Assembly.GetName().Version is { } v
+                ? $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}"
+                : string.Empty;
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+
+        string format = AppResourceLoader.GetString("VersionText");
+        if (string.IsNullOrEmpty(format))
+        {
+            return version;
+        }
+
+        try
+        {
+            return string.Format(format, version);
+        }
+        catch (FormatException)
+        {
+            return version;
+        }
     }
 
     protected override async void OnNavigatedTo(NavigationEventArgs e)

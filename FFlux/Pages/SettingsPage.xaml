@@ -730,7 +730,7 @@
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         IsTextSelectionEnabled="True"
-                        Text="{x:Bind strings:Resources.VersionText}" />
+                        Text="{x:Bind VersionLabel}" />
                     <ctc:SettingsExpander.Items>
                         <ctc:SettingsCard HorizontalContentAlignment="Left" ContentAlignment="Vertical">
                             <StackPanel Margin="{StaticResource HyperlinkButtonInlineMargin}" Orientation="Vertical">
