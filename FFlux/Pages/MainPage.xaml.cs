@@ -114,6 +114,45 @@ public sealed partial class MainPage : Page, IContentFrame
         Screenbox.Helpers.StartupErrorLog.Write("MainPage.Loaded done");
     }
 
+    /// <summary>
+    /// Diagnostic-only: selects a navigation item by tag, with "settings" for the settings entry
+    /// (which is not part of <see cref="NavView"/>'s menu items). Used by <c>FFLUX_NAV_PROBE</c>
+    /// to open a page that cannot be reached from the command line.
+    /// </summary>
+    internal void SelectNavigationItem(string tag)
+    {
+        if (string.Equals(tag, "settings", StringComparison.OrdinalIgnoreCase))
+        {
+            NavView.SelectedItem = NavView.SettingsItem;
+            return;
+        }
+
+        foreach (object item in NavView.MenuItems)
+        {
+            if (item is NavigationViewItem navItem &&
+                string.Equals(navItem.Tag as string, tag, StringComparison.OrdinalIgnoreCase))
+            {
+                NavView.SelectedItem = navItem;
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Diagnostic-only: forwards a section selection to the page currently hosted in the content
+    /// frame, e.g. the Albums tab of the music page.
+    /// </summary>
+    internal bool SelectSubSection(string tag)
+    {
+        if (ContentFrame.Content is MusicPage musicPage)
+        {
+            musicPage.SelectSection(tag);
+            return true;
+        }
+
+        return false;
+    }
+
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ViewModel.PlayerVisible))

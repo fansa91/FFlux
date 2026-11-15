@@ -310,6 +310,14 @@ sealed partial class App : Application
         {
             _ = Screenbox.Helpers.LibraryProbe.RunAsync();
         }
+        if (Environment.GetEnvironmentVariable("FFLUX_COVER_PROBE") == "1")
+        {
+            _ = Screenbox.Helpers.CoverProbe.RunAsync();
+        }
+        if (Environment.GetEnvironmentVariable("FFLUX_NAV_PROBE") is { Length: > 0 } navigationTarget)
+        {
+            _ = ProbeNavigationAsync(navigationTarget);
+        }
 
 #if DEBUG
         if (System.Diagnostics.Debugger.IsAttached)
@@ -397,6 +405,48 @@ sealed partial class App : Application
     /// playing and closes it again. This host cannot be screenshotted, so a successful open is
     /// how the dialog's XAML, the property rows and the panel layout get exercised.
     /// </summary>
+    /// <summary>
+    /// Diagnostic-only (<c>FFLUX_NAV_PROBE=&lt;tag&gt;</c>): opens a page the command line cannot
+    /// reach, so a page that throws on load can be found without clicking through the UI.
+    /// </summary>
+    private async Task ProbeNavigationAsync(string tag)
+    {
+        await Task.Delay(4000);
+        try
+        {
+            // The window content is a frame (possibly nested), not the page itself.
+            object? current = _window.Content;
+            for (int depth = 0; depth < 4 && current is not Screenbox.Pages.MainPage; depth++)
+            {
+                current = current is Frame frame ? frame.Content : null;
+            }
+
+            if (current is Screenbox.Pages.MainPage mainPage)
+            {
+                // A tag can name a sub-section of the page, e.g. "music/albums".
+                string[] parts = tag.Split('/', 2);
+                mainPage.SelectNavigationItem(parts[0]);
+                Screenbox.Helpers.StartupErrorLog.Write($"Navigation probe: selected '{parts[0]}'");
+
+                if (parts.Length > 1)
+                {
+                    await Task.Delay(3000);
+                    bool selected = mainPage.SelectSubSection(parts[1]);
+                    Screenbox.Helpers.StartupErrorLog.Write(
+                        $"Navigation probe: section '{parts[1]}' selected={selected}");
+                }
+            }
+            else
+            {
+                Screenbox.Helpers.StartupErrorLog.Write("Navigation probe: MainPage not found");
+            }
+        }
+        catch (Exception ex)
+        {
+            Screenbox.Helpers.StartupErrorLog.Write("Navigation probe failed: " + ex);
+        }
+    }
+
     private async Task ProbePropertiesDialogAsync()
     {
         await Task.Delay(6000);

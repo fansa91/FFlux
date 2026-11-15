@@ -221,12 +221,10 @@ public sealed partial class MediaViewModel : ObservableRecipient
     {
         if (Thumbnail is not null) return;
 
-        // Embedded artwork first: it is the cover the file itself declares, and the shell
-        // thumbnail provider answers with a generic file-type icon for many audio containers
-        // (and always for audio-only files it has no handler for).
+        // Artwork the metadata service already took off the container while the file was playing.
         if (MediaInfo.ArtworkData is { Length: > 0 } artworkData)
         {
-            if (await DecodeArtworkAsync(artworkData) is { } embedded)
+            if (await DecodeImageBytesAsync(artworkData) is { } embedded)
             {
                 PlaybackTrace.Write($"thumbnail: embedded artwork decoded, {artworkData.Length} bytes");
                 Thumbnail = embedded;
@@ -236,7 +234,34 @@ public sealed partial class MediaViewModel : ObservableRecipient
             PlaybackTrace.Write($"thumbnail: embedded artwork rejected, {artworkData.Length} bytes");
         }
 
-        if (Source is IFileMediaSource fileSource && await fileSource.GetStorageFileAsync() is { } file)
+        StorageFile? file = Source is IFileMediaSource fileSource
+            ? await fileSource.GetStorageFileAsync()
+            : null;
+
+        // Album art for music never comes from the shell: without package identity the thumbnail
+        // provider answers audio files with the generic file-type icon, not the cover. A cover image
+        // next to the tracks (and, for multi-disc albums, one folder up) then the artwork embedded in
+        // the container are the sources that actually produce an image.
+        if (MediaType != MediaPlaybackType.Video && file is not null)
+        {
+            if (await AlbumArtworkLoader.LoadAsync(file) is { Length: > 0 } coverData)
+            {
+                if (await DecodeImageBytesAsync(coverData) is { } cover)
+                {
+                    PlaybackTrace.Write($"thumbnail: album artwork decoded, {coverData.Length} bytes");
+                    Thumbnail = cover;
+                    return;
+                }
+
+                PlaybackTrace.Write($"thumbnail: album artwork rejected, {coverData.Length} bytes");
+            }
+            else
+            {
+                PlaybackTrace.Write("thumbnail: no cover file and no embedded artwork");
+            }
+        }
+
+        if (file is not null)
         {
             using var source = await GetThumbnailSourceAsync(file);
             if (source is null)
@@ -274,14 +299,14 @@ public sealed partial class MediaViewModel : ObservableRecipient
         }
     }
 
-    private static async Task<BitmapImage?> DecodeArtworkAsync(byte[] artworkData)
+    private static async Task<BitmapImage?> DecodeImageBytesAsync(byte[] imageData)
     {
         try
         {
             using InMemoryRandomAccessStream stream = new();
             using (DataWriter writer = new(stream))
             {
-                writer.WriteBytes(artworkData);
+                writer.WriteBytes(imageData);
                 await writer.StoreAsync();
                 await writer.FlushAsync();
                 writer.DetachStream();
@@ -299,7 +324,7 @@ public sealed partial class MediaViewModel : ObservableRecipient
         }
         catch (Exception)
         {
-            // Unknown or corrupt codec for the embedded cover; fall back to the shell.
+            // Unknown or corrupt codec for the embedded cover; fall back to the next source.
             return null;
         }
     }

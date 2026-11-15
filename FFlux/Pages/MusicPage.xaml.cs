@@ -75,6 +75,23 @@ public sealed partial class MusicPage : Page, IContentFrame
         ContentFrame.Navigate(pageType, parameter);
     }
 
+    /// <summary>
+    /// Diagnostic-only: switches the music page to one of its sections by tag ("songs", "albums",
+    /// "artists"). Used by <c>FFLUX_NAV_PROBE</c>.
+    /// </summary>
+    internal void SelectSection(string tag)
+    {
+        foreach (object item in LibraryNavView.MenuItems)
+        {
+            if (item is NavigationViewItem navItem &&
+                string.Equals(navItem.Tag as string, tag, StringComparison.OrdinalIgnoreCase))
+            {
+                LibraryNavView.SelectedItem = navItem;
+                return;
+            }
+        }
+    }
+
     private void LibraryNavView_OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
         if (args.SelectedItemContainer is { Tag: { } tag } && tag.ToString() is { } navItemTag)
