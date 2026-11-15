@@ -1,14 +1,14 @@
 <!-- Markdown version of store listing for localization. -->
 <!-- Feel free to adapt or modify key points if necessary. -->
-## Odtwarzacz Screenbox
+## Odtwarzacz FFlux
 
 **Twój nowoczesny odtwarzacz multimediów**
 
 ### Opis
 
-Screenbox jest nowoczesnym odtwarzaczem multimedialnym, który stara się wprowadzić nowe podejście do klasycznej aplikacji. Screenbox oferuje piękny i intuicyjny interfejs użytkownika, będąc szybki, lekkim i potężnym. Zaprojektowany i zbudowany w otwarciu. Screenbox zawsze będzie darmowy do użytkowania.
+FFlux jest nowoczesnym odtwarzaczem multimedialnym, który stara się wprowadzić nowe podejście do klasycznej aplikacji. FFlux oferuje piękny i intuicyjny interfejs użytkownika, będąc szybki, lekkim i potężnym. Zaprojektowany i zbudowany w otwarciu. FFlux zawsze będzie darmowy do użytkowania.
 
-Screenbox obsługuje wiele powszechnie używanych formatów plików i kodeków, co gwarantuje, że możesz odtwarzać prawie każdy rodzaj plików bez potrzeby dodatkowych dodatków. Bez względu na to, czy przesyłasz strumieniowo treści online czy odtwarzasz pliki przechowywane lokalnie, Screenbox to obsługuje. Zbudowany przy użyciu LibVLC, Screenbox łączy najlepsze cechy VLC Media Player z funkcjami nowoczesnych aplikacji Windowsa. Zaawansowane ustawienia odtwarzania są dostępne za pomocą VLC uruchamianym z poziomu terminala.
+FFlux obsługuje wiele powszechnie używanych formatów plików i kodeków, co gwarantuje, że możesz odtwarzać prawie każdy rodzaj plików bez potrzeby dodatkowych dodatków. Bez względu na to, czy przesyłasz strumieniowo treści online czy odtwarzasz pliki przechowywane lokalnie, FFlux to obsługuje. Zbudowany przy użyciu LibVLC, FFlux łączy najlepsze cechy VLC Media Player z funkcjami nowoczesnych aplikacji Windowsa. Zaawansowane ustawienia odtwarzania są dostępne za pomocą VLC uruchamianym z poziomu terminala.
 
 ### Cechy
 

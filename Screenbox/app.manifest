@@ -3,7 +3,7 @@
      MSIX provided this metadata through Package.appxmanifest; an unpackaged
      executable has to declare DPI awareness and OS compatibility itself. -->
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
-  <assemblyIdentity type="win32" name="Screenbox" version="1.0.0.0" />
+  <assemblyIdentity type="win32" name="FFlux" version="1.0.0.0" />
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
       <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>

@@ -1,14 +1,14 @@
 <!-- Markdown version of store listing for localization. -->
 <!-- Feel free to adapt or modify key points if necessary. -->
-## Screenbox Media Player
+## FFlux Media Player
 
-**Screenbox es un moderno reproductor multimedia para todos tus dispositivos, con soporte para una amplia gama de formatos de archivos.**
+**FFlux es un moderno reproductor multimedia para todos tus dispositivos, con soporte para una amplia gama de formatos de archivos.**
 
 ### Descripción
 
-Screenbox es un moderno reproductor multimedia que busca ofrecer un nuevo concepto renovado de una aplicación clásica. Screenbox ofrece una interfaz de usuario sencilla e intuitiva que se puede adaptar a las capacidades de tu sistema. Diseñado para una experiencia perfecta en una amplia gama de dispositivos Windows y consolas Xbox, Screenbox es rápido, ligero y potente.
+FFlux es un moderno reproductor multimedia que busca ofrecer un nuevo concepto renovado de una aplicación clásica. FFlux ofrece una interfaz de usuario sencilla e intuitiva que se puede adaptar a las capacidades de tu sistema. Diseñado para una experiencia perfecta en una amplia gama de dispositivos Windows y consolas Xbox, FFlux es rápido, ligero y potente.
 
-Screenbox soporta muchos formatos de archivos y codecs comunes, lo que asegura poder reproducir casi cualquier medio sin necesidad de complementos adicionales. Ya sea que estés transmitiendo contenido en línea o reproduciendo archivos almacenados localmente, Screenbox lo tiene cubierto. Potenciado por LibVLC, Screenbox combina lo mejor del reproductor multimedia VLC con las modernas capacidades de una aplicación de Windows. Las opciones avanzadas de reproducción están disponibles utilizando argumentos de línea de comandos de VLC.
+FFlux soporta muchos formatos de archivos y codecs comunes, lo que asegura poder reproducir casi cualquier medio sin necesidad de complementos adicionales. Ya sea que estés transmitiendo contenido en línea o reproduciendo archivos almacenados localmente, FFlux lo tiene cubierto. Potenciado por LibVLC, FFlux combina lo mejor del reproductor multimedia VLC con las modernas capacidades de una aplicación de Windows. Las opciones avanzadas de reproducción están disponibles utilizando argumentos de línea de comandos de VLC.
 
 ### Características
 

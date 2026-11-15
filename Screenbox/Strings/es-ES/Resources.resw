@@ -352,7 +352,7 @@
     <value>Configuración</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Bienvenido a Screenbox</value>
+    <value>Bienvenido a FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>Vamos a empezar a reproducir parte de tu contenido multimedia para poner las cosas en marcha.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>Acceso denegado. Por favor verifique su configuración de privacidad para asegurarse de que Screenbox tiene permisos suficientes.</value>
+    <value>Acceso denegado. Por favor verifique su configuración de privacidad para asegurarse de que FFlux tiene permisos suficientes.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>No se puede acceder a la biblioteca de música</value>
@@ -693,7 +693,7 @@
     <value>Deslizar verticalmente para ajustar el volumen</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox Media Player</value>
+    <value>FFlux Media Player</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Código fuente</value>

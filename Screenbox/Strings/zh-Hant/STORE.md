@@ -1,14 +1,14 @@
 <!-- Markdown version of store listing for localization. -->
 <!-- Feel free to adapt or modify key points if necessary. -->
-## Screenbox 媒體播放器
+## FFlux 媒體播放器
 
 **您的下一個媒體播放器**
 
 ### 介紹
 
-Screenbox 將經典播放器昇華至全新境界，向您呈現嶄新、現代化的媒體播放體驗。 Screenbox 的介面不僅美觀、直覺，更在極致輕便的同時，保持卓越速度和強大功能。 以開源基礎設計和打造，Screenbox 永遠免費。
+FFlux 將經典播放器昇華至全新境界，向您呈現嶄新、現代化的媒體播放體驗。 FFlux 的介面不僅美觀、直覺，更在極致輕便的同時，保持卓越速度和強大功能。 以開源基礎設計和打造，FFlux 永遠免費。
 
-Screenbox 支援多種檔案格式與轉碼器。 無需額外附加元件，即可播放幾乎任何媒體類型。 基於 FFmpegInteropX 與 FFmpeg 技術，Screenbox 兼具廣泛的編解碼器相容性及現代 Windows 應用程式的功能。 透過 FFmpeg key=value 選項，還可提供更進階的播放選項。
+FFlux 支援多種檔案格式與轉碼器。 無需額外附加元件，即可播放幾乎任何媒體類型。 基於 FFmpegInteropX 與 FFmpeg 技術，FFlux 兼具廣泛的編解碼器相容性及現代 Windows 應用程式的功能。 透過 FFmpeg key=value 選項，還可提供更進階的播放選項。
 
 ### 功能
 

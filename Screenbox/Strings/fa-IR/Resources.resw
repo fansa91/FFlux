@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>Access denied. Please verify your privacy settings to ensure Screenbox has sufficient permissions.</value>
+    <value>Access denied. Please verify your privacy settings to ensure FFlux has sufficient permissions.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>Can't access music library</value>
@@ -693,7 +693,7 @@
     <value>Slide vertically to adjust volume</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox Media Player</value>
+    <value>FFlux Media Player</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Source code</value>

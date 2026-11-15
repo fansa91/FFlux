@@ -37,7 +37,7 @@ public sealed partial class TitleBarAutomationPeer : FrameworkElementAutomationP
             name = string.IsNullOrWhiteSpace(owner.Title)
                 // Package.Current.DisplayName needs package identity, which an unpackaged
                 // WinUI 3 app does not have. The assembly name is the display name here.
-                ? "Screenbox"
+                ? "FFlux"
                 : owner.Title;
         }
 

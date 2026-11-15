@@ -68,12 +68,12 @@ public static class Program
     /// Application.UnhandledException. First-chance capture is AppDomain-wide and still
     /// sees the projected COMException before it crosses the ABI boundary, so it is the
     /// only reliable way to get a managed stack for this failure. Set
-    /// SCREENBOX_STARTUP_TRACE=1 to enable it for a diagnostic run; it is otherwise
+    /// FFLUX_STARTUP_TRACE=1 to enable it for a diagnostic run; it is otherwise
     /// off because XAML startup produces a large number of benign first-chance throws.
     /// </summary>
     private static void InstallDiagnostics()
     {
-        if (Environment.GetEnvironmentVariable("SCREENBOX_STARTUP_TRACE") == "1")
+        if (Environment.GetEnvironmentVariable("FFLUX_STARTUP_TRACE") == "1")
         {
             AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
         }

@@ -352,7 +352,7 @@
     <value>Instellingen</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Welkom bij Screenbox</value>
+    <value>Welkom bij FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>Laten we wat van jouw media afspelen om op gang te komen.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>Toegang geweigerd. Controleer uw privacy-instellingen om ervoor te zorgen dat Screenbox voldoende rechten heeft.</value>
+    <value>Toegang geweigerd. Controleer uw privacy-instellingen om ervoor te zorgen dat FFlux voldoende rechten heeft.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>Geen toegang tot muziekbibliotheek</value>
@@ -693,7 +693,7 @@
     <value>Verticaal slepen om volume aan te passen</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox Media Speler</value>
+    <value>FFlux Media Speler</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Broncode</value>

@@ -1,14 +1,14 @@
 <!-- Markdown version of store listing for localization. -->
 <!-- Feel free to adapt or modify key points if necessary. -->
-## Screenbox Media-Player
+## FFlux Media-Player
 
-**Screenbox ist ein moderner Mediaplayer für alle Ihre Geräte, mit Unterstützung für eine Vielzahl von Dateiformaten.**
+**FFlux ist ein moderner Mediaplayer für alle Ihre Geräte, mit Unterstützung für eine Vielzahl von Dateiformaten.**
 
 ### Beschreibung
 
-Screenbox ist ein moderner Mediaplayer, der danach strebt, die klassische Anwendung neu zu gestalten. Screenbox bietet eine schlanke und intuitive Benutzeroberfläche, die sich an die Leistungsfähigkeit Ihres Systems anpassen kann. Entworfen für eine nahtlose Erfahrung auf verschiedenen Windows-Geräten und Xbox-Konsolen, ist Screenbox schnell, leicht und leistungsstark.
+FFlux ist ein moderner Mediaplayer, der danach strebt, die klassische Anwendung neu zu gestalten. FFlux bietet eine schlanke und intuitive Benutzeroberfläche, die sich an die Leistungsfähigkeit Ihres Systems anpassen kann. Entworfen für eine nahtlose Erfahrung auf verschiedenen Windows-Geräten und Xbox-Konsolen, ist FFlux schnell, leicht und leistungsstark.
 
-Screenbox unterstützt viele gängige Dateiformate und Codecs, was sicherstellt, dass Sie fast alle Medien ohne zusätzliche Add-ons abspielen können. Egal, ob Sie Inhalte online streamen oder lokal gespeicherte Dateien abspielen, Screenbox kann's. Unterstützt von LibVLC, kombiniert Screenbox das Beste von VLC media player mit modernen Windows-App-Funktionen. Erweiterte Wiedergabeoptionen sind unter Verwendung von VLC-Befehlszeilenargumenten verfügbar.
+FFlux unterstützt viele gängige Dateiformate und Codecs, was sicherstellt, dass Sie fast alle Medien ohne zusätzliche Add-ons abspielen können. Egal, ob Sie Inhalte online streamen oder lokal gespeicherte Dateien abspielen, FFlux kann's. Unterstützt von LibVLC, kombiniert FFlux das Beste von VLC media player mit modernen Windows-App-Funktionen. Erweiterte Wiedergabeoptionen sind unter Verwendung von VLC-Befehlszeilenargumenten verfügbar.
 
 ### Funktionen
 

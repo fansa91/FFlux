@@ -352,7 +352,7 @@
     <value>Налаштування</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Вітаємо у Screenbox</value>
+    <value>Вітаємо у FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>Давайте для початку відтворимо щось із ваших медіа.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>У доступі відмовлено. Будь ласка, перевірте ваші налаштування конфіденційності та переконайтеся в тому, що Screenbox має належні дозволи.</value>
+    <value>У доступі відмовлено. Будь ласка, перевірте ваші налаштування конфіденційності та переконайтеся в тому, що FFlux має належні дозволи.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>Немає доступу до бібліотеки музики</value>
@@ -693,7 +693,7 @@
     <value>Вертикальне проведення для регулювання гучності</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Медіапрогравач Screenbox</value>
+    <value>Медіапрогравач FFlux</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Початковий код</value>

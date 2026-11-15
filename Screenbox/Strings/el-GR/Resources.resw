@@ -352,7 +352,7 @@
     <value>Ρυθμίσεις</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Καλώς ήλθατε στο Screenbox</value>
+    <value>Καλώς ήλθατε στο FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>Ας αρχίσουμε να παίζουμε κάποιο από τα περιεχόμενα πολυμέσων σας για να ξεκινήσουμε.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>Δεν επιτρέπεται η πρόσβαση. Παρακαλώ επαληθεύστε τις ρυθμίσεις απορρήτου σας για να βεβαιωθείτε ότι το Screenbox έχει επαρκή δικαιώματα.</value>
+    <value>Δεν επιτρέπεται η πρόσβαση. Παρακαλώ επαληθεύστε τις ρυθμίσεις απορρήτου σας για να βεβαιωθείτε ότι το FFlux έχει επαρκή δικαιώματα.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>Αδυναμία πρόσβασης στη μουσική βιβλιοθήκη</value>
@@ -693,7 +693,7 @@
     <value>Σύρετε κάθετα για τη ρύθμιση της έντασης</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Πρόγραμμα Αναπαραγωγής Screenbox</value>
+    <value>Πρόγραμμα Αναπαραγωγής FFlux</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Πηγαίος κώδικας</value>

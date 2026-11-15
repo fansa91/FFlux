@@ -23,13 +23,13 @@ namespace Screenbox.Core.Playback;
 /// track switching, external subtitles, FastSeek, hardware decoding, audio-only playback and
 /// artwork extraction means driving the player from code and reading the result out of the
 /// trace file.
-/// Enable with <c>SCREENBOX_PLAYBACK_PROBE=1</c>; point <c>SCREENBOX_PROBE_SUBTITLE</c> at a
+/// Enable with <c>FFLUX_PLAYBACK_PROBE=1</c>; point <c>FFLUX_PROBE_SUBTITLE</c> at a
 /// subtitle file to exercise the external-subtitle path.
 /// </summary>
 public static class PlaybackProbe
 {
     private static readonly bool Enabled =
-        Environment.GetEnvironmentVariable("SCREENBOX_PLAYBACK_PROBE") == "1";
+        Environment.GetEnvironmentVariable("FFLUX_PLAYBACK_PROBE") == "1";
 
     private static readonly TimeSpan SettleDelay = TimeSpan.FromMilliseconds(900);
     private static int _started;
@@ -284,10 +284,10 @@ public static class PlaybackProbe
 
     private static async Task AddExternalSubtitleAsync(FFmpegMediaPlayer player, FFmpegPlaybackItem item)
     {
-        string? path = Environment.GetEnvironmentVariable("SCREENBOX_PROBE_SUBTITLE");
+        string? path = Environment.GetEnvironmentVariable("FFLUX_PROBE_SUBTITLE");
         if (string.IsNullOrWhiteSpace(path))
         {
-            Log("external subtitle: skipped, SCREENBOX_PROBE_SUBTITLE not set");
+            Log("external subtitle: skipped, FFLUX_PROBE_SUBTITLE not set");
             return;
         }
 

@@ -352,7 +352,7 @@
     <value>設定</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>歡迎使用 Screenbox</value>
+    <value>歡迎使用 FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>立即開始播放您喜愛的媒體內容。</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>拒絕存取。請至隱私權設定確認已授予 Screenbox 相關權限。</value>
+    <value>拒絕存取。請至隱私權設定確認已授予 FFlux 相關權限。</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>無法存取音樂庫</value>
@@ -693,7 +693,7 @@
     <value>上下拖曳以調整音量</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox 媒體播放器</value>
+    <value>FFlux 媒體播放器</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>原始碼</value>

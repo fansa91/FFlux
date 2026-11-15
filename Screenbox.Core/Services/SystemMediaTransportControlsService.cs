@@ -54,7 +54,7 @@ public sealed class SystemMediaTransportControlsService : ISystemMediaTransportC
 
         SystemMediaTransportControlsDisplayUpdater displayUpdater = TransportControls.DisplayUpdater;
         displayUpdater.ClearAll();
-        displayUpdater.AppMediaId = "Screenbox";
+        displayUpdater.AppMediaId = "FFlux";
         if (item == null)
         {
             return;

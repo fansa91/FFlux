@@ -1,14 +1,14 @@
 <!-- Markdown version of store listing for localization. -->
 <!-- Feel free to adapt or modify key points if necessary. -->
-## Screenbox mediasoitin
+## FFlux mediasoitin
 
-**Screenbox on moderni mediatoistin kaikille laitteillesi. Se tukee useita eri tiedostomuotoja.**
+**FFlux on moderni mediatoistin kaikille laitteillesi. Se tukee useita eri tiedostomuotoja.**
 
 ### Kuvaus
 
-Screenbox on nykyaikainen mediasoitin joka pyrkii uudistamaan median toistoon käytettäviä soittimia. Se tarjoaa siistin ja helppokäyttöisen käyttöliittymän joka sopeutuu laitteellesi. Se on suunniteltu olemaan saumaton kokemus laajalla kirjolla Windows laitteita sekä Xbox pelikonsoleita. Screenbox on nopea, kevyt ja tehokas.
+FFlux on nykyaikainen mediasoitin joka pyrkii uudistamaan median toistoon käytettäviä soittimia. Se tarjoaa siistin ja helppokäyttöisen käyttöliittymän joka sopeutuu laitteellesi. Se on suunniteltu olemaan saumaton kokemus laajalla kirjolla Windows laitteita sekä Xbox pelikonsoleita. FFlux on nopea, kevyt ja tehokas.
 
-Screenbox tukee laajaa kirjoa eri formaatteja ja koodekkeja. Toista lähes mitä tahansa mediatiedostoa ilman lisäosia. LibVLC:n avulla Screenbox VLC mediasoittimen ja nykyaikaisten Windows sovellusten ominaisuudet. Edistykselliset toisto-ominaisuudet ovat saatavilla VLC komentoriviparametrien avulla.
+FFlux tukee laajaa kirjoa eri formaatteja ja koodekkeja. Toista lähes mitä tahansa mediatiedostoa ilman lisäosia. LibVLC:n avulla FFlux VLC mediasoittimen ja nykyaikaisten Windows sovellusten ominaisuudet. Edistykselliset toisto-ominaisuudet ovat saatavilla VLC komentoriviparametrien avulla.
 
 ### Ominaisuudet
 

@@ -1,4 +1,6 @@
+using System;
 using System.ComponentModel;
+using System.IO;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml;
 using Screenbox.Core.Helpers;
@@ -18,7 +20,15 @@ namespace Screenbox.Helpers;
 /// </summary>
 internal sealed class WindowTitleController
 {
-    private const string AppName = "Screenbox";
+    private const string AppName = "FFlux";
+
+    /// <summary>
+    /// Icon file copied next to the exe. The PE resource embedded through
+    /// <c>ApplicationIcon</c> only decorates the file itself: the hovered taskbar button and
+    /// the Alt+Tab switcher read the icon of the live window, which starts out as the generic
+    /// WinUI placeholder.
+    /// </summary>
+    private const string IconFileName = "app.ico";
 
     private readonly Window _window;
     private MediaViewModel? _current;
@@ -29,15 +39,38 @@ internal sealed class WindowTitleController
     }
 
     /// <summary>
-    /// Applies the default caption and starts tracking queue changes.
+    /// Applies the default caption and window icon, then starts tracking queue changes.
     /// Call once, after the window exists.
     /// </summary>
     public void Attach()
     {
         Apply(AppName);
+        ApplyIcon();
         WeakReferenceMessenger.Default.Register<QueueCurrentItemChangedMessage>(
             this, static (recipient, message) =>
                 ((WindowTitleController)recipient).OnCurrentItemChanged(message.Value));
+    }
+
+    /// <summary>
+    /// Assigns the taskbar / Alt+Tab icon. The path has to be absolute: <c>AppWindow</c>
+    /// resolves relative paths against the package location, and an unpackaged app has none,
+    /// so a relative name is silently ignored.
+    /// </summary>
+    private void ApplyIcon()
+    {
+        try
+        {
+            string path = Path.Combine(AppContext.BaseDirectory, "Assets", IconFileName);
+            if (File.Exists(path))
+            {
+                _window.AppWindow.SetIcon(path);
+            }
+        }
+        catch
+        {
+            // A missing or malformed icon must not take the window down with it; the
+            // embedded PE icon still shows in Explorer.
+        }
     }
 
     private void OnCurrentItemChanged(MediaViewModel? media)

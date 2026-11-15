@@ -352,7 +352,7 @@
     <value>Tetapan</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Selamat datang ke Screenbox</value>
+    <value>Selamat datang ke FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>Mari bermula mainkan beberapa kandungan media anda bagi memudahkan perkara.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>Capaian dinafikan. Sila sahkan tetapan privasi anda untuk memastikan Screenbox mempunyai kebenaran yang mencukupi.</value>
+    <value>Capaian dinafikan. Sila sahkan tetapan privasi anda untuk memastikan FFlux mempunyai kebenaran yang mencukupi.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>Tidak dapat mencapai pustaka muzik</value>
@@ -693,7 +693,7 @@
     <value>Seret secara menegak untuk melaras volum</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Pemain Media Screenbox</value>
+    <value>Pemain Media FFlux</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Kod sumber</value>

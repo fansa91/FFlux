@@ -352,7 +352,7 @@
     <value>Setări</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Bine ați venit la Screenbox</value>
+    <value>Bine ați venit la FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>Hai să începem să redăm o parte din conținutul media pentru a face lucrurile să meargă.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>Acces refuzat. Vă rugăm să verificați setările de confidențialitate pentru a vă asigura că Screenbox are suficiente permisiuni.</value>
+    <value>Acces refuzat. Vă rugăm să verificați setările de confidențialitate pentru a vă asigura că FFlux are suficiente permisiuni.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>Nu se poate accesa biblioteca de muzică</value>
@@ -693,7 +693,7 @@
     <value>Trageți vertical pentru a ajusta volumul</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox Media Player</value>
+    <value>FFlux Media Player</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Cod sursă</value>

@@ -352,7 +352,7 @@
     <value>设置</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>欢迎使用 Screenbox</value>
+    <value>欢迎使用 FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>让我们开始播放一些媒体内容，让事情进展起来吧。</value>
@@ -603,7 +603,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>访问被拒绝。请验证您的隐私设置，确保 Screenbox 具有足够的权限。</value>
+    <value>访问被拒绝。请验证您的隐私设置，确保 FFlux 具有足够的权限。</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>无法访问音乐资料库</value>
@@ -729,7 +729,7 @@
     <value>垂直拖动以调节音量</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox 媒体播放器</value>
+    <value>FFlux 媒体播放器</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>源代码</value>

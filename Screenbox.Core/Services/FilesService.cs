@@ -183,7 +183,7 @@ public sealed class FilesService : IFilesService
             StorageLibrary pictureLibrary = await StorageLibrary.GetLibraryAsync(KnownLibraryId.Pictures);
             StorageFolder savePicturesFolder = pictureLibrary.SaveFolder;
 
-            return await savePicturesFolder.CreateFolderAsync("Screenbox", CreationCollisionOption.OpenIfExists);
+            return await savePicturesFolder.CreateFolderAsync("FFlux", CreationCollisionOption.OpenIfExists);
         }
         catch (UnauthorizedAccessException)
         {

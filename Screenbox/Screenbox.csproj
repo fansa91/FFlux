@@ -15,9 +15,15 @@
          -p:WindowsAppSDKSelfContained=false for framework-dependent deployment. -->
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Product name and binary name are the two things Windows shows outside the app's own
+         UI: the exe filename in Task Manager / Explorer, and the FileDescription in the
+         property sheet. Keep them here rather than in code so both follow one definition. -->
+    <AssemblyName>FFlux</AssemblyName>
+    <Product>FFlux Player</Product>
+    <Company>fansa92</Company>
     <!-- An unpackaged app gets its taskbar / Alt+Tab / Explorer icon from the PE resource,
          not from a package manifest logo, so the icon has to be embedded in the exe. -->
-    <ApplicationIcon>Assets\Screenbox.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Platforms>x86;x64;arm64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <DefaultLanguage>en-US</DefaultLanguage>

@@ -59,7 +59,7 @@
     <Grid>
         <sbuc:TitleBar
             x:Name="AppTitleBar"
-            Title="Screenbox"
+            Title="FFlux"
             Margin="{StaticResource AppTitleBarExpandedMargin}"
             ctAnimations:Implicit.HideAnimations="{StaticResource FadeOutImplicitAnimation}"
             ctAnimations:Implicit.ShowAnimations="{StaticResource FadeInImplicitAnimation}"
@@ -69,7 +69,7 @@
                 <Thickness x:Key="TitleBarIconMargin">0,0,16,0</Thickness>
             </sbuc:TitleBar.Resources>
             <sbuc:TitleBar.Icon>
-                <muxc:ImageIcon Source="ms-appx:///Assets/Square44x44Logo.png" />
+                <muxc:ImageIcon Source="ms-appx:///Assets/logo.png" />
             </sbuc:TitleBar.Icon>
         </sbuc:TitleBar>
 
@@ -119,7 +119,6 @@
                     KeyTipPlacementMode="Right"
                     Tag="music">
                     <muxc:NavigationViewItem.KeyboardAccelerators>
-                        <KeyboardAccelerator Key="U" Modifiers="Control" />
                     </muxc:NavigationViewItem.KeyboardAccelerators>
                     <TextBlock x:Name="MusicNavItemText" Text="{x:Bind strings:Resources.MusicLibrary}" />
                 </muxc:NavigationViewItem>

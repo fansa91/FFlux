@@ -352,7 +352,7 @@
     <value>הגדרות</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>ברוך הבא אל Screenbox</value>
+    <value>ברוך הבא אל FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>בוא נתחיל לנגן חלק מתוכן המדיה שלך כדי להפעיל דברים.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>הגישה נדחתה. אנא אמת את הגדרות הפרטיות שלך כדי לוודא שלScreenbox יש הרשאות מספיקות.</value>
+    <value>הגישה נדחתה. אנא אמת את הגדרות הפרטיות שלך כדי לוודא שלFFlux יש הרשאות מספיקות.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>לא ניתן לגשת לספריית המוזיקה</value>
@@ -693,7 +693,7 @@
     <value>גרור אנכית כדי לכוונן את עוצמת הקול</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox נגן מדיה</value>
+    <value>FFlux נגן מדיה</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>קוד מקור</value>

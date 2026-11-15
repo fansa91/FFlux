@@ -352,7 +352,7 @@
     <value>සැකසීම්</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Screenbox වෙත සාදරයෙන් පිළිගනිමු</value>
+    <value>FFlux වෙත සාදරයෙන් පිළිගනිමු</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>දේවල් කරගෙන යාමට ඔබගේ මාධ්‍ය අන්තර්ගතයන් කිහිපයක් වාදනය කිරීමට පටන් ගනිමු.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>ප්රවේශය ප්රතික්ෂේප විණි. Screenbox හට ප්‍රමාණවත් අවසර ඇති බව සහතික කිරීමට කරුණාකර ඔබගේ රහස්‍යතා සැකසීම් සත්‍යාපනය කරන්න.</value>
+    <value>ප්රවේශය ප්රතික්ෂේප විණි. FFlux හට ප්‍රමාණවත් අවසර ඇති බව සහතික කිරීමට කරුණාකර ඔබගේ රහස්‍යතා සැකසීම් සත්‍යාපනය කරන්න.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>සංගීත පුස්තකාලයට ප්‍රවේශ විය නොහැක</value>
@@ -693,7 +693,7 @@
     <value>ශබ්දය සීරුමාරු කිරීමට සිරස් අතට අදින්න</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox මීඩියා ධාවකය</value>
+    <value>FFlux මීඩියා ධාවකය</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>මූලාශ්ර කේතය</value>

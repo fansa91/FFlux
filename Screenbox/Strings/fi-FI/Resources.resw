@@ -352,7 +352,7 @@
     <value>Asetukset</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Tervetuloa Screenboxiin</value>
+    <value>Tervetuloa FFluxiin</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>Laitetaan homma käyntiin toistamalla jotain mediatiedostoa.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>Pääsy estetty. Tarkista tietosuoja-asetuksesi varmistaaksesi, että Screenboxilla on riittävät käyttöoikeudet.</value>
+    <value>Pääsy estetty. Tarkista tietosuoja-asetuksesi varmistaaksesi, että FFluxilla on riittävät käyttöoikeudet.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>Musiikkikirjastoa ei voitu käyttää</value>
@@ -693,7 +693,7 @@
     <value>Vedä pystysuunnassa säätääksesi äänenvoimakkuutta</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox mediasoitin</value>
+    <value>FFlux mediasoitin</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Lähdekoodi</value>

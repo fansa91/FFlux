@@ -1,14 +1,14 @@
 <!-- Markdown version of store listing for localization. -->
 <!-- Feel free to adapt or modify key points if necessary. -->
-## Pemain Media Screenbox
+## Pemain Media FFlux
 
-**Screenbox ialah pemain media moden untuk semua peranti anda, dengan sokongan bagi pelbagai format fail.**
+**FFlux ialah pemain media moden untuk semua peranti anda, dengan sokongan bagi pelbagai format fail.**
 
 ### Huraian
 
-Screenbox ialah pemain media moden yang berusaha untuk membawa pandangan baharu yang segar pada aplikasi klasik. Ia menawarkan antara muka pengguna yang rapi dan intuitif yang boleh menyesuaikan diri dengan keupayaan sistem anda. Direka bentuk bagi pengalaman yang lancar merentas pelbagai peranti Windows dan konsol Xbox, Screenbox adalah pantas, ringan dan berkuasa.
+FFlux ialah pemain media moden yang berusaha untuk membawa pandangan baharu yang segar pada aplikasi klasik. Ia menawarkan antara muka pengguna yang rapi dan intuitif yang boleh menyesuaikan diri dengan keupayaan sistem anda. Direka bentuk bagi pengalaman yang lancar merentas pelbagai peranti Windows dan konsol Xbox, FFlux adalah pantas, ringan dan berkuasa.
 
-Screenbox menyokong pelbagai format fail dan kodek. Mainkan hampir semua jenis media tanpa alat tambah lebihan. Dikuasakan oleh LibVLC, Screenbox menggabungkan segala yang terbaik daripada pemain media VLC serta keupayaan aplikasi Windows moden. Pilihan main balik lanjutan tersedia menggunakan argumen baris arahan VLC.
+FFlux menyokong pelbagai format fail dan kodek. Mainkan hampir semua jenis media tanpa alat tambah lebihan. Dikuasakan oleh LibVLC, FFlux menggabungkan segala yang terbaik daripada pemain media VLC serta keupayaan aplikasi Windows moden. Pilihan main balik lanjutan tersedia menggunakan argumen baris arahan VLC.
 
 ### Ciri
 

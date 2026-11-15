@@ -352,7 +352,7 @@
     <value>Pengaturan</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Selamat datang di Screenbox</value>
+    <value>Selamat datang di FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>Ayo mulai memutar beberapa konten media Anda untuk memulai.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>Akses ditolak. Harap verifikasi pengaturan privasi Anda untuk memastikan Screenbox memiliki izin yang cukup.</value>
+    <value>Akses ditolak. Harap verifikasi pengaturan privasi Anda untuk memastikan FFlux memiliki izin yang cukup.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>Tidak dapat mengakses perpustakaan musik</value>
@@ -693,7 +693,7 @@
     <value>Geser secara vertikal untuk mengatur volume</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Pemutar Media Screenbox</value>
+    <value>Pemutar Media FFlux</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Kode sumber</value>

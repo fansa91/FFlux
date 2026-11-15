@@ -352,7 +352,7 @@
     <value>Налады</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Сардэчна запрашаем у Screenbox</value>
+    <value>Сардэчна запрашаем у FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>Каб пачаць працу, абярыце, які медыякантэнт вы хочаце прайграць.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>Доступ забаронены. Калі ласка, праверце налады канфідэнцыяльнасці, каб пераканацца, што Screenbox мае дастаткова правоў.</value>
+    <value>Доступ забаронены. Калі ласка, праверце налады канфідэнцыяльнасці, каб пераканацца, што FFlux мае дастаткова правоў.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>Няма доступу да музычнай бібліятэкі</value>
@@ -693,7 +693,7 @@
     <value>Перацягнуць вертыкальна для рэгулявання гучнасці</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Мультымедыйны плэер Screenbox</value>
+    <value>Мультымедыйны плэер FFlux</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Зыходны код</value>

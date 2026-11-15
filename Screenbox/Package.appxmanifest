@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- INERT IN THE UNPACKAGED BUILD.
-     Screenbox now builds as a plain .exe (WindowsPackageType=None), so this manifest is
+     FFlux now builds as a plain .exe (WindowsPackageType=None), so this manifest is
      excluded from the build. It is kept as the authoritative list of the 54 file type
      associations and the capabilities the app used to declare. An unpackaged app has no
      package identity: file associations must be written to the registry by an installer,
@@ -17,15 +17,15 @@
   IgnorableNamespaces="uap uap3 uap5 mp desktop4">
 
   <Identity
-    Name="Screenbox"
+    Name="FFlux"
     Publisher="CN=ABCDF790-DBE4-48F7-8204-32FCB69ADF9C"
     Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="13f69037-4fca-4b86-a6f5-a77c0969d41a" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
   <Properties>
-    <DisplayName>[Debug] Screenbox</DisplayName>
-    <PublisherDisplayName>Tung H.</PublisherDisplayName>
+    <DisplayName>FFlux</DisplayName>
+    <PublisherDisplayName>fansa92</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -43,12 +43,12 @@
       EntryPoint="Screenbox.App"
       desktop4:SupportsMultipleInstances="true">
       <uap:VisualElements
-        DisplayName="[Debug] Screenbox"
+        DisplayName="FFlux"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png"
-        Description="ms-resource:ManifestResources/AppDescription"
+        Description="Lightweight WinUI 3 FFmpeg Media Player"
         BackgroundColor="transparent">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" Square71x71Logo="Assets\SmallTile.png" Square310x310Logo="Assets\LargeTile.png" ShortName="Screenbox">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" Square71x71Logo="Assets\SmallTile.png" Square310x310Logo="Assets\LargeTile.png" ShortName="FFlux">
           <uap:ShowNameOnTiles>
             <uap:ShowOn Tile="square150x150Logo" />
             <uap:ShowOn Tile="wide310x150Logo" />

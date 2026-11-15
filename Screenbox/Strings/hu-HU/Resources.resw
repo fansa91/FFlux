@@ -352,7 +352,7 @@
     <value>Beállítások</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Udvözöl a Screenbox</value>
+    <value>Udvözöl a FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>Kezdésként játszuk le a médiatartalmaid valamelyikét.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>Hozzáférés megtagadva. Kérlek erősítsd meg az adatvédelmi beállitásaidat hogy meggyőződj róla hogy a Screenbox-nak meglegyen a szükséges engedélye.</value>
+    <value>Hozzáférés megtagadva. Kérlek erősítsd meg az adatvédelmi beállitásaidat hogy meggyőződj róla hogy a FFlux-nak meglegyen a szükséges engedélye.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>Nem lehet hozzáférni a zenei könyvtárhoz</value>
@@ -693,7 +693,7 @@
     <value>Húzz függőlegesen a hangerő növeléshez</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox Média Lejátszó</value>
+    <value>FFlux Média Lejátszó</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Forráskód</value>

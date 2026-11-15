@@ -352,7 +352,7 @@
     <value>Ayarlar</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Screenbox'a hoş geldiniz</value>
+    <value>FFlux'a hoş geldiniz</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>İşleri yoluna koymak için medya içeriğinizden bazılarını oynatmaya başlayalım.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>Erişim engellendi.  Screenbox'ın yeterli izinlere sahip olduğundan emin olmak için lütfen gizlilik ayarlarınızı doğrulayın.</value>
+    <value>Erişim engellendi.  FFlux'ın yeterli izinlere sahip olduğundan emin olmak için lütfen gizlilik ayarlarınızı doğrulayın.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>Müzik kitaplığına erişilemiyor</value>
@@ -693,7 +693,7 @@
     <value>Sesi ayarlamak için dikey olarak sürükleyin</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox Medya Oynatıcısı</value>
+    <value>FFlux Medya Oynatıcısı</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>Kaynak kodu</value>

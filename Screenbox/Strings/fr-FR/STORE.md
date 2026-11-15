@@ -1,14 +1,14 @@
 <!-- Markdown version of store listing for localization. -->
 <!-- Feel free to adapt or modify key points if necessary. -->
-## Lecteur multimédia Screenbox
+## Lecteur multimédia FFlux
 
 **Votre lecteur multimédia moderne**
 
 ### Description
 
-Screenbox est un lecteur multimédia moderne qui réimagine l'application classique. Screenbox combine l'intuitivité d'une magnifique interface avec une puissance, une rapidité et une portabilité inégalées. Conçu et développé en open-source, Screenbox restera toujours gratuit.
+FFlux est un lecteur multimédia moderne qui réimagine l'application classique. FFlux combine l'intuitivité d'une magnifique interface avec une puissance, une rapidité et une portabilité inégalées. Conçu et développé en open-source, FFlux restera toujours gratuit.
 
-Screenbox prend en charge une large gamme de formats de fichiers et de codecs. Jouez presque n'importe quel type de média sans modules supplémentaires. Propulsé par LibVLC, Screenbox combine tout le meilleur du lecteur multimédia VLC et des capacités modernes de l'application Windows. Des options de lecture avancées sont disponibles en utilisant les arguments de ligne de commande VLC.
+FFlux prend en charge une large gamme de formats de fichiers et de codecs. Jouez presque n'importe quel type de média sans modules supplémentaires. Propulsé par LibVLC, FFlux combine tout le meilleur du lecteur multimédia VLC et des capacités modernes de l'application Windows. Des options de lecture avancées sont disponibles en utilisant les arguments de ligne de commande VLC.
 
 ### Fonctionnalités
 

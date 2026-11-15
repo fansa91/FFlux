@@ -352,7 +352,7 @@
     <value>設定</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>Screenbox へようこそ</value>
+    <value>FFlux へようこそ</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>なにかメディアコンテンツを再生しましょう。</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>アクセスが拒否されました。Screenboxに十分な権限があることを確認するために、プライバシー設定を確認してください。</value>
+    <value>アクセスが拒否されました。FFluxに十分な権限があることを確認するために、プライバシー設定を確認してください。</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>音楽ライブラリにアクセスできません</value>
@@ -693,7 +693,7 @@
     <value>音量を調整するには、上下にドラッグしてください</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>Screenbox メディアプレイヤー</value>
+    <value>FFlux メディアプレイヤー</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>ソースコード</value>

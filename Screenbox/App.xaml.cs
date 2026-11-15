@@ -282,7 +282,7 @@ sealed partial class App : Application
         _ = StartupInitAsync();
         _window.Activate();
         StartupErrorLog.Write("Window activated");
-        if (Environment.GetEnvironmentVariable("SCREENBOX_STARTUP_TRACE") == "1")
+        if (Environment.GetEnvironmentVariable("FFLUX_STARTUP_TRACE") == "1")
         {
             StartHeartbeat();
         }
@@ -290,7 +290,7 @@ sealed partial class App : Application
         {
             _ = OpenCommandLineFilesAsync();
         }
-        if (Environment.GetEnvironmentVariable("SCREENBOX_PICKER_PROBE") == "1")
+        if (Environment.GetEnvironmentVariable("FFLUX_PICKER_PROBE") == "1")
         {
             _ = ProbePickerInteropAsync();
         if (Environment.GetEnvironmentVariable("FFLUX_DIALOG_PROBE") == "1")
@@ -316,7 +316,7 @@ sealed partial class App : Application
     /// A short-lived heartbeat tells us whether the WinUI dispatcher loop is still
     /// processing work. Heartbeats that keep arriving while the process dies prove
     /// the termination came from outside the managed message loop. Opt-in via
-    /// SCREENBOX_STARTUP_TRACE=1 so normal launches stay quiet.
+    /// FFLUX_STARTUP_TRACE=1 so normal launches stay quiet.
     /// </summary>
     private void StartHeartbeat()
     {

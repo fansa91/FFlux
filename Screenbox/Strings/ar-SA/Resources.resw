@@ -352,7 +352,7 @@
     <value>الإعدادات</value>
   </data>
   <data name="WelcomePanelHeader" xml:space="preserve">
-    <value>مرحبا بكم في Screenbox</value>
+    <value>مرحبا بكم في FFlux</value>
   </data>
   <data name="WelcomePanelSubtext" xml:space="preserve">
     <value>لنبدأ في تشغيل بعض محتويات الوسائط الخاصة بك لتمضي الأشياء.</value>
@@ -567,7 +567,7 @@
     <comment>#Format[Plural Int]</comment>
   </data>
   <data name="AccessDeniedMessage" xml:space="preserve">
-    <value>غير مسموح بالوصول. الرجاء التحقق من إعدادات الخصوصية الخاصة بك للتأكد من أن Screenbox لديه أذونات كافية.</value>
+    <value>غير مسموح بالوصول. الرجاء التحقق من إعدادات الخصوصية الخاصة بك للتأكد من أن FFlux لديه أذونات كافية.</value>
   </data>
   <data name="AccessDeniedMusicLibraryTitle" xml:space="preserve">
     <value>لا يمكن الوصول إلى مكتبة الموسيقى</value>
@@ -693,7 +693,7 @@
     <value>اسحب عمودياً لضبط مستوى الصوت</value>
   </data>
   <data name="AppFriendlyName" xml:space="preserve">
-    <value>مشغل وسائط Screenbox</value>
+    <value>مشغل وسائط FFlux</value>
   </data>
   <data name="HyperlinkSourceCode" xml:space="preserve">
     <value>الكود المصدر</value>

@@ -56,9 +56,9 @@ public static class FFmpegMediaSourceConfigFactory
         // position. Measured against the test corpus it is fast (17-63ms to resume) but wildly
         // imprecise: a 2s GOP lands up to one full GOP early, and a single-GOP file (x264's
         // default keyint of 250 frames) sends every seek back to 0. Precise seeking resumes in
-        // a comparable time for local media, so it is the default. Set SCREENBOX_FAST_SEEK=1 to
+        // a comparable time for local media, so it is the default. Set FFLUX_FAST_SEEK=1 to
         // opt back into keyframe seeking for slow/remote sources.
-        bool fastSeek = Environment.GetEnvironmentVariable("SCREENBOX_FAST_SEEK") == "1";
+        bool fastSeek = Environment.GetEnvironmentVariable("FFLUX_FAST_SEEK") == "1";
         config.General.FastSeek = fastSeek;
         config.General.FastSeekCleanAudio = fastSeek;
 
@@ -74,7 +74,6 @@ public static class FFmpegMediaSourceConfigFactory
         {
             ["reconnect"] = 1,
             ["reconnect_streamed"] = 1,
-            ["reconnect_on_network_error"] = 1
         };
         if (options is not null)
         {
