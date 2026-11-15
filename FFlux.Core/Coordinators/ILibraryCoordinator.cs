@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Windows.Storage;
 
 namespace Screenbox.Core.Coordinators;
 
@@ -29,4 +30,27 @@ public interface ILibraryCoordinator : IDisposable
     /// Fetches the videos library and applies the result to <see cref="Contexts.LibraryContext"/>.
     /// </summary>
     Task FetchVideosAsync(bool useCache = true);
+
+    /// <summary>
+    /// Adds a folder to the music library and rescans. Answers false when the folder was already
+    /// covered by the folders the library scans.
+    /// </summary>
+    Task<bool> AddMusicFolderAsync(StorageFolder folder);
+
+    /// <summary>
+    /// Removes a hand-added folder from the music library and rescans. Answers false when the
+    /// folder was not added by hand, in which case it belongs to the Windows library definition.
+    /// </summary>
+    Task<bool> RemoveMusicFolderAsync(StorageFolder folder);
+
+    /// <summary>
+    /// Adds a folder to the videos library and rescans. See <see cref="AddMusicFolderAsync"/>.
+    /// </summary>
+    Task<bool> AddVideosFolderAsync(StorageFolder folder);
+
+    /// <summary>
+    /// Removes a hand-added folder from the videos library and rescans.
+    /// See <see cref="RemoveMusicFolderAsync"/>.
+    /// </summary>
+    Task<bool> RemoveVideosFolderAsync(StorageFolder folder);
 }

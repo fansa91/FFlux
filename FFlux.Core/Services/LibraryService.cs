@@ -47,7 +47,7 @@ public sealed class LibraryService : ILibraryService
         _logger = logger;
     }
 
-    public StorageFileQueryResult CreateMusicLibraryQuery(StorageLibrary library, bool useIndexer)
+    public IReadOnlyList<StorageFileQueryResult> CreateMusicLibraryQueries(IReadOnlyList<StorageFolder> roots, bool useIndexer)
     {
         // Uses the same query options as the service's fetch logic. Centralized to avoid duplication.
         QueryOptions queryOptions = new(CommonFileQuery.OrderByTitle, FilesHelpers.SupportedAudioFormats.ToArray())
@@ -58,10 +58,10 @@ public sealed class LibraryService : ILibraryService
             PropertyPrefetchOptions.BasicProperties | PropertyPrefetchOptions.MusicProperties,
             CustomPropertyKeys);
 
-        return GetMusicLibraryRoot(library).CreateFileQueryWithOptions(queryOptions);
+        return CreateQueries(roots, queryOptions);
     }
 
-    public StorageFileQueryResult CreateVideosLibraryQuery(StorageLibrary library, bool useIndexer)
+    public IReadOnlyList<StorageFileQueryResult> CreateVideosLibraryQueries(IReadOnlyList<StorageFolder> roots, bool useIndexer)
     {
         // Uses the same query options as the service's fetch logic. Centralized to avoid duplication.
         QueryOptions queryOptions = new(CommonFileQuery.OrderByName, FilesHelpers.SupportedVideoFormats.ToArray())
@@ -72,34 +72,129 @@ public sealed class LibraryService : ILibraryService
             PropertyPrefetchOptions.BasicProperties | PropertyPrefetchOptions.VideoProperties,
             CustomPropertyKeys);
 
-        return GetVideosLibraryRoot(library).CreateFileQueryWithOptions(queryOptions);
+        return CreateQueries(roots, queryOptions);
+    }
+
+    private List<StorageFileQueryResult> CreateQueries(IReadOnlyList<StorageFolder> roots, QueryOptions queryOptions)
+    {
+        var queries = new List<StorageFileQueryResult>(roots.Count);
+        foreach (StorageFolder root in roots)
+        {
+            try
+            {
+                queries.Add(root.CreateFileQueryWithOptions(queryOptions));
+            }
+            catch (Exception e)
+            {
+                // A folder that vanished between resolution and query creation simply has no files.
+                _logger.LogWarning(e, "Skipping library folder '{Path}': no query could be created for it.", root.Path);
+            }
+        }
+
+        return queries;
     }
 
     /// <summary>
-    /// Picks the folder the music query has to run against.
+    /// Lists every folder the library has to scan.
     /// </summary>
     /// <remarks>
-    /// With package identity <c>KnownFolders.MusicLibrary</c> is a virtual folder that merges every
-    /// folder of the user's music library, so it is the right thing to query. An unpackaged process
-    /// gets that same virtual folder but always empty - no path, no files - because the library
-    /// capability does not exist without a manifest. The folders reported by
-    /// <see cref="StorageLibrary"/> are the real paths in both cases, so they are used as the fallback.
+    /// The folders reported by <see cref="StorageLibrary"/> are real paths in both the packaged and
+    /// the unpackaged build, so they are the source of truth. An unpackaged process used to pick
+    /// only the first of them, which silently hid everything kept in a second library folder;
+    /// all of them are used now, plus the folders added by hand inside the app.
     /// </remarks>
-    private static StorageFolder GetMusicLibraryRoot(StorageLibrary library)
+    public async Task<IReadOnlyList<StorageFolder>> GetLibraryRootsAsync(StorageLibrary library, MediaPlaybackType mediaType)
     {
-        return SystemInformation.HasPackageIdentity
-            ? KnownFolders.MusicLibrary
-            : library.Folders.FirstOrDefault() ?? KnownFolders.MusicLibrary;
+        List<string> libraryPaths = library.Folders.Select(f => f.Path).ToList();
+        IReadOnlyList<string> extraPaths = await LoadExtraRootPathsAsync(mediaType);
+        IReadOnlyList<string> merged = LibraryRootPaths.Merge(libraryPaths, extraPaths);
+
+        List<StorageFolder> roots = await MaterializeAsync(merged);
+        if (roots.Count > 0) return roots;
+
+        // Nothing resolvable. A packaged app can still fall back to the known folder, which is a
+        // virtual folder merging every folder of the library.
+        try
+        {
+            roots.Add(mediaType == MediaPlaybackType.Video
+                ? KnownFolders.VideosLibrary
+                : KnownFolders.MusicLibrary);
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning(e, "No usable root folder for the {MediaType} library.", mediaType);
+        }
+
+        return roots;
     }
 
-    /// <summary>
-    /// Picks the folder the videos query has to run against. See <see cref="GetMusicLibraryRoot"/>.
-    /// </summary>
-    private static StorageFolder GetVideosLibraryRoot(StorageLibrary library)
+    public async Task<bool> AddLibraryRootAsync(StorageLibrary library, MediaPlaybackType mediaType, StorageFolder folder)
     {
-        return SystemInformation.HasPackageIdentity
-            ? KnownFolders.VideosLibrary
-            : library.Folders.FirstOrDefault() ?? KnownFolders.VideosLibrary;
+        string path = folder.Path;
+        if (string.IsNullOrWhiteSpace(path)) return false;
+
+        // Folders Windows already reports need no entry of their own: the scan covers them anyway,
+        // and an entry would switch the change-tracker cache off for no gain.
+        IReadOnlyList<StorageFolder> roots = await GetLibraryRootsAsync(library, mediaType);
+        if (LibraryRootPaths.Covers(roots.Select(r => r.Path), path)) return false;
+
+        try
+        {
+            return await _databaseService.AddLibraryRootAsync(mediaType, path);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to remember the {MediaType} library folder '{Path}'.", mediaType, path);
+            return false;
+        }
+    }
+
+    public async Task<bool> RemoveLibraryRootAsync(MediaPlaybackType mediaType, StorageFolder folder)
+    {
+        string path = folder.Path;
+        if (string.IsNullOrWhiteSpace(path)) return false;
+
+        try
+        {
+            return await _databaseService.RemoveLibraryRootAsync(mediaType, path);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to forget the {MediaType} library folder '{Path}'.", mediaType, path);
+            return false;
+        }
+    }
+
+    private async Task<IReadOnlyList<string>> LoadExtraRootPathsAsync(MediaPlaybackType mediaType)
+    {
+        try
+        {
+            return await _databaseService.GetLibraryRootsAsync(mediaType);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to read the hand-added {MediaType} library folders.", mediaType);
+            return Array.Empty<string>();
+        }
+    }
+
+    private async Task<List<StorageFolder>> MaterializeAsync(IReadOnlyList<string> paths)
+    {
+        var folders = new List<StorageFolder>(paths.Count);
+        foreach (string path in paths)
+        {
+            try
+            {
+                folders.Add(await StorageFolder.GetFolderFromPathAsync(path));
+            }
+            catch (Exception e)
+            {
+                // An unplugged drive or a deleted folder must not take the whole library down.
+                _logger.LogWarning(e, "Library folder '{Path}' is not reachable and will be skipped.", path);
+            }
+        }
+
+        return folders;
     }
 
     public async Task<StorageLibrary> InitializeMusicLibraryAsync()
@@ -137,20 +232,24 @@ public sealed class LibraryService : ILibraryService
     }
 
     public async Task<MusicLibrary> FetchMusicAsync(
-        StorageLibrary library,
-        StorageFileQueryResult queryResult,
+        LibraryScanScope scope,
         bool useCache,
         CancellationToken cancellationToken,
         IProgress<MusicLibrary>? progress = null)
     {
-        StorageFileQueryResult libraryQuery = queryResult;
+        StorageLibrary library = scope.Library;
         StorageLibraryChangeTracker? libraryChangeTracker = library.ChangeTracker;
         StorageLibraryChangeReader? changeReader = null;
 
         // Without package identity the library reports no change tracker, so a cached snapshot can
         // never be checked against what is actually on disk. Rescanning is then the only correct
         // answer - a stale cache would hide every file the user has added since the last fetch.
-        useCache = useCache && libraryChangeTracker is not null && !SystemInformation.IsXbox;
+        // The same holds once a hand-added folder is in play: the tracker only reports on the
+        // folders Windows knows about, so a change in those folders would go unnoticed.
+        useCache = useCache
+            && libraryChangeTracker is not null
+            && !SystemInformation.IsXbox
+            && !await HasExtraRootsAsync(MediaPlaybackType.Music);
         bool hasCache = false;
 
         List<MediaViewModel> cachedSongs = new();
@@ -163,7 +262,7 @@ public sealed class LibraryService : ILibraryService
             if (rawRecords.Count > 0)
             {
                 songs = CreateSongsFromRawRecords(rawRecords);
-                hasCache = !AreLibraryPathsChanged(folderPaths, library);
+                hasCache = !AreLibraryPathsChanged(folderPaths, scope.Roots);
 
                 if (hasCache)
                 {
@@ -188,12 +287,15 @@ public sealed class LibraryService : ILibraryService
         if (!hasCache)
         {
             songs = new List<MediaViewModel>();
-            await BatchFetchMusicAsync(libraryQuery, songs, albumFactory, artistFactory, cancellationToken, progress);
+            // One folder can be reached twice when a hand-added folder overlaps a library folder on
+            // a different casing or through a symlink; the set keeps the list free of duplicates.
+            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            await BatchFetchMusicAsync(scope.Queries, songs, visited, albumFactory, artistFactory, cancellationToken, progress);
 
             if (SearchRemovableStorage && await KnownFolderAccess.HasAccessAsync(KnownFolderId.RemovableDevices))
             {
-                libraryQuery = CreateRemovableStorageMusicQuery();
-                await BatchFetchMusicAsync(libraryQuery, songs, albumFactory, artistFactory, cancellationToken, progress);
+                IReadOnlyList<StorageFileQueryResult> removableQueries = [CreateRemovableStorageMusicQuery()];
+                await BatchFetchMusicAsync(removableQueries, songs, visited, albumFactory, artistFactory, cancellationToken, progress);
             }
         }
         else
@@ -220,7 +322,7 @@ public sealed class LibraryService : ILibraryService
 
         if (!hasCache || !songs.SequenceEqual(cachedSongs))
         {
-            await CacheSongsAsync(library, songs, cancellationToken);
+            await CacheSongsAsync(scope.Roots, songs, cancellationToken);
         }
 
         if (hasCache && changeReader != null)
@@ -236,19 +338,21 @@ public sealed class LibraryService : ILibraryService
     }
 
     public async Task<VideosLibrary> FetchVideosAsync(
-        StorageLibrary library,
-        StorageFileQueryResult queryResult,
+        LibraryScanScope scope,
         bool useCache,
         CancellationToken cancellationToken,
         IProgress<VideosLibrary>? progress = null)
     {
-        StorageFileQueryResult libraryQuery = queryResult;
+        StorageLibrary library = scope.Library;
         StorageLibraryChangeTracker? libraryChangeTracker = library.ChangeTracker;
         StorageLibraryChangeReader? changeReader = null;
 
         // See FetchMusicAsync: no identity means no change tracker, and a cache that cannot be
-        // validated has to be treated as missing.
-        useCache = useCache && libraryChangeTracker is not null && !SystemInformation.IsXbox;
+        // validated has to be treated as missing. Hand-added folders invalidate it as well.
+        useCache = useCache
+            && libraryChangeTracker is not null
+            && !SystemInformation.IsXbox
+            && !await HasExtraRootsAsync(MediaPlaybackType.Video);
         bool hasCache = false;
 
         List<MediaViewModel> cachedVideos = new();
@@ -261,7 +365,7 @@ public sealed class LibraryService : ILibraryService
             if (rawRecords.Count > 0)
             {
                 videos = CreateVideosFromRawRecords(rawRecords);
-                hasCache = !AreLibraryPathsChanged(folderPaths, library);
+                hasCache = !AreLibraryPathsChanged(folderPaths, scope.Roots);
 
                 if (hasCache)
                 {
@@ -283,12 +387,13 @@ public sealed class LibraryService : ILibraryService
         if (!hasCache)
         {
             videos = new List<MediaViewModel>();
-            await BatchFetchVideosAsync(libraryQuery, videos, cancellationToken, progress);
+            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            await BatchFetchVideosAsync(scope.Queries, videos, visited, cancellationToken, progress);
 
             if (SearchRemovableStorage && await KnownFolderAccess.HasAccessAsync(KnownFolderId.RemovableDevices))
             {
-                libraryQuery = CreateRemovableStorageVideosQuery();
-                await BatchFetchVideosAsync(libraryQuery, videos, cancellationToken, progress);
+                IReadOnlyList<StorageFileQueryResult> removableQueries = [CreateRemovableStorageVideosQuery()];
+                await BatchFetchVideosAsync(removableQueries, videos, visited, cancellationToken, progress);
             }
         }
         else
@@ -301,7 +406,7 @@ public sealed class LibraryService : ILibraryService
 
         if (!hasCache || !videos.SequenceEqual(cachedVideos))
         {
-            await CacheVideosAsync(library, videos, cancellationToken);
+            await CacheVideosAsync(scope.Roots, videos, cancellationToken);
         }
 
         if (hasCache && changeReader != null)
@@ -462,9 +567,9 @@ public sealed class LibraryService : ILibraryService
         return result;
     }
 
-    private async Task CacheSongsAsync(StorageLibrary library, List<MediaViewModel> songs, CancellationToken cancellationToken)
+    private async Task CacheSongsAsync(IReadOnlyList<StorageFolder> roots, List<MediaViewModel> songs, CancellationToken cancellationToken)
     {
-        var folderPaths = library.Folders.Select(f => f.Path).ToList();
+        var folderPaths = roots.Select(f => f.Path).ToList();
         var snapshot = songs.Select(s => new MusicCacheRecordDto
         {
             Path = s.Location,
@@ -492,9 +597,9 @@ public sealed class LibraryService : ILibraryService
         }
     }
 
-    private async Task CacheVideosAsync(StorageLibrary library, List<MediaViewModel> videos, CancellationToken cancellationToken)
+    private async Task CacheVideosAsync(IReadOnlyList<StorageFolder> roots, List<MediaViewModel> videos, CancellationToken cancellationToken)
     {
-        var folderPaths = library.Folders.Select(f => f.Path).ToList();
+        var folderPaths = roots.Select(f => f.Path).ToList();
         var snapshot = videos.Select(v => new VideoCacheRecordDto
         {
             Path = v.Location,
@@ -522,73 +627,93 @@ public sealed class LibraryService : ILibraryService
     }
 
     private async Task BatchFetchMusicAsync(
-        StorageFileQueryResult queryResult,
+        IReadOnlyList<StorageFileQueryResult> queries,
         List<MediaViewModel> target,
+        HashSet<string> visited,
         AlbumViewModelFactory albumFactory,
         ArtistViewModelFactory artistFactory,
         CancellationToken cancellationToken,
         IProgress<MusicLibrary>? progress)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         DateTime lastReport = DateTime.MinValue;
-        while (true)
+        foreach (StorageFileQueryResult query in queries)
         {
-            IReadOnlyList<StorageFile> files = await FetchFilesFromStorage(queryResult, (uint)target.Count);
-            if (files.Count == 0) break;
-
-            foreach (StorageFile file in files)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                MediaViewModel song = _mediaFactory.Create(file);
-                song.IsFromLibrary = true;
-                await song.LoadDetailsAsync(_sourceMetadataService, cancellationToken);
-                albumFactory.AddSong(song);
-                artistFactory.AddSong(song);
-                song.Album = albumFactory.SongsToAlbums[song];
-                song.Artists = artistFactory.SongsToArtists[song].ToArray();
-                song.Album.UpdateProperties();
-                target.Add(song);
-            }
-
-            if (progress != null && (DateTime.UtcNow - lastReport).TotalSeconds >= 5)
-            {
-                progress.Report(BuildMusicSnapshot(target, albumFactory, artistFactory));
-                lastReport = DateTime.UtcNow;
-            }
-
             cancellationToken.ThrowIfCancellationRequested();
+
+            // Paging is per query: each one has its own result set, so the batch index cannot be
+            // derived from the number of songs collected so far.
+            uint fetchIndex = 0;
+            while (true)
+            {
+                IReadOnlyList<StorageFile> files = await FetchFilesFromStorage(query, fetchIndex);
+                if (files.Count == 0) break;
+                fetchIndex += (uint)files.Count;
+
+                foreach (StorageFile file in files)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!visited.Add(file.Path)) continue;
+
+                    MediaViewModel song = _mediaFactory.Create(file);
+                    song.IsFromLibrary = true;
+                    await song.LoadDetailsAsync(_sourceMetadataService, cancellationToken);
+                    albumFactory.AddSong(song);
+                    artistFactory.AddSong(song);
+                    song.Album = albumFactory.SongsToAlbums[song];
+                    song.Artists = artistFactory.SongsToArtists[song].ToArray();
+                    song.Album.UpdateProperties();
+                    target.Add(song);
+                }
+
+                if (progress != null && (DateTime.UtcNow - lastReport).TotalSeconds >= 5)
+                {
+                    progress.Report(BuildMusicSnapshot(target, albumFactory, artistFactory));
+                    lastReport = DateTime.UtcNow;
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+            }
         }
     }
 
     private async Task BatchFetchVideosAsync(
-        StorageFileQueryResult queryResult,
+        IReadOnlyList<StorageFileQueryResult> queries,
         List<MediaViewModel> target,
+        HashSet<string> visited,
         CancellationToken cancellationToken,
         IProgress<VideosLibrary>? progress)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         DateTime lastReport = DateTime.MinValue;
-        while (true)
+        foreach (StorageFileQueryResult query in queries)
         {
-            IReadOnlyList<StorageFile> files = await FetchFilesFromStorage(queryResult, (uint)target.Count);
-            if (files.Count == 0) break;
-
-            foreach (StorageFile file in files)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                MediaViewModel video = _mediaFactory.Create(file);
-                video.IsFromLibrary = true;
-                await video.LoadDetailsAsync(_sourceMetadataService, cancellationToken);
-                target.Add(video);
-            }
-
-            if (progress != null && (DateTime.UtcNow - lastReport).TotalSeconds >= 5)
-            {
-                progress.Report(new VideosLibrary(new List<MediaViewModel>(target)));
-                lastReport = DateTime.UtcNow;
-            }
-
             cancellationToken.ThrowIfCancellationRequested();
+
+            uint fetchIndex = 0;
+            while (true)
+            {
+                IReadOnlyList<StorageFile> files = await FetchFilesFromStorage(query, fetchIndex);
+                if (files.Count == 0) break;
+                fetchIndex += (uint)files.Count;
+
+                foreach (StorageFile file in files)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!visited.Add(file.Path)) continue;
+
+                    MediaViewModel video = _mediaFactory.Create(file);
+                    video.IsFromLibrary = true;
+                    await video.LoadDetailsAsync(_sourceMetadataService, cancellationToken);
+                    target.Add(video);
+                }
+
+                if (progress != null && (DateTime.UtcNow - lastReport).TotalSeconds >= 5)
+                {
+                    progress.Report(new VideosLibrary(new List<MediaViewModel>(target)));
+                    lastReport = DateTime.UtcNow;
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+            }
         }
     }
 
@@ -730,11 +855,27 @@ public sealed class LibraryService : ILibraryService
         return true;
     }
 
-    private static bool AreLibraryPathsChanged(IReadOnlyCollection<string> cachedFolderPaths, StorageLibrary library)
+    /// <summary>
+    /// Whether the folder set the cache was built from still matches the folders that are scanned now.
+    /// </summary>
+    private static bool AreLibraryPathsChanged(IReadOnlyCollection<string> cachedFolderPaths, IReadOnlyList<StorageFolder> roots)
     {
-        var paths = library.Folders.Select(f => f.Path).ToList();
+        var paths = roots.Select(f => f.Path).ToList();
         if (cachedFolderPaths.Count != paths.Count) return true;
         return cachedFolderPaths.Any(cachedPath => !paths.Contains(cachedPath, StringComparer.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Whether the user added folders that are not part of the Windows library definition.
+    /// </summary>
+    /// <remarks>
+    /// The change tracker only reports changes inside the library it belongs to, so a cache built
+    /// over hand-added folders cannot be kept up to date with it.
+    /// </remarks>
+    private async Task<bool> HasExtraRootsAsync(MediaPlaybackType mediaType)
+    {
+        IReadOnlyList<string> extras = await LoadExtraRootPathsAsync(mediaType);
+        return extras.Count > 0;
     }
 
     private static StorageFileQueryResult CreateRemovableStorageMusicQuery()

@@ -63,6 +63,9 @@ public sealed partial class DatabaseService
             "artist", "album", "album_artist", "composers", "genre", "track_number", "bitrate",
             "subtitle", "producers", "writers", "width", "height", "video_bitrate");
         EnsureReplaceableTable(connection, "playback_progress", CreatePlaybackProgressSql, "location", "position_ticks");
+        // User data, so it is never dropped on schema drift: the table only ever gains a column
+        // through an explicit migration.
+        ExecuteNonQuery(connection, CreateLibraryRootsSql);
         EnsurePlaylistsTable(connection);
         EnsurePlaylistItemsTable(connection);
         migrationComplete = await TryImportLegacyPlaylistsAsync(connection);
@@ -90,6 +93,7 @@ public sealed partial class DatabaseService
         ExecuteNonQuery(connection, CreateLibraryFoldersSql);
         ExecuteNonQuery(connection, CreateMediaRecordsSql);
         ExecuteNonQuery(connection, CreatePlaybackProgressSql);
+        ExecuteNonQuery(connection, CreateLibraryRootsSql);
         ExecuteNonQuery(connection, CreatePlaylistsSql);
         ExecuteNonQuery(connection, CreatePlaylistItemsSql);
         transaction.Commit();
@@ -330,6 +334,18 @@ public sealed partial class DatabaseService
 
     private const string CreateLibraryFoldersSql = """
         CREATE TABLE IF NOT EXISTS library_folders (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            path       TEXT    UNIQUE NOT NULL,
+            media_type INTEGER        NOT NULL
+        );
+        """;
+
+    /// <summary>
+    /// Folders the user added to a library by hand. Kept apart from <c>library_folders</c>, which
+    /// records the folder set the current cache was built from and is rewritten on every scan.
+    /// </summary>
+    private const string CreateLibraryRootsSql = """
+        CREATE TABLE IF NOT EXISTS library_roots (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             path       TEXT    UNIQUE NOT NULL,
             media_type INTEGER        NOT NULL

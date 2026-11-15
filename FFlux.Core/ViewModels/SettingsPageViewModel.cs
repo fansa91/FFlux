@@ -56,6 +56,7 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
     private static readonly int[] _volumeOptions = [100, 125, 150, 200];
 
     private readonly IFilesService _filesService;
+    private readonly ILibraryService _libraryService;
     private readonly LibraryContext _libraryContext;
     private readonly RecentContext _recentContext;
     private readonly ILibraryCoordinator _libraryCoordinator;
@@ -82,6 +83,7 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
         PlaybackSettingsContext playbackSettings,
         GeneralSettingsContext generalSettings,
         IFilesService filesService,
+        ILibraryService libraryService,
         LibraryContext libraryContext,
         RecentContext recentContext,
         ILibraryCoordinator libraryCoordinator,
@@ -93,6 +95,7 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
         PlaybackSettings = playbackSettings;
         GeneralSettings = generalSettings;
         _filesService = filesService;
+        _libraryService = libraryService;
         _libraryContext = libraryContext;
         _recentContext = recentContext;
         _libraryCoordinator = libraryCoordinator;
@@ -183,10 +186,15 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
     [RelayCommand]
     private async Task AddVideosFolderAsync()
     {
-        if (_videosLibrary == null) return;
         try
         {
-            await _videosLibrary.RequestAddFolderAsync();
+            StorageFolder? folder = await _filesService.PickFolderAsync();
+            if (folder is null) return;
+
+            // The coordinator remembers the folder and rescans, so the list below is rebuilt from
+            // the folders that are actually scanned rather than from the Windows library alone.
+            await _libraryCoordinator.AddVideosFolderAsync(folder);
+            await UpdateLibraryLocationsAsync();
         }
         catch (Exception e)
         {
@@ -199,6 +207,13 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
     [RelayCommand]
     private async Task RemoveVideosFolderAsync(StorageFolder folder)
     {
+        // A hand-added folder only lives in the database; the Windows library has nothing to remove.
+        if (await _libraryCoordinator.RemoveVideosFolderAsync(folder))
+        {
+            await UpdateLibraryLocationsAsync();
+            return;
+        }
+
         if (_videosLibrary == null) return;
         try
         {
@@ -214,10 +229,13 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
     [RelayCommand]
     private async Task AddMusicFolderAsync()
     {
-        if (_musicLibrary == null) return;
         try
         {
-            await _musicLibrary.RequestAddFolderAsync();
+            StorageFolder? folder = await _filesService.PickFolderAsync();
+            if (folder is null) return;
+
+            await _libraryCoordinator.AddMusicFolderAsync(folder);
+            await UpdateLibraryLocationsAsync();
         }
         catch (Exception e)
         {
@@ -229,6 +247,12 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
     [RelayCommand]
     private async Task RemoveMusicFolderAsync(StorageFolder folder)
     {
+        if (await _libraryCoordinator.RemoveMusicFolderAsync(folder))
+        {
+            await UpdateLibraryLocationsAsync();
+            return;
+        }
+
         if (_musicLibrary == null) return;
         try
         {
@@ -328,7 +352,7 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
             }
         }
 
-        UpdateLibraryLocations();
+        await UpdateLibraryLocationsAsync();
         await UpdateRemovableStorageFoldersAsync();
     }
 
@@ -346,7 +370,17 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
 
     private void LibraryOnDefinitionChanged(StorageLibrary sender, object args)
     {
-        _dispatcherQueue.TryEnqueue(UpdateLibraryLocations);
+        _dispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                await UpdateLibraryLocationsAsync();
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Failed to refresh the library locations.");
+            }
+        });
     }
 
     private void OnPortableStorageDeviceChanged(DeviceWatcher sender, DeviceInformationUpdate args)
@@ -355,25 +389,33 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
         _storageDeviceRefreshTimer.DebounceCore(RefreshAction, TimeSpan.FromMilliseconds(500));
     }
 
-    private void UpdateLibraryLocations()
+    /// <summary>
+    /// Rebuilds the folder lists from the folders a scan actually covers, which is the folders of
+    /// the Windows library plus the ones added by hand inside the app.
+    /// </summary>
+    private async Task UpdateLibraryLocationsAsync()
     {
-        if (_videosLibrary != null)
+        if (_videosLibrary is not null)
         {
-            VideoLocations.Clear();
-            foreach (StorageFolder folder in _videosLibrary.Folders)
-            {
-                VideoLocations.Add(folder);
-            }
+            IReadOnlyList<StorageFolder> roots =
+                await _libraryService.GetLibraryRootsAsync(_videosLibrary, MediaPlaybackType.Video);
+            Replace(VideoLocations, roots);
         }
 
-        if (_musicLibrary != null)
+        if (_musicLibrary is not null)
         {
-            MusicLocations.Clear();
+            IReadOnlyList<StorageFolder> roots =
+                await _libraryService.GetLibraryRootsAsync(_musicLibrary, MediaPlaybackType.Music);
+            Replace(MusicLocations, roots);
+        }
+    }
 
-            foreach (StorageFolder folder in _musicLibrary.Folders)
-            {
-                MusicLocations.Add(folder);
-            }
+    private static void Replace(ObservableCollection<StorageFolder> target, IReadOnlyList<StorageFolder> folders)
+    {
+        target.Clear();
+        foreach (StorageFolder folder in folders)
+        {
+            target.Add(folder);
         }
     }
 

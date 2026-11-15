@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Screenbox.Core.Enums;
 using Screenbox.Core.Models;
 using Windows.Storage;
 using Windows.Storage.Search;
@@ -25,12 +27,28 @@ public interface ILibraryService
     Task<StorageLibrary> InitializeVideosLibraryAsync();
 
     /// <summary>
+    /// Lists every folder a library has to scan: the folders Windows reports for that library
+    /// followed by the folders the user added by hand. Duplicates and nested folders are dropped.
+    /// </summary>
+    Task<IReadOnlyList<StorageFolder>> GetLibraryRootsAsync(StorageLibrary library, MediaPlaybackType mediaType);
+
+    /// <summary>
+    /// Remembers a folder the user added to a library. Answers false when the folder was already
+    /// covered by the existing roots or cannot be persisted.
+    /// </summary>
+    Task<bool> AddLibraryRootAsync(StorageLibrary library, MediaPlaybackType mediaType, StorageFolder folder);
+
+    /// <summary>
+    /// Forgets a folder the user added to a library. Answers false when it was not a hand-added folder.
+    /// </summary>
+    Task<bool> RemoveLibraryRootAsync(MediaPlaybackType mediaType, StorageFolder folder);
+
+    /// <summary>
     /// Fetch music from the library. Returns a <see cref="MusicLibrary"/> that the caller
     /// should apply to the library context. Intermediate results are reported via <paramref name="progress"/>.
     /// </summary>
     Task<MusicLibrary> FetchMusicAsync(
-        StorageLibrary library,
-        StorageFileQueryResult queryResult,
+        LibraryScanScope scope,
         bool useCache,
         CancellationToken cancellationToken,
         IProgress<MusicLibrary>? progress = null);
@@ -40,24 +58,22 @@ public interface ILibraryService
     /// should apply to the library context. Intermediate results are reported via <paramref name="progress"/>.
     /// </summary>
     Task<VideosLibrary> FetchVideosAsync(
-        StorageLibrary library,
-        StorageFileQueryResult queryResult,
+        LibraryScanScope scope,
         bool useCache,
         CancellationToken cancellationToken,
         IProgress<VideosLibrary>? progress = null);
 
     /// <summary>
-    /// Creates a query for the user's music library.
+    /// Creates one query per library folder for music.
     /// </summary>
-    /// <param name="library">The music storage library the query has to cover.</param>
+    /// <param name="roots">The folders the scan covers, as returned by <see cref="GetLibraryRootsAsync"/>.</param>
     /// <param name="useIndexer">Whether the system search indexer may be used.</param>
-    StorageFileQueryResult CreateMusicLibraryQuery(StorageLibrary library, bool useIndexer);
+    IReadOnlyList<StorageFileQueryResult> CreateMusicLibraryQueries(IReadOnlyList<StorageFolder> roots, bool useIndexer);
 
     /// <summary>
-    /// Creates a query for the user's videos library.
+    /// Creates one query per library folder for videos.
     /// </summary>
-    /// <param name="library">The videos storage library the query has to cover.</param>
+    /// <param name="roots">The folders the scan covers, as returned by <see cref="GetLibraryRootsAsync"/>.</param>
     /// <param name="useIndexer">Whether the system search indexer may be used.</param>
-    StorageFileQueryResult CreateVideosLibraryQuery(StorageLibrary library, bool useIndexer);
+    IReadOnlyList<StorageFileQueryResult> CreateVideosLibraryQueries(IReadOnlyList<StorageFolder> roots, bool useIndexer);
 }
-

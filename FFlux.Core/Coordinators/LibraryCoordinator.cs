@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
 using Microsoft.Extensions.Logging;
 using Screenbox.Core.Contexts;
+using Screenbox.Core.Enums;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.Messages;
 using Screenbox.Core.Models;
@@ -33,8 +36,10 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
 
     private readonly DeviceWatcher? _portableStorageDeviceWatcher;
 
-    private StorageFileQueryResult? _musicQuery;
-    private StorageFileQueryResult? _videosQuery;
+    private IReadOnlyList<StorageFolder> _musicRoots = Array.Empty<StorageFolder>();
+    private IReadOnlyList<StorageFolder> _videosRoots = Array.Empty<StorageFolder>();
+    private List<StorageFileQueryResult> _musicQueries = new();
+    private List<StorageFileQueryResult> _videosQueries = new();
     private CancellationTokenSource? _musicFetchCts;
     private CancellationTokenSource? _videosFetchCts;
 
@@ -104,7 +109,7 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
     /// <inheritdoc/>
     public async Task FetchMusicAsync(bool useCache = true)
     {
-        if (_context.MusicStorageLibrary is null || _musicQuery is null) return;
+        if (_context.MusicStorageLibrary is null || _musicQueries.Count == 0) return;
         _musicFetchCts?.Cancel();
         using CancellationTokenSource cts = new();
         _musicFetchCts = cts;
@@ -113,9 +118,14 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
         {
             var progress = new Progress<MusicLibrary>(report =>
             {
+                // A snapshot posted while this fetch was still running can be delivered after it
+                // finished - and after a later fetch replaced the library - so stale reports are
+                // dropped instead of overwriting the final result.
+                if (!ReferenceEquals(_musicFetchCts, cts) || cts.Token.IsCancellationRequested) return;
                 _context.Music = report;
             });
-            var result = await _libraryService.FetchMusicAsync(_context.MusicStorageLibrary, _musicQuery, useCache, cts.Token, progress);
+            LibraryScanScope scope = new(_context.MusicStorageLibrary, _musicRoots, _musicQueries);
+            var result = await _libraryService.FetchMusicAsync(scope, useCache, cts.Token, progress);
             _context.IsLoadingMusic = false;
             _context.Music = result;
         }
@@ -137,7 +147,7 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
     /// <inheritdoc/>
     public async Task FetchVideosAsync(bool useCache = true)
     {
-        if (_context.VideosStorageLibrary is null || _videosQuery is null) return;
+        if (_context.VideosStorageLibrary is null || _videosQueries.Count == 0) return;
         _videosFetchCts?.Cancel();
         using CancellationTokenSource cts = new();
         _videosFetchCts = cts;
@@ -146,9 +156,12 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
         {
             var progress = new Progress<VideosLibrary>(report =>
             {
+                // See FetchMusicAsync: a late snapshot must not overwrite a newer result.
+                if (!ReferenceEquals(_videosFetchCts, cts) || cts.Token.IsCancellationRequested) return;
                 _context.Videos = report;
             });
-            var result = await _libraryService.FetchVideosAsync(_context.VideosStorageLibrary, _videosQuery, useCache, cts.Token, progress);
+            LibraryScanScope scope = new(_context.VideosStorageLibrary, _videosRoots, _videosQueries);
+            var result = await _libraryService.FetchVideosAsync(scope, useCache, cts.Token, progress);
             _context.IsLoadingVideos = false;
             _context.Videos = result;
         }
@@ -180,17 +193,8 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
 
     private void StopWatching()
     {
-        if (_musicQuery is not null)
-        {
-            _musicQuery.ContentsChanged -= OnMusicQueryContentsChanged;
-            _musicQuery = null;
-        }
-
-        if (_videosQuery is not null)
-        {
-            _videosQuery.ContentsChanged -= OnVideosQueryContentsChanged;
-            _videosQuery = null;
-        }
+        DetachMusicQueries();
+        DetachVideosQueries();
 
         if (_portableStorageDeviceWatcher?.Status is DeviceWatcherStatus.Started or DeviceWatcherStatus.EnumerationCompleted)
         {
@@ -202,6 +206,28 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
         _storageDeviceRefreshTimer.Stop();
     }
 
+    private void DetachMusicQueries()
+    {
+        foreach (StorageFileQueryResult query in _musicQueries)
+        {
+            query.ContentsChanged -= OnMusicQueryContentsChanged;
+        }
+
+        _musicQueries.Clear();
+        _musicRoots = Array.Empty<StorageFolder>();
+    }
+
+    private void DetachVideosQueries()
+    {
+        foreach (StorageFileQueryResult query in _videosQueries)
+        {
+            query.ContentsChanged -= OnVideosQueryContentsChanged;
+        }
+
+        _videosQueries.Clear();
+        _videosRoots = Array.Empty<StorageFolder>();
+    }
+
     private async Task EnsureWatchingMusicAsync()
     {
         if (_context.MusicStorageLibrary is null)
@@ -209,21 +235,27 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
             _context.MusicStorageLibrary = await _libraryService.InitializeMusicLibraryAsync();
         }
 
-        if (_musicQuery is not null && ShouldUpdateQuery(_musicQuery, UseIndexer))
+        if (_musicQueries.Count > 0 && _musicQueries.Any(query => ShouldUpdateQuery(query, UseIndexer)))
         {
-            _musicQuery.ContentsChanged -= OnMusicQueryContentsChanged;
-            _musicQuery = null;
+            DetachMusicQueries();
         }
 
         // Known-folder access is only requestable by a packaged app. The unpackaged build used to
         // be told "DeniedByUser", which stopped the query from ever being created and left the
         // music library permanently empty. KnownFolderAccess answers true when there is no
-        // capability to ask for, so the query is created and reads the real folder instead.
-        if (_musicQuery is null && _context.MusicStorageLibrary is not null
+        // capability to ask for, so the queries are created and read the real folders instead.
+        if (_musicQueries.Count == 0 && _context.MusicStorageLibrary is not null
             && await KnownFolderAccess.HasAccessAsync(KnownFolderId.MusicLibrary))
         {
-            _musicQuery = _libraryService.CreateMusicLibraryQuery(_context.MusicStorageLibrary, UseIndexer);
-            _musicQuery.ContentsChanged += OnMusicQueryContentsChanged;
+            _musicRoots = await _libraryService.GetLibraryRootsAsync(_context.MusicStorageLibrary, MediaPlaybackType.Music);
+            List<StorageFileQueryResult> queries =
+                _libraryService.CreateMusicLibraryQueries(_musicRoots, UseIndexer).ToList();
+            foreach (StorageFileQueryResult query in queries)
+            {
+                query.ContentsChanged += OnMusicQueryContentsChanged;
+            }
+
+            _musicQueries = queries;
         }
     }
 
@@ -234,19 +266,81 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
             _context.VideosStorageLibrary = await _libraryService.InitializeVideosLibraryAsync();
         }
 
-        if (_videosQuery is not null && ShouldUpdateQuery(_videosQuery, UseIndexer))
+        if (_videosQueries.Count > 0 && _videosQueries.Any(query => ShouldUpdateQuery(query, UseIndexer)))
         {
-            _videosQuery.ContentsChanged -= OnVideosQueryContentsChanged;
-            _videosQuery = null;
+            DetachVideosQueries();
         }
 
         // See EnsureWatchingMusicAsync for why the access check is delegated.
-        if (_videosQuery is null && _context.VideosStorageLibrary is not null
+        if (_videosQueries.Count == 0 && _context.VideosStorageLibrary is not null
             && await KnownFolderAccess.HasAccessAsync(KnownFolderId.VideosLibrary))
         {
-            _videosQuery = _libraryService.CreateVideosLibraryQuery(_context.VideosStorageLibrary, UseIndexer);
-            _videosQuery.ContentsChanged += OnVideosQueryContentsChanged;
+            _videosRoots = await _libraryService.GetLibraryRootsAsync(_context.VideosStorageLibrary, MediaPlaybackType.Video);
+            List<StorageFileQueryResult> queries =
+                _libraryService.CreateVideosLibraryQueries(_videosRoots, UseIndexer).ToList();
+            foreach (StorageFileQueryResult query in queries)
+            {
+                query.ContentsChanged += OnVideosQueryContentsChanged;
+            }
+
+            _videosQueries = queries;
         }
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> AddMusicFolderAsync(StorageFolder folder)
+    {
+        if (_context.MusicStorageLibrary is null) return false;
+        bool added = await _libraryService.AddLibraryRootAsync(_context.MusicStorageLibrary, MediaPlaybackType.Music, folder);
+        if (!added) return false;
+
+        await RestartMusicWatchingAsync();
+        await FetchMusicAsync(useCache: false);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> RemoveMusicFolderAsync(StorageFolder folder)
+    {
+        if (!await _libraryService.RemoveLibraryRootAsync(MediaPlaybackType.Music, folder)) return false;
+
+        await RestartMusicWatchingAsync();
+        await FetchMusicAsync(useCache: false);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> AddVideosFolderAsync(StorageFolder folder)
+    {
+        if (_context.VideosStorageLibrary is null) return false;
+        bool added = await _libraryService.AddLibraryRootAsync(_context.VideosStorageLibrary, MediaPlaybackType.Video, folder);
+        if (!added) return false;
+
+        await RestartVideosWatchingAsync();
+        await FetchVideosAsync(useCache: false);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> RemoveVideosFolderAsync(StorageFolder folder)
+    {
+        if (!await _libraryService.RemoveLibraryRootAsync(MediaPlaybackType.Video, folder)) return false;
+
+        await RestartVideosWatchingAsync();
+        await FetchVideosAsync(useCache: false);
+        return true;
+    }
+
+    private async Task RestartMusicWatchingAsync()
+    {
+        DetachMusicQueries();
+        await EnsureWatchingMusicAsync();
+    }
+
+    private async Task RestartVideosWatchingAsync()
+    {
+        DetachVideosQueries();
+        await EnsureWatchingVideosAsync();
     }
 
     private void OnMusicQueryContentsChanged(object sender, object args)

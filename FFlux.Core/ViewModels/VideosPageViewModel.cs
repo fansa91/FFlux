@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using Microsoft.Extensions.Logging;
 using Screenbox.Core.Contexts;
+using Screenbox.Core.Coordinators;
 using Screenbox.Core.Enums;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.Messages;
@@ -31,12 +32,20 @@ public sealed partial class VideosPageViewModel : ObservableRecipient,
 
     private readonly List<StorageFolder> _breadcrumbLocations = new();
     private readonly LibraryContext _libraryContext;
+    private readonly IFilesService _filesService;
+    private readonly ILibraryCoordinator _libraryCoordinator;
     private readonly IAppDispatcher _dispatcherQueue;
     private readonly ILogger<VideosPageViewModel> _logger;
 
-    public VideosPageViewModel(LibraryContext libraryContext, ILogger<VideosPageViewModel> logger)
+    public VideosPageViewModel(
+        LibraryContext libraryContext,
+        IFilesService filesService,
+        ILibraryCoordinator libraryCoordinator,
+        ILogger<VideosPageViewModel> logger)
     {
         _libraryContext = libraryContext;
+        _filesService = filesService;
+        _libraryCoordinator = libraryCoordinator;
         _logger = logger;
         HasVideos = true;
         _dispatcherQueue = AppDispatcher.Current;
@@ -106,14 +115,21 @@ public sealed partial class VideosPageViewModel : ObservableRecipient,
     }
 
     /// <summary>
-    /// Requests adding a new folder to the Videos library.
+    /// Asks for a folder to add to the Videos library.
     /// </summary>
+    /// <remarks>
+    /// <c>StorageLibrary.RequestAddFolderAsync</c> needs package identity, so the folder is picked
+    /// here instead and remembered in the database. See <see cref="MusicPageViewModel"/>.
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(HasLibrary))]
     private async Task AddFolderAsync()
     {
         try
         {
-            await _libraryContext.VideosStorageLibrary?.RequestAddFolderAsync();
+            StorageFolder? folder = await _filesService.PickFolderAsync();
+            if (folder is null) return;
+
+            await _libraryCoordinator.AddVideosFolderAsync(folder);
         }
         catch (Exception e)
         {

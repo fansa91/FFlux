@@ -43,6 +43,10 @@ public class PlaylistServiceTests
             Playlists.Remove(id);
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyList<string>> GetLibraryRootsAsync(MediaPlaybackType mediaType) => throw new NotImplementedException();
+        public Task<bool> AddLibraryRootAsync(MediaPlaybackType mediaType, string path) => throw new NotImplementedException();
+        public Task<bool> RemoveLibraryRootAsync(MediaPlaybackType mediaType, string path) => throw new NotImplementedException();
     }
 
     [Test]

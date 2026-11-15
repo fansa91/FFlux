@@ -5,9 +5,12 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using Screenbox.Core.Contexts;
+using Screenbox.Core.Coordinators;
 using Screenbox.Core.Enums;
 using Screenbox.Core.Messages;
 using Screenbox.Core.Models;
+using Screenbox.Core.Services;
+using Windows.Storage;
 using Windows.System;
 using Screenbox.Core.Helpers;
 
@@ -22,11 +25,18 @@ public sealed partial class MusicPageViewModel : ObservableRecipient,
     public bool LibraryLoaded => _libraryContext.MusicStorageLibrary != null;
 
     private readonly LibraryContext _libraryContext;
+    private readonly IFilesService _filesService;
+    private readonly ILibraryCoordinator _libraryCoordinator;
     private readonly IAppDispatcher _dispatcherQueue;
 
-    public MusicPageViewModel(LibraryContext libraryContext)
+    public MusicPageViewModel(
+        LibraryContext libraryContext,
+        IFilesService filesService,
+        ILibraryCoordinator libraryCoordinator)
     {
         _libraryContext = libraryContext;
+        _filesService = filesService;
+        _libraryCoordinator = libraryCoordinator;
         _dispatcherQueue = AppDispatcher.Current;
         HasContent = true;
 
@@ -45,14 +55,22 @@ public sealed partial class MusicPageViewModel : ObservableRecipient,
     }
 
     /// <summary>
-    /// Requests adding a new folder to the Music library.
+    /// Asks for a folder to add to the Music library.
     /// </summary>
+    /// <remarks>
+    /// <c>StorageLibrary.RequestAddFolderAsync</c> needs package identity, so it answers nothing at
+    /// all in this unpackaged build. The folder is picked here instead and remembered in the
+    /// database, which is then scanned alongside the folders Windows knows about.
+    /// </remarks>
     [RelayCommand(CanExecute = nameof(LibraryLoaded))]
     private async Task AddFolderAsync()
     {
         try
         {
-            await _libraryContext.MusicStorageLibrary?.RequestAddFolderAsync();
+            StorageFolder? folder = await _filesService.PickFolderAsync();
+            if (folder is null) return;
+
+            await _libraryCoordinator.AddMusicFolderAsync(folder);
         }
         catch (Exception e)
         {

@@ -45,4 +45,19 @@ public interface IDatabaseService
 
     /// <summary>Deletes a playlist and cascades to its items.</summary>
     Task DeletePlaylistAsync(string id);
+
+    /// <summary>
+    /// Lists the folders the user added to a library by hand, in the order they were added.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetLibraryRootsAsync(MediaPlaybackType mediaType);
+
+    /// <summary>
+    /// Records a folder the user added to a library. Answers false when it was already there.
+    /// </summary>
+    Task<bool> AddLibraryRootAsync(MediaPlaybackType mediaType, string path);
+
+    /// <summary>
+    /// Forgets a folder the user added to a library. Answers false when it was not there.
+    /// </summary>
+    Task<bool> RemoveLibraryRootAsync(MediaPlaybackType mediaType, string path);
 }
