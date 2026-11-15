@@ -90,7 +90,7 @@ jobs:
             -p:WindowsAppSDKSelfContained=true `
             -p:PublishAot=${{ matrix.publish_aot }} `
             -p:ContinuousIntegrationBuild=true `
-            -p:PublishDir="${{ github.workspace }}\artifacts\${{ matrix.flavour }}\" `
+            -p:PublishDir="${{ github.workspace }}\artifacts\${{ matrix.flavour }}" `
             --nologo
 
       - name: Package ${{ matrix.flavour }}
