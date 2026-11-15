@@ -5,83 +5,100 @@
   FFlux
 </h1>
 <p align="center">
-  The modern media player for Windows
-</p>
-<p align="center">
-  <a href='https://apps.microsoft.com/detail/9NTSNMSVCB5L?cid=storebadge&mode=mini'>
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://get.microsoft.com/images/en-us%20light.svg">
-      <source media="(prefers-color-scheme: light)" srcset="https://get.microsoft.com/images/en-us%20dark.svg">
-      <img alt="Store link" src="https://get.microsoft.com/images/en-us%20dark.svg" height="50px">
-    </picture>
-  </a>
+  Windows 上的本地音乐 / 视频播放器
 </p>
 
-FFlux is a modern video player that cares about performance and ease of use on a wide range of device types. It features a beautiful, friendly user interface that is fast and lightweight. FFlux is available on Windows 10 version 1903 and up and Windows 11.
+FFlux 是一个面向 Windows 桌面的媒体播放器，把一个音乐库和一个视频播放器装进同一个窗口：左侧是音乐、视频、网络、播放队列，展开后是专辑、艺术家、文件夹、播放列表，底部是常驻的播放条，随时可以铺开成全屏播放页。
 
-FFlux is built on top of [FFmpegInteropX](https://github.com/ffmpeginteropx/FFmpegInteropX) and the Universal Windows Platform (UWP).
+播放内核是 [FFmpegInteropX](https://github.com/ffmpeginteropx/FFmpegInteropX)，因此 MKV、FLAC、HEVC、ASS 字幕这些 Windows 自带解码器不支持的格式都能直接播放，不依赖系统解码包。界面用 WinUI 3 写成，随应用一起发布的是解压即用的绿色版——不需要安装包，也不会把文件散落到系统目录。
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="/assets/images/docs/PC-HeroHomePage-Dark.png?raw=true">
-  <source media="(prefers-color-scheme: light)" srcset="/assets/images/docs/PC-HeroHomePage-Light.png?raw=true">
-  <img alt="Screenshot of the FFlux home page." src="/assets/images/docs/PC-HeroHomePage-Dark.png?raw=true" width="1248">
-</picture>
+## 功能
 
-![Screenshot of the FFlux video player](/assets/images/docs/PC-HeroPlayerPageVideo_Dark.png)
+- **音乐库与视频库**：扫描系统的音乐 / 视频库，也可以在设置里追加任意文件夹；子目录会被自动合并，不会重复扫描
+- **专辑封面**：优先读文件夹里的 `cover.jpg` / `folder.png` 或音频内嵌封面，都没有时用 FFmpeg 从音频里取图
+- **视频缩略图**：向系统外壳请求真实画面帧，而不是一个通用图标
+- **播放历史**：首页的「最近播放」写在应用数据库里，重启后仍在
+- **在线链接**：把网络流地址存下来，下次直接点开
+- **播放列表**：自建播放列表，支持拖放排序
+- **文件夹浏览与搜索**：按目录结构翻文件，或整库搜索
+- **播放器**：播放队列、音轨 / 字幕轨切换、倍速、手势调节音量与进度、把当前画面另存为图片
+- **多语言界面**，跟随系统语言
 
-Some notable features:
+## 下载
 
-- Fluent design user interface
-- Gesture support for seeking and changing volume
-- Window resize hotkeys (number row `1`-`4`)
-- YouTube-inspired hotkey layout
-- Picture-in-picture mode
-- Save the video frame as an image
-- Chromecast support
-- Browse and play media over the network
+在 [Releases](https://github.com/fansa91/FFlux/releases) 下载最新版。每次发布提供两个文件，功能完全一样，区别只在运行时是否随包：
 
-And many more on the way!
+| 下载 | 体积 | 运行时要求 |
+| --- | --- | --- |
+| `FFlux-<版本>-win-x64-self-contained.zip` | 大 | **不需要**。解压后直接运行 `FFlux.exe` |
+| `FFlux-<版本>-win-x64-framework-dependent.zip` | 小 | 需预装 [.NET 11 桌面运行时](https://dotnet.microsoft.com/download) 与 Windows App Runtime 2.6 |
 
-## Install
+拿不准就选第一个。
 
-The recommended way to install FFlux is through the [Microsoft Store](https://www.microsoft.com/store/apps/9NTSNMSVCB5L). Installing through the store ensures the app stays up to date automatically. You don't need a Microsoft account to download apps from the store. The app can also be installed through winget using the following command.
+解压到任意目录即可使用，卸载等于删除该目录。用户数据单独存放在 `%LOCALAPPDATA%\FFlux`，重装不会丢。
 
-```shell
-winget install screenbox -s winget
+**系统要求**：Windows 10 1903（build 18362）及以上，或 Windows 11；x64。
+
+## 从源码构建
+
+需要 Windows 上的 .NET 11 SDK（或 Visual Studio 2026 + WinUI 应用开发工作负载）。
+
+```powershell
+# 构建
+dotnet build FFlux/FFlux.csproj -c Release -p:Platform=x64
+
+# 发布成可分发目录，不依赖运行时
+dotnet publish FFlux/FFlux.csproj -c Release -r win-x64 -p:Platform=x64 `
+  -p:SelfContained=true -p:WindowsAppSDKSelfContained=true -p:PublishAot=true
+
+# 发布成依赖运行时的精简版
+dotnet publish FFlux/FFlux.csproj -c Release -r win-x64 -p:Platform=x64 `
+  -p:SelfContained=false -p:WindowsAppSDKSelfContained=false -p:PublishAot=false
 ```
 
-## Contribute
+用 Visual Studio 打开 `FFlux.slnx`，平台选 x64，F5 即可调试。
 
-Feel free to open an issue if you want to report a bug, give feedback, or ask a question. PRs are very welcome!
+## 版本与发布
 
-### For Contributors
+版本号定义在 [`Directory.Build.props`](Directory.Build.props) 的 `<Version>`，起始版本 **0.1.0**。
 
-- 📖 **[Contributing Guide](CONTRIBUTING.md)** - Complete guide for new contributors
-- 🏗️ **[Project Structure](docs/PROJECT_STRUCTURE.md)** - Detailed codebase architecture overview
+发布流程只有一条：[`.github/workflows/release.yml`](.github/workflows/release.yml)。推一个 `v` 开头的 tag 就会触发构建，并把上面两个 zip 挂到对应版本的 Release 上。
 
-### Quick Start for Developers
+```shell
+git tag v0.1.1
+git push origin v0.1.1
+```
 
-1. **Prerequisites**: Visual Studio 2026 with UWP development workload
-2. **Clone**: `git clone https://github.com/huynhsontung/Screenbox.git`
-3. **Build**: Open `FFlux.slnx` and build the solution (Ctrl+Shift+B)
-4. **Run**: Set platform to x64 and start debugging (F5)
+tag 里的版本号会通过 `-p:Version=` 注入编译，写进程序集元数据，所以设置页底部显示的版本、`FFlux.exe` 文件属性里的版本、zip 文件名三者始终一致。
 
-See the [Contributing Guide](CONTRIBUTING.md) for detailed setup instructions.
+## 项目结构
 
-## Translation
+| 项目 | 内容 |
+| --- | --- |
+| `FFlux` | WinUI 3 应用本体：页面、控件、应用入口 |
+| `FFlux.Core` | 与界面无关的逻辑：库扫描、数据库、播放服务、视图模型 |
+| `FFlux.UI` | 共享的 XAML 样式与控件资源字典 |
+| `FFlux.Lively` | 与 Lively Wallpaper 的联动组件 |
+| `FFlux.Core.Tests` | 单元测试（TUnit） |
 
-[![Crowdin](https://badges.crowdin.net/screenbox/localized.svg)](https://crowdin.com/project/screenbox)
+数据都放在 `%LOCALAPPDATA%\FFlux`：
 
-Help translate the app to your language on [Crowdin](https://crowdin.com/project/screenbox)! Crowdin offers an intuitive UX for you to get started and is the recommended tool for localization. Translations are automatically synced to GitHub and published in the next minor update.
+- `fflux.db` —— 媒体库缓存、播放历史、播放列表、自定义库根目录
+- `streams.json` —— 在线链接
+- `startup-error.log` —— 启动失败时的异常栈
 
-You can also translate the app locally without Crowdin. The project source language is English, United States. All localizable source files are in the `FFlux\Strings\en-US` directory. Localizable file types are `.resw` and `.md`.
+## 参与贡献
 
-Make sure you have your translations in the appropriate folder under the `FFlux\Strings` directory. We use a [IETF language tag](https://www.venea.net/web/culture_code) to name the folder that contains resources for that language (e.g. `fr-FR` for French (France), `es-ES` for Spanish (Spain)). Files in these folders are translated copies of the original resource files in `FFlux\Strings\en-US`.
+发现 bug、想提建议或提问，欢迎开 issue；PR 同样欢迎。新代码请保持与现有风格一致，逻辑层改动请补上对应的单元测试：
 
-A typical workflow for translating resources:
+```powershell
+dotnet build FFlux.Core.Tests/FFlux.Core.Tests.csproj -c Release -p:Platform=x64
+cd FFlux.Core.Tests/bin/x64/Release/net11.0-windows10.0.26100.0
+dotnet FFlux.Core.Tests.dll
+```
 
-1. Fork and clone this repo.
-1. Create a folder for your language under `FFlux\Strings` if there isn't one already.
-1. Copy over any missing files from the `en-US` folder. 
-1. Translate the `.resw` and `.md` files in the directory.
-1. Once you're done, commit your changes, push to GitHub, and make a pull request.
+## 致谢
+
+FFlux 源自 [Screenbox](https://github.com/huynhsontung/Screenbox)，在把它从 UWP 迁移到 WinUI 3、改成免安装绿色版的过程中逐步长成现在这个样子。界面设计、图标与多语言资源都来自上游，第三方组件的许可声明见 [NOTICE.md](NOTICE.md)。
+
+开源协议见 [LICENSE](LICENSE)。
