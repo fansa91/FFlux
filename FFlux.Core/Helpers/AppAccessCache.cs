@@ -13,9 +13,10 @@ namespace Screenbox.Core.Helpers;
 /// (0x80070057) or 0x80073D54, and an exception escaping an async void handler is
 /// turned by CoreMessaging into a fatal stowed exception (0xC000027B).
 ///
-/// All access therefore goes through these best-effort wrappers. Until the app is
-/// packaged again, "recent files" and persisted folder tokens are simply disabled:
-/// the UI stays empty instead of crashing on startup.
+/// All access therefore goes through these best-effort wrappers. Only the
+/// <see cref="Windows.Storage.AccessCache.StorageApplicationPermissions.FutureAccessList"/>
+/// half is still used, for the frame-capture folder token; playback history lives in the app
+/// database instead (see <see cref="Services.DatabaseService"/>).
 /// </summary>
 public static class AppAccessCache
 {
@@ -42,72 +43,6 @@ public static class AppAccessCache
             }
 
             return _available.Value;
-        }
-    }
-
-    public static IReadOnlyList<AccessListEntry> GetRecentEntries()
-    {
-        if (!IsAvailable) return Array.Empty<AccessListEntry>();
-        try
-        {
-            return StorageApplicationPermissions.MostRecentlyUsedList.Entries.ToArray();
-        }
-        catch (Exception)
-        {
-            return Array.Empty<AccessListEntry>();
-        }
-    }
-
-    public static void AddToRecent(IStorageItem item, string metadata)
-    {
-        if (!IsAvailable) return;
-        try
-        {
-            StorageApplicationPermissions.MostRecentlyUsedList.Add(item, metadata);
-        }
-        catch (Exception)
-        {
-            // Recent-files tracking is best-effort.
-        }
-    }
-
-    public static void RemoveFromRecent(string token)
-    {
-        if (!IsAvailable || string.IsNullOrEmpty(token)) return;
-        try
-        {
-            StorageApplicationPermissions.MostRecentlyUsedList.Remove(token);
-        }
-        catch (Exception)
-        {
-            // Stale token; nothing to clean up.
-        }
-    }
-
-    public static void ClearRecent()
-    {
-        if (!IsAvailable) return;
-        try
-        {
-            StorageApplicationPermissions.MostRecentlyUsedList.Clear();
-        }
-        catch (Exception)
-        {
-            // Nothing to clear without package identity.
-        }
-    }
-
-    public static async Task<StorageFile?> GetRecentFileAsync(string token)
-    {
-        if (!IsAvailable || string.IsNullOrEmpty(token)) return null;
-        try
-        {
-            return await StorageApplicationPermissions.MostRecentlyUsedList
-                .GetFileAsync(token, AccessCacheOptions.SuppressAccessTimeUpdate);
-        }
-        catch (Exception)
-        {
-            return null;
         }
     }
 

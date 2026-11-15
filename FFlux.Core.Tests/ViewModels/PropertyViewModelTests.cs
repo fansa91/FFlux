@@ -416,6 +416,9 @@ public partial class PropertyViewModelTests
         public Task OpenFileLocationAsync(StorageFile file) => Task.CompletedTask;
         public void AddToRecent(IStorageItem item) { }
         public Task AddToRecentAsync(IMediaSource? source, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<IReadOnlyList<StorageFile>> GetRecentFilesAsync(int limit) => Task.FromResult<IReadOnlyList<StorageFile>>(Array.Empty<StorageFile>());
+        public Task RemoveFromRecentAsync(string path) => Task.CompletedTask;
+        public Task ClearRecentAsync() => Task.CompletedTask;
         public IAsyncOperation<StorageFolder> GetFrameCaptureFolderAsync(string token) => throw new NotImplementedException();
     }
 }

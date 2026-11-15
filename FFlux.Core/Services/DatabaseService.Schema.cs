@@ -66,6 +66,9 @@ public sealed partial class DatabaseService
         // User data, so it is never dropped on schema drift: the table only ever gains a column
         // through an explicit migration.
         ExecuteNonQuery(connection, CreateLibraryRootsSql);
+        // Playback history. Also user data, also never dropped.
+        ExecuteNonQuery(connection, CreateRecentItemsSql);
+        ExecuteNonQuery(connection, CreateRecentItemsIndexSql);
         EnsurePlaylistsTable(connection);
         EnsurePlaylistItemsTable(connection);
         migrationComplete = await TryImportLegacyPlaylistsAsync(connection);
@@ -350,6 +353,21 @@ public sealed partial class DatabaseService
             path       TEXT    UNIQUE NOT NULL,
             media_type INTEGER        NOT NULL
         );
+        """;
+
+    /// <summary>
+    /// Playback history for the home page. Replaces the Windows MRU list, which is a
+    /// package-identity API and therefore always unavailable in this build.
+    /// </summary>
+    private const string CreateRecentItemsSql = """
+        CREATE TABLE IF NOT EXISTS recent_items (
+            path      TEXT    PRIMARY KEY,
+            played_at INTEGER NOT NULL
+        );
+        """;
+
+    private const string CreateRecentItemsIndexSql = """
+        CREATE INDEX IF NOT EXISTS idx_recent_items_played_at ON recent_items (played_at DESC);
         """;
 
     private const string CreateMediaRecordsSql = """

@@ -60,4 +60,20 @@ public interface IDatabaseService
     /// Forgets a folder the user added to a library. Answers false when it was not there.
     /// </summary>
     Task<bool> RemoveLibraryRootAsync(MediaPlaybackType mediaType, string path);
+
+    /// <summary>
+    /// Lists the paths of the most recently played files, newest first.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetRecentItemPathsAsync(int limit);
+
+    /// <summary>
+    /// Records that a file was played at the given time, replacing any earlier row for that path.
+    /// </summary>
+    Task TouchRecentItemAsync(string path, long playedAtUnixMilliseconds);
+
+    /// <summary>Forgets a single played file.</summary>
+    Task RemoveRecentItemAsync(string path);
+
+    /// <summary>Forgets the whole playback history.</summary>
+    Task ClearRecentItemsAsync();
 }

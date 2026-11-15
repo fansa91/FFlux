@@ -298,17 +298,16 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
     }
 
     [RelayCommand]
-    private void ClearRecentHistory()
+    private async Task ClearRecentHistoryAsync()
     {
         ClearRecentContext();
-        AppAccessCache.ClearRecent();
+        await _filesService.ClearRecentAsync();
     }
 
     private void ClearRecentContext()
     {
         _recentContext.Recent.Clear();
-        _recentContext.PathToMruMappings.Clear();
-        _recentContext.TokenToMediaMappings.Clear();
+        _recentContext.PathToMediaMappings.Clear();
         _recentContext.IsLoaded = true;
     }
 

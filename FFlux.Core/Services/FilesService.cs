@@ -19,10 +19,12 @@ namespace Screenbox.Core.Services;
 public sealed class FilesService : IFilesService
 {
     private readonly ILogger<FilesService> _logger;
+    private readonly IDatabaseService _databaseService;
 
-    public FilesService(ILogger<FilesService> logger)
+    public FilesService(ILogger<FilesService> logger, IDatabaseService databaseService)
     {
         _logger = logger;
+        _databaseService = databaseService;
     }
 
     public async Task<StorageFileQueryResult?> GetNeighboringFilesQueryAsync(StorageFile file, QueryOptions? options = null)
@@ -148,8 +150,10 @@ public sealed class FilesService : IFilesService
 
     public void AddToRecent(IStorageItem item)
     {
-        string metadata = DateTimeOffset.Now.ToUnixTimeSeconds().ToString();
-        AppAccessCache.AddToRecent(item, metadata);
+        // Callers are on a synchronous path, and the write is best-effort: the only thing it feeds
+        // is the ordering of the home page list. Tracking swallows its own exceptions, so nothing
+        // can surface as an unobserved task exception.
+        _ = TrackRecentAsync(item);
     }
 
     public async Task AddToRecentAsync(IMediaSource? source, CancellationToken cancellationToken = default)
@@ -159,12 +163,132 @@ public sealed class FilesService : IFilesService
             if (source is IFileMediaSource fileSource && await fileSource.GetStorageFileAsync() is { } file)
             {
                 if (cancellationToken.IsCancellationRequested) return;
-                AddToRecent(file);
+                await TrackRecentAsync(file).ConfigureAwait(false);
             }
         }
         catch
         {
             // Silently ignore — recent-files tracking is best-effort.
+        }
+    }
+
+    public async Task<IReadOnlyList<StorageFile>> GetRecentFilesAsync(int limit)
+    {
+        IReadOnlyList<string> paths;
+        try
+        {
+            paths = await _databaseService.GetRecentItemPathsAsync(limit).ConfigureAwait(false);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to read the recent list.");
+            return Array.Empty<StorageFile>();
+        }
+
+        if (paths.Count == 0) return Array.Empty<StorageFile>();
+
+        // Resolve in parallel but keep the database order: the list is ordered by recency.
+        var resolved = await Task.WhenAll(paths.Select(ResolveRecentAsync)).ConfigureAwait(false);
+
+        var files = new List<StorageFile>(resolved.Length);
+        var gone = new List<string>();
+        for (int i = 0; i < resolved.Length; i++)
+        {
+            if (resolved[i].File is { } file)
+            {
+                files.Add(file);
+            }
+            else if (resolved[i].IsGone)
+            {
+                gone.Add(paths[i]);
+            }
+        }
+
+        // A file the user deleted or moved away disappears instead of lingering as a dead tile.
+        foreach (string path in gone)
+        {
+            try
+            {
+                await _databaseService.RemoveRecentItemAsync(path).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                _logger.LogDebug(e, "Failed to forget missing recent file '{Path}'.", path);
+            }
+        }
+
+        return files;
+    }
+
+    public async Task RemoveFromRecentAsync(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return;
+        try
+        {
+            await _databaseService.RemoveRecentItemAsync(path).ConfigureAwait(false);
+        }
+        catch (Exception e)
+        {
+            _logger.LogDebug(e, "Failed to forget recent file '{Path}'.", path);
+        }
+    }
+
+    public async Task ClearRecentAsync()
+    {
+        try
+        {
+            await _databaseService.ClearRecentItemsAsync().ConfigureAwait(false);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to clear the recent list.");
+        }
+    }
+
+    private async Task TrackRecentAsync(IStorageItem item)
+    {
+        // Only files are playable; a folder or playlist handed in by QueueService has no place in
+        // the list. URI sources have no path and are not tracked either.
+        if (item is not StorageFile file) return;
+        string path = file.Path;
+        if (string.IsNullOrEmpty(path)) return;
+
+        try
+        {
+            await _databaseService
+                .TouchRecentItemAsync(path, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                .ConfigureAwait(false);
+        }
+        catch (Exception e)
+        {
+            _logger.LogDebug(e, "Failed to record '{Path}' in the recent list.", path);
+        }
+    }
+
+    /// <summary>
+    /// Resolves a stored path, distinguishing "the file is gone" (drop the row) from "the file is
+    /// temporarily unreachable" (keep the row, hide the entry).
+    /// </summary>
+    private static async Task<(StorageFile? File, bool IsGone)> ResolveRecentAsync(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                // When the parent folder is missing too, the whole volume is probably offline or
+                // the folder was moved. Keep the row so the entry comes back with the drive.
+                string? folder = Path.GetDirectoryName(path);
+                bool parentMissing = folder is { Length: > 0 } && !Directory.Exists(folder);
+                return (null, !parentMissing);
+            }
+
+            StorageFile file = await StorageFile.GetFileFromPathAsync(path);
+            return file.IsAvailable ? (file, false) : (null, false);
+        }
+        catch (Exception)
+        {
+            // Locked, permission denied, unreadable format for the shell: keep the row anyway.
+            return (null, false);
         }
     }
 

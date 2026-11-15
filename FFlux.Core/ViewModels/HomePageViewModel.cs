@@ -19,7 +19,6 @@ using Screenbox.Core.Messages;
 using Screenbox.Core.Models;
 using Screenbox.Core.Services;
 using Windows.Storage;
-using Windows.Storage.AccessCache;
 using Windows.System;
 
 namespace Screenbox.Core.ViewModels;
@@ -30,6 +29,12 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
     public ObservableCollection<MediaViewModel> Recent => _recentContext.Recent;
 
     public SelectionViewModel Selection { get; }
+
+    /// <summary>
+    /// How many entries the home page shows. The database keeps more, see
+    /// <c>DatabaseService.MaxStoredRecentItems</c>.
+    /// </summary>
+    private const int MaxRecentItems = 50;
 
     [ObservableProperty]
     public partial MediaViewModel? ContextMedia { get; set; }
@@ -129,96 +134,58 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
             lock (Recent)
             {
                 Recent.Clear();
-                _recentContext.PathToMruMappings.Clear();
-                _recentContext.TokenToMediaMappings.Clear();
+                _recentContext.PathToMediaMappings.Clear();
                 _recentContext.IsLoaded = true;
             }
         }
     }
 
-    [DynamicWindowsRuntimeCast(typeof(StorageFile))]
     private async Task UpdateRecentMediaAsync(bool loadMediaDetails)
     {
-        // Assume UI Thread. AccessCache is package-backed and unavailable when unpackaged.
-        string[] tokens = AppAccessCache.GetRecentEntries()
-            .OrderByDescending(x => x.Metadata)
-            .Select(x => x.Token)
-            .Where(t => !string.IsNullOrEmpty(t))
-            .ToArray();
-
-        if (tokens.Length == 0)
+        // The list is backed by the app database. It used to come from the Windows MRU list, which
+        // is a package-identity API: reading it throws 0x80070057 in this unpackaged build, so the
+        // list was always empty no matter how much was played.
+        IReadOnlyList<StorageFile> files;
+        try
         {
-            lock (Recent)
-            {
-                Recent.Clear();
-                _recentContext.PathToMruMappings.Clear();
-                _recentContext.TokenToMediaMappings.Clear();
-                _recentContext.IsLoaded = true;
-            }
+            files = await _filesService.GetRecentFilesAsync(MaxRecentItems).ConfigureAwait(true);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to load the recent list.");
             return;
         }
 
-        // Fast path: for tokens already known and cached in _recentContext, reuse existing MediaViewModel and StorageFile
-        var fetchTasks = tokens.Select(async token =>
+        var targetList = new List<MediaViewModel>(files.Count);
+        var mappings = new Dictionary<string, MediaViewModel>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (StorageFile file in files)
         {
-            if (_recentContext.TokenToMediaMappings.TryGetValue(token, out var cachedMedia) &&
-                cachedMedia.Source is IFileMediaSource { StorageFile: { } cachedFile })
-            {
-                return (Token: token, File: (StorageFile?)cachedFile, ShouldRemove: false, Media: (MediaViewModel?)cachedMedia);
-            }
-
-            var (file, shouldRemove) = await ConvertMruTokenToStorageFileAsync(token).ConfigureAwait(false);
-            return (Token: token, File: file, ShouldRemove: shouldRemove, Media: (MediaViewModel?)null);
-        });
-
-        var results = await Task.WhenAll(fetchTasks).ConfigureAwait(true);
-
-        var validPairs = new List<(string Token, StorageFile File, MediaViewModel Media)>();
-        var tokensToRemove = new List<string>();
-
-        foreach (var (token, file, shouldRemove, cachedMedia) in results)
-        {
-            if (file == null)
-            {
-                if (shouldRemove)
-                {
-                    tokensToRemove.Add(token);
-                }
-                continue;
-            }
-
             // TODO: Add support for playing playlist file from home page
             if (file.IsSupportedPlaylist())
             {
                 continue;
             }
 
-            MediaViewModel media = cachedMedia ?? _mediaFactory.GetOrCreate(file);
-            validPairs.Add((token, file, media));
+            MediaViewModel media = ResolveRecentMedia(file);
+            targetList.Add(media);
+            if (!string.IsNullOrEmpty(file.Path))
+            {
+                mappings[file.Path] = media;
+            }
         }
-
-        var targetList = validPairs.Select(p => p.Media).ToList();
 
         lock (Recent)
         {
-            // Update mappings for all valid pairs
-            _recentContext.PathToMruMappings.Clear();
-            _recentContext.TokenToMediaMappings.Clear();
-            foreach (var (token, _, media) in validPairs)
+            _recentContext.PathToMediaMappings.Clear();
+            foreach (KeyValuePair<string, MediaViewModel> pair in mappings)
             {
-                _recentContext.PathToMruMappings[media.Location] = token;
-                _recentContext.TokenToMediaMappings[token] = media;
+                _recentContext.PathToMediaMappings[pair.Key] = pair.Value;
             }
 
             // Sync the observable collection in-place
             Recent.SyncItems(targetList);
             _recentContext.IsLoaded = true;
-        }
-
-        // Remove stale/inaccessible MRU tokens
-        foreach (string token in tokensToRemove)
-        {
-            AppAccessCache.RemoveFromRecent(token);
         }
 
         // Load media details & thumbnails for any items that need them
@@ -241,6 +208,24 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
         {
             await Task.WhenAll(loadingTasks);
         }
+    }
+
+    /// <summary>
+    /// Reuses the view model already shown for this path when there is one, so a refresh does not
+    /// throw away loaded metadata and thumbnails.
+    /// </summary>
+    private MediaViewModel ResolveRecentMedia(StorageFile file)
+    {
+        string path = file.Path;
+        if (!string.IsNullOrEmpty(path) &&
+            _recentContext.PathToMediaMappings.TryGetValue(path, out MediaViewModel? cached) &&
+            cached.Source is IFileMediaSource { StorageFile: { } cachedFile } &&
+            string.Equals(cachedFile.Path, path, StringComparison.OrdinalIgnoreCase))
+        {
+            return cached;
+        }
+
+        return _mediaFactory.GetOrCreate(file);
     }
 
     private async Task SafeLoadDetailsAsync(MediaViewModel media)
@@ -291,17 +276,18 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
     }
 
     [RelayCommand]
-    private void Remove(MediaViewModel media)
+    private async Task RemoveAsync(MediaViewModel media)
     {
         lock (Recent)
         {
             Recent.Remove(media);
-            if (_recentContext.PathToMruMappings.Remove(media.Location, out var token))
+            if (!string.IsNullOrEmpty(media.Location))
             {
-                _recentContext.TokenToMediaMappings.Remove(token);
-                AppAccessCache.RemoveFromRecent(token);
+                _recentContext.PathToMediaMappings.Remove(media.Location);
             }
         }
+
+        await _filesService.RemoveFromRecentAsync(media.Location);
     }
 
     [RelayCommand]
@@ -345,46 +331,15 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
-    private void RemoveSelected()
+    private async Task RemoveSelectedAsync()
     {
         var copy = Selection.GetSelectedItems<MediaViewModel>().ToArray();
-        foreach (var item in copy)
+        foreach (MediaViewModel item in copy)
         {
-            Remove(item);
+            await RemoveAsync(item);
         }
 
         Selection.DisableSelectionMode();
-    }
-
-    private async Task<(StorageFile? File, bool ShouldRemove)> ConvertMruTokenToStorageFileAsync(string token)
-    {
-        try
-        {
-            StorageFile? file = await AppAccessCache.GetRecentFileAsync(token);
-            return file is null ? (null, true) : (file, false);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return (null, true);
-        }
-        catch (System.IO.FileNotFoundException)
-        {
-            return (null, true);
-        }
-        catch (ArgumentException)
-        {
-            // Token may refer to a StorageFolder rather than a StorageFile; preserve it in MRU.
-            return (null, false);
-        }
-        catch (InvalidOperationException)
-        {
-            return (null, false);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Failed to resolve MRU token '{Token}' to a file.", token);
-            return (null, false);
-        }
     }
 
     private bool HasSelection() => Selection.SelectedRanges.Count > 0;

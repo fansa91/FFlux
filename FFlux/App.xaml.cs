@@ -314,6 +314,12 @@ sealed partial class App : Application
         {
             _ = Screenbox.Helpers.CoverProbe.RunAsync();
         }
+        if (Environment.GetEnvironmentVariable("FFLUX_RECENT_PROBE") is { Length: > 0 } recentProbeMode)
+        {
+            _ = Screenbox.Helpers.RecentProbe.RunAsync(
+                recentProbeMode,
+                message => Screenbox.Helpers.StartupErrorLog.Write("Recent probe: " + message));
+        }
         if (Environment.GetEnvironmentVariable("FFLUX_NAV_PROBE") is { Length: > 0 } navigationTarget)
         {
             _ = ProbeNavigationAsync(navigationTarget);

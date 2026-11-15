@@ -47,6 +47,11 @@ public class PlaylistServiceTests
         public Task<IReadOnlyList<string>> GetLibraryRootsAsync(MediaPlaybackType mediaType) => throw new NotImplementedException();
         public Task<bool> AddLibraryRootAsync(MediaPlaybackType mediaType, string path) => throw new NotImplementedException();
         public Task<bool> RemoveLibraryRootAsync(MediaPlaybackType mediaType, string path) => throw new NotImplementedException();
+
+        public Task<IReadOnlyList<string>> GetRecentItemPathsAsync(int limit) => throw new NotImplementedException();
+        public Task TouchRecentItemAsync(string path, long playedAtUnixMilliseconds) => throw new NotImplementedException();
+        public Task RemoveRecentItemAsync(string path) => throw new NotImplementedException();
+        public Task ClearRecentItemsAsync() => throw new NotImplementedException();
     }
 
     [Test]

@@ -28,6 +28,18 @@ public interface IFilesService
     public Task AddToRecentAsync(IMediaSource? source, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Resolves the most recently played files, newest first, skipping (and forgetting) paths that
+    /// no longer exist.
+    /// </summary>
+    public Task<IReadOnlyList<StorageFile>> GetRecentFilesAsync(int limit);
+
+    /// <summary>Forgets a single entry of the playback history.</summary>
+    public Task RemoveFromRecentAsync(string path);
+
+    /// <summary>Forgets the whole playback history.</summary>
+    public Task ClearRecentAsync();
+
+    /// <summary>
     /// Retrieves the frame captures <see cref="StorageFolder"/> for the given token.
     /// </summary>
     /// <param name="token">The token of the frame captures folder.</param>
