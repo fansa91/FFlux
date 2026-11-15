@@ -47,7 +47,7 @@ public sealed class LibraryService : ILibraryService
         _logger = logger;
     }
 
-    public StorageFileQueryResult CreateMusicLibraryQuery(bool useIndexer)
+    public StorageFileQueryResult CreateMusicLibraryQuery(StorageLibrary library, bool useIndexer)
     {
         // Uses the same query options as the service's fetch logic. Centralized to avoid duplication.
         QueryOptions queryOptions = new(CommonFileQuery.OrderByTitle, FilesHelpers.SupportedAudioFormats.ToArray())
@@ -58,10 +58,10 @@ public sealed class LibraryService : ILibraryService
             PropertyPrefetchOptions.BasicProperties | PropertyPrefetchOptions.MusicProperties,
             CustomPropertyKeys);
 
-        return KnownFolders.MusicLibrary.CreateFileQueryWithOptions(queryOptions);
+        return GetMusicLibraryRoot(library).CreateFileQueryWithOptions(queryOptions);
     }
 
-    public StorageFileQueryResult CreateVideosLibraryQuery(bool useIndexer)
+    public StorageFileQueryResult CreateVideosLibraryQuery(StorageLibrary library, bool useIndexer)
     {
         // Uses the same query options as the service's fetch logic. Centralized to avoid duplication.
         QueryOptions queryOptions = new(CommonFileQuery.OrderByName, FilesHelpers.SupportedVideoFormats.ToArray())
@@ -72,7 +72,34 @@ public sealed class LibraryService : ILibraryService
             PropertyPrefetchOptions.BasicProperties | PropertyPrefetchOptions.VideoProperties,
             CustomPropertyKeys);
 
-        return KnownFolders.VideosLibrary.CreateFileQueryWithOptions(queryOptions);
+        return GetVideosLibraryRoot(library).CreateFileQueryWithOptions(queryOptions);
+    }
+
+    /// <summary>
+    /// Picks the folder the music query has to run against.
+    /// </summary>
+    /// <remarks>
+    /// With package identity <c>KnownFolders.MusicLibrary</c> is a virtual folder that merges every
+    /// folder of the user's music library, so it is the right thing to query. An unpackaged process
+    /// gets that same virtual folder but always empty - no path, no files - because the library
+    /// capability does not exist without a manifest. The folders reported by
+    /// <see cref="StorageLibrary"/> are the real paths in both cases, so they are used as the fallback.
+    /// </remarks>
+    private static StorageFolder GetMusicLibraryRoot(StorageLibrary library)
+    {
+        return SystemInformation.HasPackageIdentity
+            ? KnownFolders.MusicLibrary
+            : library.Folders.FirstOrDefault() ?? KnownFolders.MusicLibrary;
+    }
+
+    /// <summary>
+    /// Picks the folder the videos query has to run against. See <see cref="GetMusicLibraryRoot"/>.
+    /// </summary>
+    private static StorageFolder GetVideosLibraryRoot(StorageLibrary library)
+    {
+        return SystemInformation.HasPackageIdentity
+            ? KnownFolders.VideosLibrary
+            : library.Folders.FirstOrDefault() ?? KnownFolders.VideosLibrary;
     }
 
     public async Task<StorageLibrary> InitializeMusicLibraryAsync()
@@ -81,7 +108,8 @@ public sealed class LibraryService : ILibraryService
         var library = await StorageLibrary.GetLibraryAsync(KnownLibraryId.Music);
         try
         {
-            library.ChangeTracker.Enable();
+            // Null without package identity; there is nothing to enable in that case.
+            library.ChangeTracker?.Enable();
         }
         catch (Exception)
         {
@@ -97,7 +125,8 @@ public sealed class LibraryService : ILibraryService
         var library = await StorageLibrary.GetLibraryAsync(KnownLibraryId.Videos);
         try
         {
-            library.ChangeTracker.Enable();
+            // Null without package identity; there is nothing to enable in that case.
+            library.ChangeTracker?.Enable();
         }
         catch (Exception)
         {
@@ -115,10 +144,13 @@ public sealed class LibraryService : ILibraryService
         IProgress<MusicLibrary>? progress = null)
     {
         StorageFileQueryResult libraryQuery = queryResult;
-        StorageLibraryChangeTracker? libraryChangeTracker = null;
+        StorageLibraryChangeTracker? libraryChangeTracker = library.ChangeTracker;
         StorageLibraryChangeReader? changeReader = null;
 
-        useCache = useCache && !SystemInformation.IsXbox;
+        // Without package identity the library reports no change tracker, so a cached snapshot can
+        // never be checked against what is actually on disk. Rescanning is then the only correct
+        // answer - a stale cache would hide every file the user has added since the last fetch.
+        useCache = useCache && libraryChangeTracker is not null && !SystemInformation.IsXbox;
         bool hasCache = false;
 
         List<MediaViewModel> cachedSongs = new();
@@ -138,8 +170,7 @@ public sealed class LibraryService : ILibraryService
                     cachedSongs = new List<MediaViewModel>(songs);
                     try
                     {
-                        libraryChangeTracker = library.ChangeTracker;
-                        libraryChangeTracker.Enable();
+                        libraryChangeTracker!.Enable();
                         changeReader = libraryChangeTracker.GetChangeReader();
                         hasCache = await TryResolveLibraryChangeAsync(songs, changeReader);
                     }
@@ -159,20 +190,10 @@ public sealed class LibraryService : ILibraryService
             songs = new List<MediaViewModel>();
             await BatchFetchMusicAsync(libraryQuery, songs, albumFactory, artistFactory, cancellationToken, progress);
 
-            if (SearchRemovableStorage)
+            if (SearchRemovableStorage && await KnownFolderAccess.HasAccessAsync(KnownFolderId.RemovableDevices))
             {
-                var hasAccess = true;
-                if (SystemInformation.IsKnownFolderRequestAccessSupported)
-                {
-                    var accessStatus = await KnownFolders.RequestAccessAsync(KnownFolderId.RemovableDevices);
-                    hasAccess = accessStatus is KnownFoldersAccessStatus.Allowed or KnownFoldersAccessStatus.AllowedPerAppFolder;
-                }
-
-                if (hasAccess)
-                {
-                    libraryQuery = CreateRemovableStorageMusicQuery();
-                    await BatchFetchMusicAsync(libraryQuery, songs, albumFactory, artistFactory, cancellationToken, progress);
-                }
+                libraryQuery = CreateRemovableStorageMusicQuery();
+                await BatchFetchMusicAsync(libraryQuery, songs, albumFactory, artistFactory, cancellationToken, progress);
             }
         }
         else
@@ -222,10 +243,12 @@ public sealed class LibraryService : ILibraryService
         IProgress<VideosLibrary>? progress = null)
     {
         StorageFileQueryResult libraryQuery = queryResult;
-        StorageLibraryChangeTracker? libraryChangeTracker = null;
+        StorageLibraryChangeTracker? libraryChangeTracker = library.ChangeTracker;
         StorageLibraryChangeReader? changeReader = null;
 
-        useCache = useCache && !SystemInformation.IsXbox;
+        // See FetchMusicAsync: no identity means no change tracker, and a cache that cannot be
+        // validated has to be treated as missing.
+        useCache = useCache && libraryChangeTracker is not null && !SystemInformation.IsXbox;
         bool hasCache = false;
 
         List<MediaViewModel> cachedVideos = new();
@@ -245,8 +268,7 @@ public sealed class LibraryService : ILibraryService
                     cachedVideos = new List<MediaViewModel>(videos);
                     try
                     {
-                        libraryChangeTracker = library.ChangeTracker;
-                        libraryChangeTracker.Enable();
+                        libraryChangeTracker!.Enable();
                         changeReader = libraryChangeTracker.GetChangeReader();
                         hasCache = await TryResolveLibraryChangeAsync(videos, changeReader);
                     }
@@ -263,20 +285,10 @@ public sealed class LibraryService : ILibraryService
             videos = new List<MediaViewModel>();
             await BatchFetchVideosAsync(libraryQuery, videos, cancellationToken, progress);
 
-            if (SearchRemovableStorage)
+            if (SearchRemovableStorage && await KnownFolderAccess.HasAccessAsync(KnownFolderId.RemovableDevices))
             {
-                var hasAccess = true;
-                if (SystemInformation.IsKnownFolderRequestAccessSupported)
-                {
-                    var accessStatus = await KnownFolders.RequestAccessAsync(KnownFolderId.RemovableDevices);
-                    hasAccess = accessStatus is KnownFoldersAccessStatus.Allowed or KnownFoldersAccessStatus.AllowedPerAppFolder;
-                }
-
-                if (hasAccess)
-                {
-                    libraryQuery = CreateRemovableStorageVideosQuery();
-                    await BatchFetchVideosAsync(libraryQuery, videos, cancellationToken, progress);
-                }
+                libraryQuery = CreateRemovableStorageVideosQuery();
+                await BatchFetchVideosAsync(libraryQuery, videos, cancellationToken, progress);
             }
         }
         else

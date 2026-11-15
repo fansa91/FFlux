@@ -184,7 +184,16 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
     private async Task AddVideosFolderAsync()
     {
         if (_videosLibrary == null) return;
-        await _videosLibrary.RequestAddFolderAsync();
+        try
+        {
+            await _videosLibrary.RequestAddFolderAsync();
+        }
+        catch (Exception e)
+        {
+            // StorageLibrary folder changes need package identity. Reporting the failure beats
+            // letting an unobserved task exception take the process down.
+            Messenger.Send(new NotificationMessage(NotificationLevel.Error, NotificationKind.FolderAddFailed, message: e.Message));
+        }
     }
 
     [RelayCommand]
@@ -206,7 +215,15 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
     private async Task AddMusicFolderAsync()
     {
         if (_musicLibrary == null) return;
-        await _musicLibrary.RequestAddFolderAsync();
+        try
+        {
+            await _musicLibrary.RequestAddFolderAsync();
+        }
+        catch (Exception e)
+        {
+            // See AddVideosFolderAsync.
+            Messenger.Send(new NotificationMessage(NotificationLevel.Error, NotificationKind.FolderAddFailed, message: e.Message));
+        }
     }
 
     [RelayCommand]

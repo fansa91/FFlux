@@ -49,11 +49,15 @@ public interface ILibraryService
     /// <summary>
     /// Creates a query for the user's music library.
     /// </summary>
-    StorageFileQueryResult CreateMusicLibraryQuery(bool useIndexer);
+    /// <param name="library">The music storage library the query has to cover.</param>
+    /// <param name="useIndexer">Whether the system search indexer may be used.</param>
+    StorageFileQueryResult CreateMusicLibraryQuery(StorageLibrary library, bool useIndexer);
 
     /// <summary>
     /// Creates a query for the user's videos library.
     /// </summary>
-    StorageFileQueryResult CreateVideosLibraryQuery(bool useIndexer);
+    /// <param name="library">The videos storage library the query has to cover.</param>
+    /// <param name="useIndexer">Whether the system search indexer may be used.</param>
+    StorageFileQueryResult CreateVideosLibraryQuery(StorageLibrary library, bool useIndexer);
 }
 

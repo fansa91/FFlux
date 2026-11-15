@@ -306,6 +306,10 @@ sealed partial class App : Application
         {
             _ = Screenbox.Helpers.StreamProbe.RunAsync(_window);
         }
+        if (Environment.GetEnvironmentVariable("FFLUX_LIBRARY_PROBE") == "1")
+        {
+            _ = Screenbox.Helpers.LibraryProbe.RunAsync();
+        }
 
 #if DEBUG
         if (System.Diagnostics.Debugger.IsAttached)

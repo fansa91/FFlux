@@ -215,16 +215,14 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
             _musicQuery = null;
         }
 
-        var hasAccess = true;
-        if (SystemInformation.IsKnownFolderRequestAccessSupported)
+        // Known-folder access is only requestable by a packaged app. The unpackaged build used to
+        // be told "DeniedByUser", which stopped the query from ever being created and left the
+        // music library permanently empty. KnownFolderAccess answers true when there is no
+        // capability to ask for, so the query is created and reads the real folder instead.
+        if (_musicQuery is null && _context.MusicStorageLibrary is not null
+            && await KnownFolderAccess.HasAccessAsync(KnownFolderId.MusicLibrary))
         {
-            var result = await KnownFolders.RequestAccessAsync(KnownFolderId.MusicLibrary);
-            hasAccess = result is KnownFoldersAccessStatus.Allowed or KnownFoldersAccessStatus.AllowedPerAppFolder;
-        }
-
-        if (_musicQuery is null && hasAccess)
-        {
-            _musicQuery = _libraryService.CreateMusicLibraryQuery(UseIndexer);
+            _musicQuery = _libraryService.CreateMusicLibraryQuery(_context.MusicStorageLibrary, UseIndexer);
             _musicQuery.ContentsChanged += OnMusicQueryContentsChanged;
         }
     }
@@ -242,16 +240,11 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
             _videosQuery = null;
         }
 
-        var hasAccess = true;
-        if (SystemInformation.IsKnownFolderRequestAccessSupported)
+        // See EnsureWatchingMusicAsync for why the access check is delegated.
+        if (_videosQuery is null && _context.VideosStorageLibrary is not null
+            && await KnownFolderAccess.HasAccessAsync(KnownFolderId.VideosLibrary))
         {
-            var result = await KnownFolders.RequestAccessAsync(KnownFolderId.VideosLibrary);
-            hasAccess = result is KnownFoldersAccessStatus.Allowed or KnownFoldersAccessStatus.AllowedPerAppFolder;
-        }
-
-        if (_videosQuery is null && hasAccess)
-        {
-            _videosQuery = _libraryService.CreateVideosLibraryQuery(UseIndexer);
+            _videosQuery = _libraryService.CreateVideosLibraryQuery(_context.VideosStorageLibrary, UseIndexer);
             _videosQuery.ContentsChanged += OnVideosQueryContentsChanged;
         }
     }
