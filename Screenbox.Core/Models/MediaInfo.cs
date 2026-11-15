@@ -28,6 +28,20 @@ public sealed class MediaInfo
     /// </remarks>
     public byte[]? ArtworkData { get; set; }
 
+    /// <summary>
+    /// Gets or sets the container format name reported by FFmpeg, for example <c>matroska,webm</c>.
+    /// </summary>
+    public string Container { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the number of audio streams in the container.</summary>
+    public int AudioStreamCount { get; set; }
+
+    /// <summary>Gets or sets the number of subtitle streams in the container.</summary>
+    public int SubtitleStreamCount { get; set; }
+
+    /// <summary>Gets or sets the number of chapters declared by the container.</summary>
+    public int ChapterCount { get; set; }
+
     public MediaInfo(MediaPlaybackType mediaType, string title = "", uint year = default, TimeSpan duration = default)
     {
         MediaType = mediaType;

@@ -119,7 +119,10 @@ public partial class PropertyViewModelTests
             new FakeBufferManager());
 
         vm.UpdateProperties(media);
-        await Assert.That(vm.MediaProperties.First(p => p.Key == MediaProperty.Title).Value).IsEqualTo(string.Empty);
+
+        // With no tags at all the panel falls back to the file name rather than showing a blank
+        // row, so the media section is never empty.
+        await Assert.That(vm.MediaProperties.First(p => p.Key == MediaProperty.Title).Value).IsEqualTo("song.ogg");
 
         await vm.LoadPropertiesAsync(media);
 
@@ -191,9 +194,12 @@ public partial class PropertyViewModelTests
             new FakeBufferManager());
 
         vm.UpdateProperties(media);
-        int initialMediaCount = vm.MediaProperties.Count;
-        int initialVideoCount = vm.VideoProperties.Count;
-        int initialAudioCount = vm.AudioProperties.Count;
+
+        // Rows are emitted only for known values, so the row count legitimately changes as
+        // metadata arrives. What must not change is that a rebuild never duplicates a key.
+        await Assert.That(CountDuplicateKeys(vm.MediaProperties)).IsEqualTo(0);
+        await Assert.That(CountDuplicateKeys(vm.VideoProperties)).IsEqualTo(0);
+        await Assert.That(CountDuplicateKeys(vm.AudioProperties)).IsEqualTo(0);
 
         var updatedVideo = new VideoInfo
         {
@@ -205,14 +211,17 @@ public partial class PropertyViewModelTests
         await media.LoadDetailsAsync((ISourceMetadataService)new TestMetadataService(new MediaInfo(MediaPlaybackType.Video, new MusicInfo { Bitrate = 192000 }, updatedVideo)));
         vm.UpdateProperties(media);
 
-        await Assert.That(vm.MediaProperties.Count).IsEqualTo(initialMediaCount);
-        await Assert.That(vm.VideoProperties.Count).IsEqualTo(initialVideoCount);
-        await Assert.That(vm.AudioProperties.Count).IsEqualTo(initialAudioCount);
+        await Assert.That(CountDuplicateKeys(vm.MediaProperties)).IsEqualTo(0);
+        await Assert.That(CountDuplicateKeys(vm.VideoProperties)).IsEqualTo(0);
+        await Assert.That(CountDuplicateKeys(vm.AudioProperties)).IsEqualTo(0);
         await Assert.That(vm.MediaProperties.First(p => p.Key == MediaProperty.Title).Value).IsEqualTo("Updated Title");
         await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.Resolution).Value).IsEqualTo("1920×1080");
-        await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.BitRate).Value).IsEqualTo("8000 kbps");
+        await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.BitRate).Value).IsEqualTo("8 Mbps");
         await Assert.That(vm.AudioProperties.First(p => p.Key == MediaProperty.BitRate).Value).IsEqualTo("192 kbps");
     }
+
+    private static int CountDuplicateKeys(IReadOnlyList<MediaMetadata> properties) =>
+        properties.Count - properties.Select(p => p.Key).Distinct().Count();
 
     [Test]
     public async Task LoadPropertiesAsync_WhenMediaAlreadyHasStorageProperties_ShouldNotResetPropertiesToEmpty()
@@ -247,8 +256,149 @@ public partial class PropertyViewModelTests
 
         await Assert.That(vm.MediaProperties.First(p => p.Key == MediaProperty.Title).Value).IsEqualTo("Storage Title");
         await Assert.That(vm.MediaProperties.First(p => p.Key == MediaProperty.Producers).Value).IsEqualTo("Storage Producer");
-        await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.BitRate).Value).IsEqualTo("5000 kbps");
+        await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.BitRate).Value).IsEqualTo("5 Mbps");
         await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.Resolution).Value).IsEqualTo("1920×1080");
+    }
+
+    [Test]
+    public async Task UpdateProperties_ShouldExposeTechnicalStreamDetailsAndTrackCounts()
+    {
+        var source = new FileMediaSource(@"C:\videos\clip.mkv");
+        var music = new MusicInfo
+        {
+            Codec = "eac3",
+            SampleRate = 48000,
+            Channels = 6,
+            ChannelLayout = "5.1(side)",
+            Bitrate = 640000
+        };
+        var video = new VideoInfo
+        {
+            Title = "Clip",
+            Width = 3840,
+            Height = 2160,
+            Codec = "hevc",
+            FramesPerSecond = 23.976,
+            BitsPerSample = 10,
+            HasHdr = true,
+            Bitrate = 20000000
+        };
+        var media = new MediaViewModel(source)
+        {
+            MediaInfo = new MediaInfo(MediaPlaybackType.Video, music, video)
+            {
+                Container = "matroska,webm",
+                AudioStreamCount = 2,
+                SubtitleStreamCount = 3
+            }
+        };
+
+        var vm = new PropertyViewModel(
+            new DummyFilesService(),
+            CreateStorageMetadataService(),
+            new TestMetadataService(),
+            CreatePlayerContextWithPlayer(),
+            new FakePlayerService(),
+            new FakeBufferManager());
+
+        vm.UpdateProperties(media);
+
+        await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.Resolution).Value).IsEqualTo("3840×2160");
+        await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.FrameRate).Value).IsEqualTo("23.976 fps");
+        await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.VideoCodec).Value).IsEqualTo("H.265 / HEVC");
+        await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.BitDepth).Value).IsEqualTo("10-bit");
+        await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.DynamicRange).Value).IsEqualTo("HDR");
+        await Assert.That(vm.VideoProperties.First(p => p.Key == MediaProperty.BitRate).Value).IsEqualTo("20 Mbps");
+
+        await Assert.That(vm.AudioProperties.First(p => p.Key == MediaProperty.AudioCodec).Value).IsEqualTo("E-AC-3");
+        await Assert.That(vm.AudioProperties.First(p => p.Key == MediaProperty.SampleRate).Value).IsEqualTo("48 kHz");
+        await Assert.That(vm.AudioProperties.First(p => p.Key == MediaProperty.Channels).Value).IsEqualTo("6 (5.1(side))");
+        await Assert.That(vm.AudioProperties.First(p => p.Key == MediaProperty.BitRate).Value).IsEqualTo("640 kbps");
+
+        await Assert.That(vm.TrackProperties.First(p => p.Key == MediaProperty.AudioTrackCount).Value).IsEqualTo("2");
+        await Assert.That(vm.TrackProperties.First(p => p.Key == MediaProperty.SubtitleTrackCount).Value).IsEqualTo("3");
+        await Assert.That(vm.TrackProperties.Any(p => p.Key == MediaProperty.ChapterCount)).IsFalse();
+
+        await Assert.That(vm.FileProperties.First(p => p.Key == MediaProperty.Container).Value).IsEqualTo("matroska,webm");
+    }
+
+    [Test]
+    public async Task UpdateProperties_WhenValuesAreMissing_ShouldNotEmitBlankRows()
+    {
+        var source = new FileMediaSource(@"C:\videos\clip.mp4");
+        var media = new MediaViewModel(source)
+        {
+            MediaInfo = new MediaInfo(MediaPlaybackType.Video)
+        };
+
+        var vm = new PropertyViewModel(
+            new DummyFilesService(),
+            CreateStorageMetadataService(),
+            new TestMetadataService(),
+            CreatePlayerContextWithPlayer(),
+            new FakePlayerService(),
+            new FakeBufferManager());
+
+        vm.UpdateProperties(media);
+
+        await Assert.That(vm.MediaProperties.All(p => !string.IsNullOrWhiteSpace(p.Value))).IsTrue();
+        await Assert.That(vm.VideoProperties.All(p => !string.IsNullOrWhiteSpace(p.Value))).IsTrue();
+        await Assert.That(vm.AudioProperties).IsEmpty();
+        await Assert.That(vm.TrackProperties).IsEmpty();
+    }
+
+    [Test]
+    public async Task UpdateProperties_ShouldNotRepeatChannelCountInTheLayoutDescription()
+    {
+        var source = new FileMediaSource(@"C:\audio\voice.wav");
+        var media = new MediaViewModel(source)
+        {
+            MediaInfo = new MediaInfo(
+                MediaPlaybackType.Music,
+                new MusicInfo { Codec = "pcm_s16le", Channels = 2, ChannelLayout = "2 channels", BitsPerSample = 16 },
+                new VideoInfo())
+        };
+
+        var vm = new PropertyViewModel(
+            new DummyFilesService(),
+            CreateStorageMetadataService(),
+            new TestMetadataService(),
+            CreatePlayerContextWithPlayer(),
+            new FakePlayerService(),
+            new FakeBufferManager());
+
+        vm.UpdateProperties(media);
+
+        await Assert.That(vm.AudioProperties.First(p => p.Key == MediaProperty.Channels).Value).IsEqualTo("2");
+        await Assert.That(vm.AudioProperties.First(p => p.Key == MediaProperty.BitDepth).Value).IsEqualTo("16-bit");
+    }
+
+    [Test]
+    public async Task UpdateProperties_WhenAudioCodecIsLossy_ShouldOmitBitDepth()
+    {
+        var source = new FileMediaSource(@"C:\audio\mix.mp3");
+        var media = new MediaViewModel(source)
+        {
+            MediaInfo = new MediaInfo(
+                MediaPlaybackType.Music,
+                // Lossy decoders answer with the width of their internal float buffer, which is
+                // not a property of the content.
+                new MusicInfo { Codec = "mp3", Channels = 2, ChannelLayout = "stereo", BitsPerSample = 32 },
+                new VideoInfo())
+        };
+
+        var vm = new PropertyViewModel(
+            new DummyFilesService(),
+            CreateStorageMetadataService(),
+            new TestMetadataService(),
+            CreatePlayerContextWithPlayer(),
+            new FakePlayerService(),
+            new FakeBufferManager());
+
+        vm.UpdateProperties(media);
+
+        await Assert.That(vm.AudioProperties.Any(p => p.Key == MediaProperty.BitDepth)).IsFalse();
+        await Assert.That(vm.AudioProperties.First(p => p.Key == MediaProperty.Channels).Value).IsEqualTo("2 (stereo)");
     }
 
     private sealed class DummyFilesService : IFilesService

@@ -23,83 +23,66 @@ public static class MediaInfoExtensions
             ? target.MediaType
             : source.MediaType;
 
+        // "First non-empty wins" for every field. Local helpers keep the mapping below readable
+        // instead of repeating the same ternary for dozens of properties.
+        static string Text(string preferred, string fallback) =>
+            !string.IsNullOrEmpty(preferred) ? preferred : fallback;
+
+        static uint Number(uint preferred, uint fallback) => preferred > 0 ? preferred : fallback;
+
+        static int Count(int preferred, int fallback) => preferred > 0 ? preferred : fallback;
+
+        static double Ratio(double preferred, double fallback) => preferred > 0 ? preferred : fallback;
+
+        static TimeSpan Span(TimeSpan preferred, TimeSpan fallback) =>
+            preferred > TimeSpan.Zero ? preferred : fallback;
+
         ulong size = target.Size > 0 ? target.Size : source.Size;
         DateTimeOffset dateModified = target.DateModified != default ? target.DateModified : source.DateModified;
         Uri? artworkUri = target.ArtworkUri ?? source.ArtworkUri;
         byte[]? artworkData = target.ArtworkData ?? source.ArtworkData;
 
+        MusicInfo targetMusic = target.MusicProperties;
+        MusicInfo sourceMusic = source.MusicProperties;
         MusicInfo musicInfo = new()
         {
-            Title = !string.IsNullOrEmpty(target.MusicProperties.Title)
-                ? target.MusicProperties.Title
-                : source.MusicProperties.Title,
-            Artist = !string.IsNullOrEmpty(target.MusicProperties.Artist)
-                ? target.MusicProperties.Artist
-                : source.MusicProperties.Artist,
-            Album = !string.IsNullOrEmpty(target.MusicProperties.Album)
-                ? target.MusicProperties.Album
-                : source.MusicProperties.Album,
-            AlbumArtist = !string.IsNullOrEmpty(target.MusicProperties.AlbumArtist)
-                ? target.MusicProperties.AlbumArtist
-                : source.MusicProperties.AlbumArtist,
-            Composers = !string.IsNullOrEmpty(target.MusicProperties.Composers)
-                ? target.MusicProperties.Composers
-                : source.MusicProperties.Composers,
-            Genre = !string.IsNullOrEmpty(target.MusicProperties.Genre)
-                ? target.MusicProperties.Genre
-                : source.MusicProperties.Genre,
-            TrackNumber = target.MusicProperties.TrackNumber > 0
-                ? target.MusicProperties.TrackNumber
-                : source.MusicProperties.TrackNumber,
-            Year = target.MusicProperties.Year > 0
-                ? target.MusicProperties.Year
-                : source.MusicProperties.Year,
-            Duration = target.MusicProperties.Duration > TimeSpan.Zero
-                ? target.MusicProperties.Duration
-                : source.MusicProperties.Duration,
-            Bitrate = target.MusicProperties.Bitrate > 0
-                ? target.MusicProperties.Bitrate
-                : source.MusicProperties.Bitrate
+            Title = Text(targetMusic.Title, sourceMusic.Title),
+            Artist = Text(targetMusic.Artist, sourceMusic.Artist),
+            Album = Text(targetMusic.Album, sourceMusic.Album),
+            AlbumArtist = Text(targetMusic.AlbumArtist, sourceMusic.AlbumArtist),
+            Composers = Text(targetMusic.Composers, sourceMusic.Composers),
+            Genre = Text(targetMusic.Genre, sourceMusic.Genre),
+            TrackNumber = Number(targetMusic.TrackNumber, sourceMusic.TrackNumber),
+            Year = Number(targetMusic.Year, sourceMusic.Year),
+            Duration = Span(targetMusic.Duration, sourceMusic.Duration),
+            Bitrate = Number(targetMusic.Bitrate, sourceMusic.Bitrate),
+            Codec = Text(targetMusic.Codec, sourceMusic.Codec),
+            SampleRate = Number(targetMusic.SampleRate, sourceMusic.SampleRate),
+            Channels = Number(targetMusic.Channels, sourceMusic.Channels),
+            ChannelLayout = Text(targetMusic.ChannelLayout, sourceMusic.ChannelLayout),
+            BitsPerSample = Number(targetMusic.BitsPerSample, sourceMusic.BitsPerSample)
         };
 
+        VideoInfo targetVideo = target.VideoProperties;
+        VideoInfo sourceVideo = source.VideoProperties;
         VideoInfo videoInfo = new()
         {
-            Title = !string.IsNullOrEmpty(target.VideoProperties.Title)
-                ? target.VideoProperties.Title
-                : source.VideoProperties.Title,
-            Subtitle = !string.IsNullOrEmpty(target.VideoProperties.Subtitle)
-                ? target.VideoProperties.Subtitle
-                : source.VideoProperties.Subtitle,
-            Producers = !string.IsNullOrEmpty(target.VideoProperties.Producers)
-                ? target.VideoProperties.Producers
-                : source.VideoProperties.Producers,
-            Writers = !string.IsNullOrEmpty(target.VideoProperties.Writers)
-                ? target.VideoProperties.Writers
-                : source.VideoProperties.Writers,
-            Duration = target.VideoProperties.Duration > TimeSpan.Zero
-                ? target.VideoProperties.Duration
-                : source.VideoProperties.Duration,
-            Year = target.VideoProperties.Year > 0
-                ? target.VideoProperties.Year
-                : source.VideoProperties.Year,
-            Width = target.VideoProperties.Width > 0
-                ? target.VideoProperties.Width
-                : source.VideoProperties.Width,
-            Height = target.VideoProperties.Height > 0
-                ? target.VideoProperties.Height
-                : source.VideoProperties.Height,
-            Bitrate = target.VideoProperties.Bitrate > 0
-                ? target.VideoProperties.Bitrate
-                : source.VideoProperties.Bitrate,
-            ShowName = !string.IsNullOrEmpty(target.VideoProperties.ShowName)
-                ? target.VideoProperties.ShowName
-                : source.VideoProperties.ShowName,
-            Season = !string.IsNullOrEmpty(target.VideoProperties.Season)
-                ? target.VideoProperties.Season
-                : source.VideoProperties.Season,
-            Episode = !string.IsNullOrEmpty(target.VideoProperties.Episode)
-                ? target.VideoProperties.Episode
-                : source.VideoProperties.Episode
+            Title = Text(targetVideo.Title, sourceVideo.Title),
+            Subtitle = Text(targetVideo.Subtitle, sourceVideo.Subtitle),
+            Producers = Text(targetVideo.Producers, sourceVideo.Producers),
+            Writers = Text(targetVideo.Writers, sourceVideo.Writers),
+            Duration = Span(targetVideo.Duration, sourceVideo.Duration),
+            Year = Number(targetVideo.Year, sourceVideo.Year),
+            Width = Number(targetVideo.Width, sourceVideo.Width),
+            Height = Number(targetVideo.Height, sourceVideo.Height),
+            Bitrate = Number(targetVideo.Bitrate, sourceVideo.Bitrate),
+            Codec = Text(targetVideo.Codec, sourceVideo.Codec),
+            FramesPerSecond = Ratio(targetVideo.FramesPerSecond, sourceVideo.FramesPerSecond),
+            BitsPerSample = Number(targetVideo.BitsPerSample, sourceVideo.BitsPerSample),
+            HasHdr = targetVideo.HasHdr || sourceVideo.HasHdr,
+            ShowName = Text(targetVideo.ShowName, sourceVideo.ShowName),
+            Season = Text(targetVideo.Season, sourceVideo.Season),
+            Episode = Text(targetVideo.Episode, sourceVideo.Episode)
         };
 
         return new MediaInfo(mediaType, musicInfo, videoInfo)
@@ -107,7 +90,11 @@ public static class MediaInfoExtensions
             Size = size,
             DateModified = dateModified,
             ArtworkUri = artworkUri,
-            ArtworkData = artworkData
+            ArtworkData = artworkData,
+            Container = Text(target.Container, source.Container),
+            AudioStreamCount = Count(target.AudioStreamCount, source.AudioStreamCount),
+            SubtitleStreamCount = Count(target.SubtitleStreamCount, source.SubtitleStreamCount),
+            ChapterCount = Count(target.ChapterCount, source.ChapterCount)
         };
     }
 }

@@ -399,6 +399,42 @@
   <data name="PropertyLastModified" xml:space="preserve">
     <value>Last modified</value>
   </data>
+  <data name="PropertyVideoCodec" xml:space="preserve">
+    <value>Video codec</value>
+  </data>
+  <data name="PropertyAudioCodec" xml:space="preserve">
+    <value>Audio codec</value>
+  </data>
+  <data name="PropertyFrameRate" xml:space="preserve">
+    <value>Frame rate</value>
+  </data>
+  <data name="PropertyBitDepth" xml:space="preserve">
+    <value>Bit depth</value>
+  </data>
+  <data name="PropertyDynamicRange" xml:space="preserve">
+    <value>Dynamic range</value>
+  </data>
+  <data name="PropertySampleRate" xml:space="preserve">
+    <value>Sample rate</value>
+  </data>
+  <data name="PropertyChannels" xml:space="preserve">
+    <value>Channels</value>
+  </data>
+  <data name="PropertyContainer" xml:space="preserve">
+    <value>Container</value>
+  </data>
+  <data name="PropertyAudioTrackCount" xml:space="preserve">
+    <value>Audio tracks</value>
+  </data>
+  <data name="PropertySubtitleTrackCount" xml:space="preserve">
+    <value>Subtitle tracks</value>
+  </data>
+  <data name="PropertyChapterCount" xml:space="preserve">
+    <value>Chapters</value>
+  </data>
+  <data name="Tracks" xml:space="preserve">
+    <value>Tracks</value>
+  </data>
   <data name="PropertyLength" xml:space="preserve">
     <value>Length</value>
   </data>

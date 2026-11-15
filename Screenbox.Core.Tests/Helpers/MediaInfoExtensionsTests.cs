@@ -189,4 +189,77 @@ public class MediaInfoExtensionsTests
 
         await Assert.That(merged.ArtworkData).IsSameReferenceAs(targetArtwork);
     }
+
+    [Test]
+    public async Task MergeSelective_ShouldCarryTechnicalStreamDetailsFromSource()
+    {
+        var target = new MediaInfo(MediaPlaybackType.Video);
+
+        MediaInfo merged = target.MergeSelective(new MediaInfo(
+            MediaPlaybackType.Video,
+            new MusicInfo
+            {
+                Codec = "eac3",
+                SampleRate = 48000,
+                Channels = 6,
+                ChannelLayout = "5.1",
+                BitsPerSample = 24
+            },
+            new VideoInfo
+            {
+                Codec = "hevc",
+                FramesPerSecond = 23.976,
+                BitsPerSample = 10,
+                HasHdr = true
+            })
+        {
+            Container = "matroska,webm",
+            AudioStreamCount = 2,
+            SubtitleStreamCount = 3,
+            ChapterCount = 12
+        });
+
+        await Assert.That(merged.MusicProperties.Codec).IsEqualTo("eac3");
+        await Assert.That(merged.MusicProperties.SampleRate).IsEqualTo(48000u);
+        await Assert.That(merged.MusicProperties.Channels).IsEqualTo(6u);
+        await Assert.That(merged.MusicProperties.ChannelLayout).IsEqualTo("5.1");
+        await Assert.That(merged.MusicProperties.BitsPerSample).IsEqualTo(24u);
+        await Assert.That(merged.VideoProperties.Codec).IsEqualTo("hevc");
+        await Assert.That(merged.VideoProperties.FramesPerSecond).IsEqualTo(23.976);
+        await Assert.That(merged.VideoProperties.BitsPerSample).IsEqualTo(10u);
+        await Assert.That(merged.VideoProperties.HasHdr).IsTrue();
+        await Assert.That(merged.Container).IsEqualTo("matroska,webm");
+        await Assert.That(merged.AudioStreamCount).IsEqualTo(2);
+        await Assert.That(merged.SubtitleStreamCount).IsEqualTo(3);
+        await Assert.That(merged.ChapterCount).IsEqualTo(12);
+    }
+
+    [Test]
+    public async Task MergeSelective_ShouldKeepTargetTechnicalDetailsOverSource()
+    {
+        MediaInfo target = new(
+            MediaPlaybackType.Video,
+            new MusicInfo { Codec = "aac", SampleRate = 44100 },
+            new VideoInfo { Codec = "h264", FramesPerSecond = 30 })
+        {
+            Container = "mov,mp4,m4a,3gp,3g2,mj2",
+            AudioStreamCount = 1
+        };
+
+        MediaInfo merged = target.MergeSelective(new MediaInfo(
+            MediaPlaybackType.Video,
+            new MusicInfo { Codec = "flac", SampleRate = 96000 },
+            new VideoInfo { Codec = "hevc", FramesPerSecond = 60 })
+        {
+            Container = "matroska,webm",
+            AudioStreamCount = 4
+        });
+
+        await Assert.That(merged.MusicProperties.Codec).IsEqualTo("aac");
+        await Assert.That(merged.MusicProperties.SampleRate).IsEqualTo(44100u);
+        await Assert.That(merged.VideoProperties.Codec).IsEqualTo("h264");
+        await Assert.That(merged.VideoProperties.FramesPerSecond).IsEqualTo(30d);
+        await Assert.That(merged.Container).IsEqualTo("mov,mp4,m4a,3gp,3g2,mj2");
+        await Assert.That(merged.AudioStreamCount).IsEqualTo(1);
+    }
 }

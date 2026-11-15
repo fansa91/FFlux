@@ -1,10 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FFmpegInteropX;
+using Microsoft.Extensions.Logging.Abstractions;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.MediaSources;
+using Screenbox.Core.Models;
+using Screenbox.Core.Services;
+using Screenbox.Core.ViewModels;
 using Windows.Media.Core;
 using Windows.Media.Playback;
 using Windows.Storage;
@@ -61,6 +67,7 @@ public static class PlaybackProbe
 
             DescribeMedia(player, item);
             await InspectArtworkAsync(item);
+            await DumpPropertyRowsAsync(item);
             await ExerciseAudioTimelineAsync(player, item);
             await SwitchAudioAsync(player, item);
             await ExerciseAudioDelayAsync(player);
@@ -285,18 +292,10 @@ public static class PlaybackProbe
         }
 
         int before = item.FFmpegSource?.SubtitleStreams.Count ?? 0;
-        StorageFile file;
-        try
-        {
-            file = await StorageFile.GetFileFromPathAsync(path);
-        }
-        catch (Exception ex)
+        StorageFile? file = await FilesHelpers.TryGetFileFromPathAsync(path);
+        if (file is null)
         {
             // The app's own subtitle entry points hand over a StorageFile from the picker or a
-            // drop, so path-based resolution is only needed here. It is unreliable for some
-            // files on this host (0x800700A1 even for paths File.Exists accepts), so report it
-            // instead of aborting the remaining probe steps.
-            Log($"external subtitle: cannot resolve '{path}': {ex.Message}");
             return;
         }
 
@@ -308,6 +307,62 @@ public static class PlaybackProbe
         Log($"external subtitle: demuxer streams {before}->{after} list count={tracks.Count} " +
             $"selected={tracks.SelectedIndex} labels=[{DescribeTracks(tracks)}] " +
             $"presentation=[{DescribePresentationModes(item)}]");
+    }
+
+    /// <summary>
+    /// Rebuilds the properties dialog content from the live source and writes it to the trace.
+    /// Screenbox has no automation surface and this host cannot be screenshotted, so this is how
+    /// the panel's real output is checked against a real file.
+    /// </summary>
+    private static async Task DumpPropertyRowsAsync(FFmpegPlaybackItem item)
+    {
+        try
+        {
+            var metadataService = new FFmpegMetadataService(NullLogger<FFmpegMetadataService>.Instance);
+            MediaInfo? info = await metadataService.GetMediaInfoAsync(item);
+            if (info is null)
+            {
+                Log("properties: metadata unavailable");
+                return;
+            }
+
+            // Mirror PropertyViewModel.LoadPropertiesAsync: shell properties first, then the
+            // playback-derived values on top.
+            var media = new MediaViewModel(item.Source);
+            if (item.Source is IFileMediaSource fileSource &&
+                await fileSource.GetStorageFileAsync() is { } file)
+            {
+                var storageService = new StorageMetadataService(NullLogger<StorageMetadataService>.Instance);
+                if (await storageService.GetMediaInfoAsync(file) is { } storageInfo)
+                {
+                    media.MediaInfo = storageInfo;
+                }
+            }
+
+            media.MediaInfo = media.MediaInfo.MergeSelective(info);
+
+            // UpdateProperties only reads the media item; the services are not touched.
+            var viewModel = new PropertyViewModel(null!, null!, null!, null!, null!, null!);
+            viewModel.UpdateProperties(media);
+
+            LogProperties("media", viewModel.MediaProperties);
+            LogProperties("video", viewModel.VideoProperties);
+            LogProperties("audio", viewModel.AudioProperties);
+            LogProperties("tracks", viewModel.TrackProperties);
+            LogProperties("file", viewModel.FileProperties);
+        }
+        catch (Exception ex)
+        {
+            Log("properties: dump failed: " + ex.Message);
+        }
+    }
+
+    private static void LogProperties(string section, IReadOnlyList<MediaMetadata> entries)
+    {
+        string rendered = entries.Count == 0
+            ? "<empty>"
+            : string.Join(", ", entries.Select(e => $"{e.Key}={e.Value}"));
+        Log($"props[{section}] {rendered}");
     }
 
     private static async Task SeekAsync(FFmpegMediaPlayer player, TimeSpan target, string label)

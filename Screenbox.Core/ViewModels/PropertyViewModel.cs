@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,6 +23,8 @@ public sealed partial class PropertyViewModel : ObservableObject
 
     public IReadOnlyList<MediaMetadata> AudioProperties { get; private set; } = Array.Empty<MediaMetadata>();
 
+    public IReadOnlyList<MediaMetadata> TrackProperties { get; private set; } = Array.Empty<MediaMetadata>();
+
     public IReadOnlyList<MediaMetadata> FileProperties { get; private set; } = Array.Empty<MediaMetadata>();
 
     [ObservableProperty]
@@ -37,6 +40,52 @@ public sealed partial class PropertyViewModel : ObservableObject
     private StorageFile? _mediaFile;
     private Uri? _mediaUri;
     private string? _mediaFilePath;
+
+    /// <summary>
+    /// FFmpeg reports codecs by their short internal names. The panel shows the names people
+    /// recognise from release notes and players instead; anything unmapped is shown verbatim.
+    /// </summary>
+    private static readonly Dictionary<string, string> FriendlyCodecNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["h264"] = "H.264 / AVC",
+        ["hevc"] = "H.265 / HEVC",
+        ["av1"] = "AV1",
+        ["vp8"] = "VP8",
+        ["vp9"] = "VP9",
+        ["mpeg4"] = "MPEG-4",
+        ["mpeg2video"] = "MPEG-2",
+        ["aac"] = "AAC",
+        ["mp3"] = "MP3",
+        ["mp2"] = "MP2",
+        ["flac"] = "FLAC",
+        ["alac"] = "ALAC",
+        ["opus"] = "Opus",
+        ["vorbis"] = "Vorbis",
+        ["ac3"] = "AC-3",
+        ["eac3"] = "E-AC-3",
+        ["truehd"] = "TrueHD",
+        ["dts"] = "DTS",
+        ["wmav2"] = "WMA",
+        ["pcm_s16le"] = "PCM",
+        ["pcm_s24le"] = "PCM",
+        ["pcm_s32le"] = "PCM",
+        ["pcm_f32le"] = "PCM",
+    };
+
+    /// <summary>
+    /// Audio codecs whose sample format is well defined. Lossy decoders report the width of
+    /// their internal float buffer (AAC answers 32-bit for a 16-bit source), so the bit depth is
+    /// only displayed for codecs where the number describes the actual content.
+    /// </summary>
+    private static readonly HashSet<string> LosslessCodecs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "flac",
+        "alac",
+        "ape",
+        "tta",
+        "wavpack",
+        "truehd",
+    };
 
     public PropertyViewModel(
         IFilesService filesService,
@@ -99,47 +148,68 @@ public sealed partial class PropertyViewModel : ObservableObject
     /// <summary>
     /// Populates the property collections with metadata keys and values from the given <paramref name="media"/> item.
     /// </summary>
+    /// <remarks>
+    /// Rows are only emitted when there is something to show. Most files have no writers, no
+    /// composers and no HDR metadata, and a wall of blank rows hides the fields that do have
+    /// values.
+    /// </remarks>
     public void UpdateProperties(MediaViewModel media)
     {
         List<MediaMetadata> mediaEntries = new();
         List<MediaMetadata> videoEntries = new();
         List<MediaMetadata> audioEntries = new();
+        List<MediaMetadata> trackEntries = new();
         List<MediaMetadata> fileEntries = new();
+
+        MusicInfo music = media.MediaInfo.MusicProperties;
+        VideoInfo video = media.MediaInfo.VideoProperties;
 
         switch (media.MediaType)
         {
             case MediaPlaybackType.Video:
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Title, string.IsNullOrEmpty(media.MediaInfo.VideoProperties.Title)
-                    ? media.Name
-                    : media.MediaInfo.VideoProperties.Title));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Subtitle, media.MediaInfo.VideoProperties.Subtitle));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Year, media.MediaInfo.VideoProperties.Year > 0
-                    ? media.MediaInfo.VideoProperties.Year.ToString()
-                    : string.Empty));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Producers, string.Join("; ", media.MediaInfo.VideoProperties.Producers)));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Writers, string.Join("; ", media.MediaInfo.VideoProperties.Writers)));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Length, Humanizer.ToDuration(media.MediaInfo.VideoProperties.Duration)));
+                Add(mediaEntries, MediaProperty.Title, FirstNonEmpty(video.Title, media.Name));
+                Add(mediaEntries, MediaProperty.Subtitle, video.Subtitle);
+                Add(mediaEntries, MediaProperty.Year, FormatYear(video.Year));
+                Add(mediaEntries, MediaProperty.Producers, video.Producers);
+                Add(mediaEntries, MediaProperty.Writers, video.Writers);
+                Add(mediaEntries, MediaProperty.Length, FormatDuration(video.Duration));
 
-                videoEntries.Add(new MediaMetadata(MediaProperty.Resolution, $"{media.MediaInfo.VideoProperties.Width}×{media.MediaInfo.VideoProperties.Height}"));
-                videoEntries.Add(new MediaMetadata(MediaProperty.BitRate, $"{media.MediaInfo.VideoProperties.Bitrate / 1000} kbps"));
+                Add(videoEntries, MediaProperty.Resolution, FormatResolution(video.Width, video.Height));
+                Add(videoEntries, MediaProperty.FrameRate, FormatFrameRate(video.FramesPerSecond));
+                Add(videoEntries, MediaProperty.VideoCodec, FormatCodec(video.Codec));
+                Add(videoEntries, MediaProperty.BitDepth, FormatBitDepth(video.BitsPerSample));
+                Add(videoEntries, MediaProperty.DynamicRange, video.HasHdr ? "HDR" : null);
+                Add(videoEntries, MediaProperty.BitRate, FormatBitRate(video.Bitrate));
 
-                audioEntries.Add(new MediaMetadata(MediaProperty.BitRate, $"{media.MediaInfo.MusicProperties.Bitrate / 1000} kbps"));
+                Add(audioEntries, MediaProperty.AudioCodec, FormatCodec(music.Codec));
+                Add(audioEntries, MediaProperty.Channels, FormatChannels(music.Channels, music.ChannelLayout));
+                Add(audioEntries, MediaProperty.SampleRate, FormatSampleRate(music.SampleRate));
+                Add(audioEntries, MediaProperty.BitDepth, FormatAudioBitDepth(music.Codec, music.BitsPerSample));
+                Add(audioEntries, MediaProperty.BitRate, FormatBitRate(music.Bitrate));
+
+                // Stream counts only mean something when there is more than the obvious one, so
+                // they are added per count rather than as a fixed block.
+                Add(trackEntries, MediaProperty.AudioTrackCount, FormatCount(media.MediaInfo.AudioStreamCount));
+                Add(trackEntries, MediaProperty.SubtitleTrackCount, FormatCount(media.MediaInfo.SubtitleStreamCount));
+                Add(trackEntries, MediaProperty.ChapterCount, FormatCount(media.MediaInfo.ChapterCount));
                 break;
 
             case MediaPlaybackType.Music:
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Title, media.MediaInfo.MusicProperties.Title));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.ContributingArtists, media.MediaInfo.MusicProperties.Artist));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Album, media.MediaInfo.MusicProperties.Album));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.AlbumArtist, media.MediaInfo.MusicProperties.AlbumArtist));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Composers, string.Join("; ", media.MediaInfo.MusicProperties.Composers)));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Genre, string.Join("; ", media.MediaInfo.MusicProperties.Genre)));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Track, media.MediaInfo.MusicProperties.TrackNumber.ToString()));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Year, media.MediaInfo.MusicProperties.Year > 0
-                    ? media.MediaInfo.MusicProperties.Year.ToString()
-                    : string.Empty));
-                mediaEntries.Add(new MediaMetadata(MediaProperty.Length, Humanizer.ToDuration(media.MediaInfo.MusicProperties.Duration)));
+                Add(mediaEntries, MediaProperty.Title, FirstNonEmpty(music.Title, media.Name));
+                Add(mediaEntries, MediaProperty.ContributingArtists, music.Artist);
+                Add(mediaEntries, MediaProperty.Album, music.Album);
+                Add(mediaEntries, MediaProperty.AlbumArtist, music.AlbumArtist);
+                Add(mediaEntries, MediaProperty.Composers, music.Composers);
+                Add(mediaEntries, MediaProperty.Genre, music.Genre);
+                Add(mediaEntries, MediaProperty.Track, FormatCount(music.TrackNumber));
+                Add(mediaEntries, MediaProperty.Year, FormatYear(music.Year));
+                Add(mediaEntries, MediaProperty.Length, FormatDuration(music.Duration));
 
-                audioEntries.Add(new MediaMetadata(MediaProperty.BitRate, $"{media.MediaInfo.MusicProperties.Bitrate / 1000} kbps"));
+                Add(audioEntries, MediaProperty.AudioCodec, FormatCodec(music.Codec));
+                Add(audioEntries, MediaProperty.Channels, FormatChannels(music.Channels, music.ChannelLayout));
+                Add(audioEntries, MediaProperty.SampleRate, FormatSampleRate(music.SampleRate));
+                Add(audioEntries, MediaProperty.BitDepth, FormatAudioBitDepth(music.Codec, music.BitsPerSample));
+                Add(audioEntries, MediaProperty.BitRate, FormatBitRate(music.Bitrate));
                 break;
         }
 
@@ -150,13 +220,19 @@ public sealed partial class PropertyViewModel : ObservableObject
                 _mediaFilePath = fileSource.Path;
                 _mediaUri = null;
                 CanNavigateToFile = true;
-                fileEntries.Add(new MediaMetadata(MediaProperty.FileType, fileSource.FileType));
+                Add(fileEntries, MediaProperty.Container, media.MediaInfo.Container);
+                Add(fileEntries, MediaProperty.FileType, fileSource.FileType);
                 if (_mediaFile != null)
                 {
-                    fileEntries.Add(new MediaMetadata(MediaProperty.ContentType, _mediaFile.ContentType));
+                    Add(fileEntries, MediaProperty.ContentType, _mediaFile.ContentType);
                 }
-                fileEntries.Add(new MediaMetadata(MediaProperty.Size, BytesToHumanReadable((long)media.MediaInfo.Size)));
-                fileEntries.Add(new MediaMetadata(MediaProperty.LastModified, media.MediaInfo.DateModified.ToString()));
+
+                Add(fileEntries, MediaProperty.Size, media.MediaInfo.Size > 0
+                    ? BytesToHumanReadable((long)media.MediaInfo.Size)
+                    : null);
+                Add(fileEntries, MediaProperty.LastModified, media.MediaInfo.DateModified != default
+                    ? media.MediaInfo.DateModified.ToString()
+                    : null);
                 break;
             case IUriMediaSource uriSource:
                 _mediaFile = null;
@@ -169,7 +245,95 @@ public sealed partial class PropertyViewModel : ObservableObject
         MediaProperties = mediaEntries;
         VideoProperties = videoEntries;
         AudioProperties = audioEntries;
+        TrackProperties = trackEntries;
         FileProperties = fileEntries;
+    }
+
+    private static void Add(List<MediaMetadata> entries, MediaProperty key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            entries.Add(new MediaMetadata(key, value.Trim()));
+        }
+    }
+
+    private static string? FirstNonEmpty(string? value, string fallback) =>
+        !string.IsNullOrWhiteSpace(value) ? value : fallback;
+
+    private static string? FormatYear(uint year) => year > 0 ? year.ToString() : null;
+
+    private static string? FormatCount(int count) => count > 0 ? count.ToString() : null;
+
+    private static string? FormatCount(uint count) => count > 0 ? count.ToString() : null;
+
+    private static string? FormatDuration(TimeSpan duration) =>
+        duration > TimeSpan.Zero ? Humanizer.ToDuration(duration) : null;
+
+    private static string? FormatResolution(uint width, uint height) =>
+        width > 0 && height > 0 ? $"{width}×{height}" : null;
+
+    private static string? FormatFrameRate(double framesPerSecond) =>
+        framesPerSecond > 0
+            ? framesPerSecond.ToString("0.###", CultureInfo.InvariantCulture) + " fps"
+            : null;
+
+    private static string? FormatSampleRate(uint sampleRate) =>
+        sampleRate > 0
+            ? (sampleRate / 1000d).ToString("0.###", CultureInfo.InvariantCulture) + " kHz"
+            : null;
+
+    private static string? FormatChannels(uint channels, string layout)
+    {
+        if (channels == 0)
+        {
+            return null;
+        }
+
+        // FFmpeg falls back to a plain "2 channels" description when it has no layout name for
+        // the stream, which would render as the redundant "2 (2 channels)".
+        if (string.IsNullOrWhiteSpace(layout) || IsRedundantChannelLayout(layout, channels))
+        {
+            return channels.ToString();
+        }
+
+        return $"{channels} ({layout})";
+    }
+
+    private static bool IsRedundantChannelLayout(string layout, uint channels) =>
+        layout.StartsWith(channels.ToString(), StringComparison.Ordinal)
+        && layout.Contains("channel", StringComparison.OrdinalIgnoreCase);
+
+    private static string? FormatBitDepth(uint bitsPerSample) =>
+        bitsPerSample > 0 ? $"{bitsPerSample}-bit" : null;
+
+    private static string? FormatAudioBitDepth(string codec, uint bitsPerSample)
+    {
+        bool isLossless = LosslessCodecs.Contains(codec)
+                          || codec.StartsWith("pcm_", StringComparison.OrdinalIgnoreCase);
+
+        return isLossless ? FormatBitDepth(bitsPerSample) : null;
+    }
+
+    private static string? FormatBitRate(uint bitsPerSecond)
+    {
+        if (bitsPerSecond == 0)
+        {
+            return null;
+        }
+
+        return bitsPerSecond >= 1_000_000
+            ? (bitsPerSecond / 1_000_000d).ToString("0.##", CultureInfo.InvariantCulture) + " Mbps"
+            : ((bitsPerSecond + 500) / 1000).ToString(CultureInfo.InvariantCulture) + " kbps";
+    }
+
+    private static string? FormatCodec(string codec)
+    {
+        if (string.IsNullOrWhiteSpace(codec))
+        {
+            return null;
+        }
+
+        return FriendlyCodecNames.TryGetValue(codec, out string? friendly) ? friendly : codec;
     }
 
     [RelayCommand(CanExecute = nameof(CanNavigateToFile))]

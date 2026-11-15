@@ -132,28 +132,69 @@ public static class ItemLabelHelper
     /// <returns>The localized media property label.</returns>
     public static string GetMediaPropertyResourceString(MediaProperty property)
     {
-        return property switch
+        try
         {
-            MediaProperty.Title => Strings.Resources.PropertyTitle,
-            MediaProperty.Subtitle => Strings.Resources.PropertySubtitle,
-            MediaProperty.Year => Strings.Resources.PropertyYear,
-            MediaProperty.Producers => Strings.Resources.PropertyProducers,
-            MediaProperty.Writers => Strings.Resources.PropertyWriters,
-            MediaProperty.Length => Strings.Resources.PropertyLength,
-            MediaProperty.Resolution => Strings.Resources.PropertyResolution,
-            MediaProperty.BitRate => Strings.Resources.PropertyBitRate,
-            MediaProperty.ContributingArtists => Strings.Resources.PropertyContributingArtists,
-            MediaProperty.Album => Strings.Resources.PropertyAlbum,
-            MediaProperty.AlbumArtist => Strings.Resources.PropertyAlbumArtist,
-            MediaProperty.Composers => Strings.Resources.PropertyComposers,
-            MediaProperty.Genre => Strings.Resources.PropertyGenre,
-            MediaProperty.Track => Strings.Resources.PropertyTrack,
-            MediaProperty.FileType => Strings.Resources.PropertyFileType,
-            MediaProperty.ContentType => Strings.Resources.PropertyContentType,
-            MediaProperty.Size => Strings.Resources.PropertySize,
-            MediaProperty.LastModified => Strings.Resources.PropertyLastModified,
-            _ => property.ToString()
-        };
+            return property switch
+            {
+                MediaProperty.Title => Strings.Resources.PropertyTitle,
+                MediaProperty.Subtitle => Strings.Resources.PropertySubtitle,
+                MediaProperty.Year => Strings.Resources.PropertyYear,
+                MediaProperty.Producers => Strings.Resources.PropertyProducers,
+                MediaProperty.Writers => Strings.Resources.PropertyWriters,
+                MediaProperty.Length => Strings.Resources.PropertyLength,
+                MediaProperty.Resolution => Strings.Resources.PropertyResolution,
+                MediaProperty.BitRate => Strings.Resources.PropertyBitRate,
+                MediaProperty.ContributingArtists => Strings.Resources.PropertyContributingArtists,
+                MediaProperty.Album => Strings.Resources.PropertyAlbum,
+                MediaProperty.AlbumArtist => Strings.Resources.PropertyAlbumArtist,
+                MediaProperty.Composers => Strings.Resources.PropertyComposers,
+                MediaProperty.Genre => Strings.Resources.PropertyGenre,
+                MediaProperty.Track => Strings.Resources.PropertyTrack,
+                MediaProperty.FileType => Strings.Resources.PropertyFileType,
+                MediaProperty.ContentType => Strings.Resources.PropertyContentType,
+                MediaProperty.Size => Strings.Resources.PropertySize,
+                MediaProperty.LastModified => Strings.Resources.PropertyLastModified,
+                MediaProperty.VideoCodec => Strings.Resources.PropertyVideoCodec,
+                MediaProperty.AudioCodec => Strings.Resources.PropertyAudioCodec,
+                MediaProperty.FrameRate => Strings.Resources.PropertyFrameRate,
+                MediaProperty.BitDepth => Strings.Resources.PropertyBitDepth,
+                MediaProperty.DynamicRange => Strings.Resources.PropertyDynamicRange,
+                MediaProperty.SampleRate => Strings.Resources.PropertySampleRate,
+                MediaProperty.Channels => Strings.Resources.PropertyChannels,
+                MediaProperty.Container => Strings.Resources.PropertyContainer,
+                MediaProperty.AudioTrackCount => Strings.Resources.PropertyAudioTrackCount,
+                MediaProperty.SubtitleTrackCount => Strings.Resources.PropertySubtitleTrackCount,
+                MediaProperty.ChapterCount => Strings.Resources.PropertyChapterCount,
+                _ => property.ToString()
+            };
+        }
+        catch (Exception)
+        {
+            // The generated Resources accessors throw when a key is absent from the compiled
+            // resource index (for example after a stale resources.pri). A missing caption must not
+            // take down the properties panel, so fall back to the enum name split into words.
+            return SplitIdentifier(property.ToString());
+        }
+    }
+
+    /// <summary>
+    /// Turns a PascalCase identifier into space-separated words, e.g. "AudioTrackCount" becomes
+    /// "Audio Track Count". Used as the last-resort caption when no resource string is available.
+    /// </summary>
+    private static string SplitIdentifier(string name)
+    {
+        var builder = new System.Text.StringBuilder(name.Length + 4);
+        for (int i = 0; i < name.Length; i++)
+        {
+            if (i > 0 && char.IsUpper(name[i]) && !char.IsUpper(name[i - 1]))
+            {
+                builder.Append(' ');
+            }
+
+            builder.Append(name[i]);
+        }
+
+        return builder.ToString();
     }
 
     /// <summary>

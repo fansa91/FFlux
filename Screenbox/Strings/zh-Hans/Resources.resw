@@ -399,6 +399,42 @@
   <data name="PropertyLastModified" xml:space="preserve">
     <value>修改日期</value>
   </data>
+  <data name="PropertyVideoCodec" xml:space="preserve">
+    <value>视频编码</value>
+  </data>
+  <data name="PropertyAudioCodec" xml:space="preserve">
+    <value>音频编码</value>
+  </data>
+  <data name="PropertyFrameRate" xml:space="preserve">
+    <value>帧率</value>
+  </data>
+  <data name="PropertyBitDepth" xml:space="preserve">
+    <value>位深</value>
+  </data>
+  <data name="PropertyDynamicRange" xml:space="preserve">
+    <value>动态范围</value>
+  </data>
+  <data name="PropertySampleRate" xml:space="preserve">
+    <value>采样率</value>
+  </data>
+  <data name="PropertyChannels" xml:space="preserve">
+    <value>声道</value>
+  </data>
+  <data name="PropertyContainer" xml:space="preserve">
+    <value>容器格式</value>
+  </data>
+  <data name="PropertyAudioTrackCount" xml:space="preserve">
+    <value>音轨</value>
+  </data>
+  <data name="PropertySubtitleTrackCount" xml:space="preserve">
+    <value>字幕轨</value>
+  </data>
+  <data name="PropertyChapterCount" xml:space="preserve">
+    <value>章节</value>
+  </data>
+  <data name="Tracks" xml:space="preserve">
+    <value>轨道</value>
+  </data>
   <data name="PropertyLength" xml:space="preserve">
     <value>时长</value>
   </data>

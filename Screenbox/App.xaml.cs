@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security;
@@ -293,6 +293,10 @@ sealed partial class App : Application
         if (Environment.GetEnvironmentVariable("SCREENBOX_PICKER_PROBE") == "1")
         {
             _ = ProbePickerInteropAsync();
+        if (Environment.GetEnvironmentVariable("FFLUX_DIALOG_PROBE") == "1")
+        {
+            _ = ProbePropertiesDialogAsync();
+        }
         }
 
 #if DEBUG
@@ -377,7 +381,116 @@ sealed partial class App : Application
     }
 
     /// <summary>
-    /// Diagnostic-only (SCREENBOX_PICKER_PROBE=1): starts a file picker without
+    /// Diagnostic-only (FFLUX_DIALOG_PROBE=1): opens the properties dialog for whatever is
+    /// playing and closes it again. This host cannot be screenshotted, so a successful open is
+    /// how the dialog's XAML, the property rows and the panel layout get exercised.
+    /// </summary>
+    private async Task ProbePropertiesDialogAsync()
+    {
+        await Task.Delay(6000);
+        try
+        {
+            var queue = _services.GetRequiredService<PlayQueueContext>();
+            MediaViewModel? media = queue.CurrentItem;
+            StartupErrorLog.Write("Dialog probe: current media = " + (media?.Name ?? "<none>"));
+
+            var viewModel = _services.GetRequiredService<PropertyViewModel>();
+            if (media != null)
+            {
+                await viewModel.LoadPropertiesAsync(media);
+                StartupErrorLog.Write(
+                    $"Dialog probe: rows media={viewModel.MediaProperties.Count} video={viewModel.VideoProperties.Count} " +
+                    $"audio={viewModel.AudioProperties.Count} tracks={viewModel.TrackProperties.Count} file={viewModel.FileProperties.Count}");
+            }
+
+            await ProbeDialogStepsAsync(media);
+
+            var dialog = new Dialogs.PropertiesDialog { Media = media };
+            dialog.XamlRoot = _window?.Content?.XamlRoot;
+            dialog.Opened += (_, _) => StartupErrorLog.Write("Dialog probe: opened");
+            Windows.Foundation.IAsyncOperation<ContentDialogResult> show = dialog.ShowAsync();
+            await Task.Delay(1500);
+            dialog.Hide();
+            StartupErrorLog.Write("Dialog probe: closed, result=" + (await show));
+        }
+        catch (Exception ex)
+        {
+            int depth = 0;
+            for (Exception? e = ex; e != null; e = e.InnerException, depth++)
+            {
+                StartupErrorLog.Write($"Dialog probe FAILED [{depth}] {e.GetType().FullName} hr=0x{e.HResult:X8}: {e.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Diagnostic-only: measures the property panel off-tree so a layout failure is reported as a
+    /// catchable managed exception instead of killing the process through the XAML host.
+    ///
+    /// A bare <see cref="ContentDialog"/> is opened first: if that dies, dialogs are broken in
+    /// general and the panel is innocent.
+    /// </summary>
+    private async Task ProbeDialogStepsAsync(MediaViewModel? media)
+    {
+        XamlRoot? xamlRoot = _window?.Content?.XamlRoot;
+        StartupErrorLog.Write($"Dialog steps: XamlRoot={(xamlRoot == null ? "null" : "ok")} window={(_window == null ? "null" : "ok")}");
+
+        try
+        {
+            var bare = new ContentDialog
+            {
+                Title = "probe",
+                Content = new TextBlock { Text = "hello" },
+                CloseButtonText = "OK",
+                XamlRoot = xamlRoot,
+            };
+            Windows.Foundation.IAsyncOperation<ContentDialogResult> show = bare.ShowAsync();
+            await Task.Delay(800);
+            bare.Hide();
+            StartupErrorLog.Write("Dialog steps: 1 bare ContentDialog OK, result=" + (await show));
+        }
+        catch (Exception ex)
+        {
+            StartupErrorLog.Write($"Dialog steps: 1 bare ContentDialog FAILED {ex.GetType().Name} hr=0x{ex.HResult:X8}: {ex.Message}");
+        }
+
+        try
+        {
+            var panel = new Controls.PropertyPanel();
+            panel.Update(media);
+            panel.Root.Measure(new Windows.Foundation.Size(420, 900));
+            panel.Root.Arrange(new Windows.Foundation.Rect(0, 0, 420, 900));
+            StartupErrorLog.Write(
+                $"Dialog steps: 2 PropertyPanel layout OK, desired={panel.Root.DesiredSize.Width}x{panel.Root.DesiredSize.Height}");
+
+            // Confirm the new technical labels really resolve from resources.pri rather than
+            // falling back to the enum name (which would silently mean a stale resource index).
+            foreach (Core.Enums.MediaProperty property in new[]
+                     {
+                         Core.Enums.MediaProperty.VideoCodec,
+                         Core.Enums.MediaProperty.FrameRate,
+                         Core.Enums.MediaProperty.SampleRate,
+                         Core.Enums.MediaProperty.Channels,
+                         Core.Enums.MediaProperty.Container,
+                         Core.Enums.MediaProperty.ChapterCount,
+                     })
+            {
+                StartupErrorLog.Write(
+                    $"Dialog steps: label {property} = '{Helpers.ItemLabelHelper.GetMediaPropertyResourceString(property)}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            int depth = 0;
+            for (Exception? e = ex; e != null; e = e.InnerException, depth++)
+            {
+                StartupErrorLog.Write($"Dialog steps: 2 PropertyPanel FAILED [{depth}] {e.GetType().FullName} hr=0x{e.HResult:X8}: {e.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Diagnostic-only (FFLUX_PICKER_PROBE=1): starts a file picker without
     /// awaiting user input so a missing IInitializeWithWindow binding shows up as
     /// 0x80070578 in the startup log instead of only when a user clicks "Open".
     /// </summary>

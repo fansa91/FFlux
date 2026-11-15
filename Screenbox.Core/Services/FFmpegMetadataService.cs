@@ -100,7 +100,11 @@ public sealed class FFmpegMetadataService : IPlaybackMetadataService
 
         uint videoWidth = video is { PixelWidth: > 0 } ? (uint)video.PixelWidth : 0;
         uint videoHeight = video is { PixelHeight: > 0 } ? (uint)video.PixelHeight : 0;
-        uint videoBitrate = ToUInt32(video?.Bitrate);
+
+        // Per-stream bitrate is frequently absent (MKV almost never carries it), so fall back to
+        // the container-wide bitrate rather than showing 0 kbps for a file that plays fine.
+        long? rawVideoBitrate = video?.Bitrate is > 0 ? video.Bitrate : source.FormatInfo?.Bitrate;
+        uint videoBitrate = ToUInt32(rawVideoBitrate);
         uint audioBitrate = ToUInt32(audio?.Bitrate);
 
         MusicInfo musicInfo = new()
@@ -113,7 +117,12 @@ public sealed class FFmpegMetadataService : IPlaybackMetadataService
             TrackNumber = trackNumber,
             Year = year,
             Duration = duration,
-            Bitrate = audioBitrate
+            Bitrate = audioBitrate,
+            Codec = audio?.CodecName ?? string.Empty,
+            SampleRate = audio is { SampleRate: > 0 } ? (uint)audio.SampleRate : 0,
+            Channels = audio is { Channels: > 0 } ? (uint)audio.Channels : 0,
+            ChannelLayout = audio?.ChannelLayout ?? string.Empty,
+            BitsPerSample = audio is { BitsPerSample: > 0 } ? (uint)audio.BitsPerSample : 0
         };
 
         VideoInfo videoInfo = new()
@@ -125,6 +134,10 @@ public sealed class FFmpegMetadataService : IPlaybackMetadataService
             Width = videoWidth,
             Height = videoHeight,
             Bitrate = videoBitrate,
+            Codec = video?.CodecName ?? string.Empty,
+            FramesPerSecond = video is { FramesPerSecond: > 0 } ? video.FramesPerSecond : 0,
+            BitsPerSample = video is { BitsPerSample: > 0 } ? (uint)video.BitsPerSample : 0,
+            HasHdr = video?.HasHdrMetadata == true,
             ShowName = showName,
             Season = season,
             Episode = episode
@@ -137,7 +150,11 @@ public sealed class FFmpegMetadataService : IPlaybackMetadataService
 
         return new MediaInfo(mediaType, musicInfo, videoInfo)
         {
-            ArtworkData = artworkData
+            ArtworkData = artworkData,
+            Container = source.FormatInfo?.FormatName ?? string.Empty,
+            AudioStreamCount = source.AudioStreams.Count,
+            SubtitleStreamCount = source.SubtitleStreams.Count,
+            ChapterCount = source.ChapterInfos.Count
         };
     }
 

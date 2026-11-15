@@ -105,4 +105,16 @@
           SkipUnchangedFiles="true" />
   </Target>
 
+  <!-- Runtime resource lookups (ResourceLoader, ms-appx:/// string and XBF resolution) read
+       resources.pri next to the exe. With WindowsPackageType=None nothing owns that name, and
+       the incremental build only refreshes the project PRI (<AssemblyName>.pri), so
+       resources.pri silently rots: newly added .resw keys then throw "NamedResource not found"
+       at runtime while the build stays green. Keep the runtime copy in step with the freshly
+       generated project PRI. Derived from AssemblyName so a rename does not silently disable it. -->
+  <Target Name="SyncRuntimePri" AfterTargets="FlattenLibraryXamlResources" Condition="Exists('$(OutDir)$(AssemblyName).pri')">
+    <Copy SourceFiles="$(OutDir)$(AssemblyName).pri"
+          DestinationFiles="$(OutDir)resources.pri"
+          SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>
