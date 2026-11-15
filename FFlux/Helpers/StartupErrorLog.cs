@@ -14,7 +14,7 @@ public static class StartupErrorLog
 
     private static string LogPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Screenbox", "startup-error.log");
+        "FFlux", "startup-error.log");
 
     public static void Write(string message)
     {

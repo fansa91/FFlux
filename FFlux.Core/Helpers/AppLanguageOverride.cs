@@ -12,7 +12,7 @@ public static class AppLanguageOverride
 {
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Screenbox", "language.txt");
+        AppDataMigration.CurrentFolderName, "language.txt");
 
     /// <summary>
     /// Language tags shipped in <c>Strings/*.resw</c>. An unpackaged app has no

@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
+using Screenbox.Core.Helpers;
 using Windows.Storage;
 
 namespace Screenbox.Core.Services;
@@ -12,7 +13,7 @@ namespace Screenbox.Core.Services;
 /// </summary>
 public sealed partial class DatabaseService : IDatabaseService
 {
-    private const string DbFileName = "screenbox.db";
+    private const string DbFileName = AppDataMigration.CurrentDatabaseFileName;
     private const string LegacyPlaylistsFolderName = "Playlists";
     private static readonly string[] LegacyLocalFileNames = ["songs.bin", "videos.bin"];
 

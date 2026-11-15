@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Screenbox.Core.Enums;
+using Screenbox.Core.Helpers;
 using Screenbox.Core.Models;
 using Screenbox.Core.Services;
 using Screenbox.Core.Tests.Helpers;
@@ -20,8 +21,8 @@ public sealed class DatabaseServiceTests
 
         await dbService.InitializeAsync();
 
-        string dbPath = Path.Combine(fixture.DirectoryPath, "screenbox.db");
-        await Assert.That(File.Exists(dbPath)).IsTrue().Because("Database file screenbox.db should be created.");
+        string dbPath = Path.Combine(fixture.DirectoryPath, AppDataMigration.CurrentDatabaseFileName);
+        await Assert.That(File.Exists(dbPath)).IsTrue().Because($"Database file {AppDataMigration.CurrentDatabaseFileName} should be created.");
 
         using var connection = new SqliteConnection($"Data Source={dbPath}");
         connection.Open();

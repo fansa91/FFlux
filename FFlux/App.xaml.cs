@@ -48,7 +48,10 @@ sealed partial class App : Application
     /// </summary>
     public App()
     {
-        StartupErrorLog.Write("App ctor");
+        // Move the pre-rename data folder (%LOCALAPPDATA%\Screenbox) into the FFlux folder
+        // before anything reads settings, the database, or the thumbnail cache.
+        AppDataMigration.MigrationResult migration = AppDataMigration.Run();
+        StartupErrorLog.Write($"App ctor; data migration: {migration.Message} (migrated={migration.Migrated} skipped={migration.Skipped} failed={migration.Failed})");
         // Initialize Sentry SDK and immediately register error handlers before XAML is initialized
         _ = InitializeSentrySdk();
         UnhandledException += App_UnhandledException;

@@ -13,10 +13,12 @@ public static class AppPaths
     /// <summary>Per-user data folder, mirroring the storage used by SettingsStorage.</summary>
     public static string LocalFolder => Ensure(Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Screenbox"));
+        AppDataMigration.CurrentFolderName));
 
     /// <summary>Scratch folder for snapshots and transient library data.</summary>
-    public static string TemporaryFolder => Ensure(Path.Combine(Path.GetTempPath(), "Screenbox"));
+    public static string TemporaryFolder => Ensure(Path.Combine(
+        Path.GetTempPath(),
+        AppDataMigration.CurrentFolderName));
 
     /// <summary>Application install directory (the exe's folder).</summary>
     public static string InstalledLocation => AppContext.BaseDirectory;

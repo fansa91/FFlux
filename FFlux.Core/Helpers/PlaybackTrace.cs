@@ -20,7 +20,7 @@ public static class PlaybackTrace
 
     private static readonly string LogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Screenbox", "playback-trace.log");
+        AppDataMigration.CurrentFolderName, "playback-trace.log");
 
     public static void Write(string message)
     {

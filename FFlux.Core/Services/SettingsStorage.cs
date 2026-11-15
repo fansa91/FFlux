@@ -13,7 +13,7 @@ public sealed class SettingsStorage : ISettingsStorage
 
     public SettingsStorage() : this(
         Microsoft.Windows.Storage.ApplicationData
-            .GetForUnpackaged("Screenbox", "Screenbox")
+            .GetForUnpackaged("FFlux", "FFlux")
             .LocalSettings.Values)
     {
     }
