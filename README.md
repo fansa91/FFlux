@@ -31,7 +31,7 @@ FFlux 是一个面向 Windows 桌面的媒体播放器，把一个音乐库和�
 | 下载 | 体积 | 运行时要求 |
 | --- | --- | --- |
 | `FFlux-<版本>-win-x64-self-contained.zip` | 大 | **不需要**。解压后直接运行 `FFlux.exe` |
-| `FFlux-<版本>-win-x64-framework-dependent.zip` | 小 | 需预装 [.NET 11 桌面运行时](https://dotnet.microsoft.com/download) 与 Windows App Runtime 2.6 |
+| `FFlux-<版本>-win-x64-framework-dependent.zip` | 小 | 需预装 [.NET 10 桌面运行时](https://dotnet.microsoft.com/download)（Windows App SDK 已随包提供） |
 
 拿不准就选第一个。
 
@@ -41,20 +41,22 @@ FFlux 是一个面向 Windows 桌面的媒体播放器，把一个音乐库和�
 
 ## 从源码构建
 
-需要 Windows 上的 .NET 11 SDK（或 Visual Studio 2026 + WinUI 应用开发工作负载）。
+需要 Windows 上的 .NET 10 SDK（或 Visual Studio 2026 + WinUI 应用开发工作负载）。
 
 ```powershell
 # 构建
 dotnet build FFlux/FFlux.csproj -c Release -p:Platform=x64
 
-# 发布成可分发目录，不依赖运行时
+# 发布成可分发目录，不依赖运行时（自带 .NET 运行时，AOT 编译）
 dotnet publish FFlux/FFlux.csproj -c Release -r win-x64 -p:Platform=x64 `
   -p:SelfContained=true -p:WindowsAppSDKSelfContained=true -p:PublishAot=true
 
-# 发布成依赖运行时的精简版
+# 发布成依赖 .NET 运行时的精简版
 dotnet publish FFlux/FFlux.csproj -c Release -r win-x64 -p:Platform=x64 `
-  -p:SelfContained=false -p:WindowsAppSDKSelfContained=false -p:PublishAot=false
+  -p:SelfContained=false -p:WindowsAppSDKSelfContained=true -p:PublishAot=false
 ```
+
+两个版本只差 `SelfContained` 一个开关：依赖版没法保留 AOT，因为 Native AOT 编译出来的是自带运行时的原生 exe，跟“依赖系统运行时”本身矛盾。
 
 用 Visual Studio 打开 `FFlux.slnx`，平台选 x64，F5 即可调试。
 
@@ -93,7 +95,7 @@ tag 里的版本号会通过 `-p:Version=` 注入编译，写进程序集元数�
 
 ```powershell
 dotnet build FFlux.Core.Tests/FFlux.Core.Tests.csproj -c Release -p:Platform=x64
-cd FFlux.Core.Tests/bin/x64/Release/net11.0-windows10.0.26100.0
+cd FFlux.Core.Tests/bin/x64/Release/net10.0-windows10.0.26100.0
 dotnet FFlux.Core.Tests.dll
 ```
 

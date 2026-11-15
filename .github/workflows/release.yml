@@ -17,7 +17,7 @@ permissions:
   contents: write
 
 env:
-  DOTNET_VERSION: '11.0.x'
+  DOTNET_VERSION: '10.0.x'
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   APP_PROJ_PATH: FFlux
@@ -29,15 +29,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # 不依赖：自带 .NET 运行时和 Windows App SDK，解压即用
+          # 不依赖：自带 .NET 运行时，解压即用
           - flavour: self-contained
             self_contained: true
-            winappsdk_self_contained: true
             publish_aot: true
-          # 依赖：体积小，需要机器上装好 .NET 运行时与 Windows App Runtime
+          # 依赖：体积小，需要机器上装好 .NET 桌面运行时。
+          # AOT 必须一起关掉——Native AOT 产出的是自带运行时的原生 exe，
+          # 打开 AOT 再设 SelfContained=false 只会得到一个仍然不依赖运行时的包，
+          # 和上面那个没区别，所以这里只能二选一。
           - flavour: framework-dependent
             self_contained: false
-            winappsdk_self_contained: false
             publish_aot: false
     outputs:
       version: ${{ steps.app_version.outputs.version }}
@@ -74,10 +75,9 @@ jobs:
 
       # Version is the only thing the pipeline injects: it lands in the assembly
       # metadata (AssemblyInformationalVersion -> shown on the Settings page), in the
-      # exe's file properties, and in the artefact names. Every other build flag keeps
-      # the repository default: PublishAot=true and WindowsAppSDKSelfContained=true for
-      # the standalone build, and both off for the framework-dependent one (AOT output
-      # cannot run without its own runtime, so it has to go together).
+      # exe's file properties, and in the artefact names.
+      # WindowsAppSDKSelfContained stays true for both flavours, so the only difference
+      # between them is whether the .NET runtime travels inside the folder.
       - name: Publish ${{ matrix.flavour }}
         shell: pwsh
         run: |
@@ -87,7 +87,7 @@ jobs:
             -p:Platform=x64 `
             -p:Version=${{ steps.app_version.outputs.version }} `
             -p:SelfContained=${{ matrix.self_contained }} `
-            -p:WindowsAppSDKSelfContained=${{ matrix.winappsdk_self_contained }} `
+            -p:WindowsAppSDKSelfContained=true `
             -p:PublishAot=${{ matrix.publish_aot }} `
             -p:ContinuousIntegrationBuild=true `
             -p:PublishDir="${{ github.workspace }}\artifacts\${{ matrix.flavour }}\" `
@@ -137,7 +137,7 @@ jobs:
           | 下载 | 运行时要求 |
           | --- | --- |
           | \`FFlux-$VERSION-win-x64-self-contained.zip\` | 无。解压后直接运行 \`FFlux.exe\` |
-          | \`FFlux-$VERSION-win-x64-framework-dependent.zip\` | 需预装 .NET 11 桌面运行时与 Windows App Runtime 2.6 |
+          | \`FFlux-$VERSION-win-x64-framework-dependent.zip\` | 需预装 .NET 10 桌面运行时（Windows App SDK 已随包提供） |
 
           系统要求：Windows 10 1903（build 18362）及以上，x64。
           EOF
