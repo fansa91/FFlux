@@ -324,6 +324,10 @@ sealed partial class App : Application
         {
             _ = ProbeNavigationAsync(navigationTarget);
         }
+        if (Environment.GetEnvironmentVariable("FFLUX_SMTC_PROBE") == "1")
+        {
+            _ = Screenbox.Helpers.SmtcProbe.RunAsync();
+        }
 
 #if DEBUG
         if (System.Diagnostics.Debugger.IsAttached)

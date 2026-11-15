@@ -84,9 +84,8 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
         _pointerWheelTimer = _dispatcherQueue.CreateTimer();
         _requestTracker = new DisplayRequestTracker();
 
-        if (transportControlsService.TransportControls is { } smtc0) smtc0.ButtonPressed += TransportControlsOnButtonPressed;
-        if (transportControlsService.TransportControls is { } smtc1) smtc1.PlaybackPositionChangeRequested += TransportControlsOnPlaybackPositionChangeRequested;
-
+        // Transport control buttons are handled by the singleton service that owns the session:
+        // this view model is transient, so subscribing here leaked a handler per construction.
         Messenger.Register<ChangeAspectRatioMessage>(this);
     }
 
@@ -382,35 +381,6 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
     private void OnPlaybackItemChanged(IMediaPlayer sender, ValueChangedEventArgs<IPlaybackItem?> args)
     {
         if (args.NewValue == null) ClearViewRequested?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void TransportControlsOnPlaybackPositionChangeRequested(SystemMediaTransportControls sender, PlaybackPositionChangeRequestedEventArgs args)
-    {
-        if (MediaPlayer == null) return;
-        MediaPlayer.Position = args.RequestedPlaybackPosition;
-    }
-
-    private void TransportControlsOnButtonPressed(SystemMediaTransportControls sender, SystemMediaTransportControlsButtonPressedEventArgs args)
-    {
-        if (MediaPlayer == null) return;
-        switch (args.Button)
-        {
-            case SystemMediaTransportControlsButton.Pause:
-                MediaPlayer.Pause();
-                break;
-            case SystemMediaTransportControlsButton.Play:
-                MediaPlayer.Play();
-                break;
-            case SystemMediaTransportControlsButton.Stop:
-                MediaPlayer.PlaybackItem = null;
-                break;
-            case SystemMediaTransportControlsButton.FastForward:
-                MediaPlayer.Position += TimeSpan.FromSeconds(10);
-                break;
-            case SystemMediaTransportControlsButton.Rewind:
-                MediaPlayer.Position -= TimeSpan.FromSeconds(10);
-                break;
-        }
     }
 
     private void OnPlaybackStateChanged(IMediaPlayer sender, object? args)

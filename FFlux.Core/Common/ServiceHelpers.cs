@@ -87,7 +87,19 @@ public static class ServiceHelpers
         services.AddSingleton<ISearchService, SearchService>();
         services.AddSingleton<IWindowService, WindowService>();
         services.AddSingleton<ICastService, CastService>();
-        services.AddSingleton<ISystemMediaTransportControlsService, SystemMediaTransportControlsService>();
+        services.AddSingleton<ISystemMediaTransportControlsService>(provider =>
+        {
+            // The player owns the only system transport-control session reachable without
+            // package identity (SystemMediaTransportControls.GetForCurrentView throws
+            // "Invalid window handle" in an unpackaged process), so the service is built from
+            // the player's own instance. Resolving the player here also guarantees it exists
+            // before the controls are touched.
+            var player = (FFmpegMediaPlayer)provider.GetRequiredService<IMediaPlayer>();
+            return new SystemMediaTransportControlsService(
+                player.NativePlayer,
+                provider.GetRequiredService<PlayQueueContext>(),
+                provider.GetRequiredService<PlayerContext>());
+        });
         services.AddSingleton<IPlaybackControlService, PlaybackControlService>();
         services.AddSingleton<IQueueService, QueueService>();
         services.AddSingleton<IPlaylistService, PlaylistService>();
