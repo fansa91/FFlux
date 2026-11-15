@@ -46,17 +46,17 @@ applyTo: '**/*.cs'
 
 ### Main Directories
 
-- `Screenbox/Pages/`: XAML pages
-- `Screenbox/Controls/`: Custom controls and user interface components
-- `Screenbox/Converters/`: Data binding converters
-- `Screenbox/Helpers/`: Utility and helper classes
-- `Screenbox/Strings/`: Localization resources
-- `Screenbox.Core/ViewModels/`: Presentation logic and data binding
-- `Screenbox.Core/Services/`: Business logic and data access services
-- `Screenbox.Core/Models/`: Data structures and entities
-- `Screenbox.Core/Messages/`: MVVM Toolkit messenger message types
-- `Screenbox.Core/Playback/`: Media playback logic and components
-- `Screenbox.UI.Controls/`: Custom (templated) controls.
+- `FFlux/Pages/`: XAML pages
+- `FFlux/Controls/`: Custom controls and user interface components
+- `FFlux/Converters/`: Data binding converters
+- `FFlux/Helpers/`: Utility and helper classes
+- `FFlux/Strings/`: Localization resources
+- `FFlux.Core/ViewModels/`: Presentation logic and data binding
+- `FFlux.Core/Services/`: Business logic and data access services
+- `FFlux.Core/Models/`: Data structures and entities
+- `FFlux.Core/Messages/`: MVVM Toolkit messenger message types
+- `FFlux.Core/Playback/`: Media playback logic and components
+- `FFlux.UI.Controls/`: Custom (templated) controls.
 
 ## Nullable Reference Types
 

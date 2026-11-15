@@ -34,4 +34,4 @@ jobs:
 
     - name: Restore nuget packages
       shell: pwsh
-      run: msbuild Screenbox.slnx -t:restore -p:RestoreConfigFile=nuget.config -p:RestoreLockedMode=false -p:Platform=x64 -p:Configuration=Release
+      run: msbuild FFlux.slnx -t:restore -p:RestoreConfigFile=nuget.config -p:RestoreLockedMode=false -p:Platform=x64 -p:Configuration=Release

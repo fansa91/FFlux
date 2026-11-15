@@ -31,7 +31,7 @@ jobs:
     outputs:
       version: ${{ steps.app_version.outputs.version }}
     env:
-      APP_PROJ_PATH: Screenbox
+      APP_PROJ_PATH: FFlux
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -86,7 +86,7 @@ jobs:
           SENTRY_RELEASE: screenbox@${{ steps.app_version.outputs.version }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
-          msbuild $env:APP_PROJ_PATH/Screenbox.csproj `
+          msbuild $env:APP_PROJ_PATH/FFlux.csproj `
             -restore `
             -v:${{ inputs.detail_level || 'normal' }} `
             -p:RestoreConfigFile=nuget.config `
@@ -116,7 +116,7 @@ jobs:
           winapp cert generate `
             --manifest "$env:APP_PROJ_PATH/Package.appxmanifest" `
             --password "$env:TEMP_CERT_PASSWORD" `
-            --output "$env:APP_PROJ_PATH/AppPackages/Screenbox_${{ steps.app_version.outputs.version }}.0_Test/Screenbox_TemporaryKey.pfx" `
+            --output "$env:APP_PROJ_PATH/AppPackages/FFlux_${{ steps.app_version.outputs.version }}.0_Test/FFlux_TemporaryKey.pfx" `
             --export-cer `
             --install
 
@@ -125,20 +125,20 @@ jobs:
           TEMP_CERT_PASSWORD: ${{ secrets.TEMP_CERT_PASSWORD }}
           WINAPP_CLI_TELEMETRY_OPTOUT: '1'
         run: |
-          $packageDir = "$env:APP_PROJ_PATH/AppPackages/Screenbox_${{ steps.app_version.outputs.version }}.0_Test"
+          $packageDir = "$env:APP_PROJ_PATH/AppPackages/FFlux_${{ steps.app_version.outputs.version }}.0_Test"
 
-          winapp sign "$packageDir/Screenbox_${{ steps.app_version.outputs.version }}.0_x86_x64_arm64.msixbundle" "$packageDir/Screenbox_TemporaryKey.pfx" `
+          winapp sign "$packageDir/FFlux_${{ steps.app_version.outputs.version }}.0_x86_x64_arm64.msixbundle" "$packageDir/FFlux_TemporaryKey.pfx" `
             --password "$env:TEMP_CERT_PASSWORD" `
             --timestamp "http://timestamp.acs.microsoft.com"
 
       - name: Create sideload install kit artifact
         run: |
-          ./scripts/Export-InstallKit.ps1 -OutputPath "$env:APP_PROJ_PATH/AppPackages/*_Test/Screenbox-sideload.zip" -IncludeCertificate -IncludeBundle
+          ./scripts/Export-InstallKit.ps1 -OutputPath "$env:APP_PROJ_PATH/AppPackages/*_Test/FFlux-sideload.zip" -IncludeCertificate -IncludeBundle
 
       - name: Upload sideload install kit artifact
         uses: actions/upload-artifact@v7
         with:
-          path: ${{ env.APP_PROJ_PATH }}/AppPackages/*_Test/Screenbox-sideload.zip
+          path: ${{ env.APP_PROJ_PATH }}/AppPackages/*_Test/FFlux-sideload.zip
           archive: false
 
   release:
@@ -151,7 +151,7 @@ jobs:
       - name: Download sideload package artifact
         uses: actions/download-artifact@v8
         with:
-          name: Screenbox-sideload.zip
+          name: FFlux-sideload.zip
           path: downloads
           skip-decompress: true
 
@@ -162,4 +162,4 @@ jobs:
           draft: true
           generate_release_notes: true
           files: |
-            downloads/Screenbox-sideload.zip
+            downloads/FFlux-sideload.zip

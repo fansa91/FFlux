@@ -22,7 +22,7 @@ jobs:
       actions: write
       contents: read
     env:
-      APP_PROJ_PATH: Screenbox
+      APP_PROJ_PATH: FFlux
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -45,7 +45,7 @@ jobs:
 
       - name: Publish unpackaged app
         run: |
-          msbuild $env:APP_PROJ_PATH/Screenbox.csproj `
+          msbuild $env:APP_PROJ_PATH/FFlux.csproj `
             -restore `
             -t:Publish `
             -v:${{ inputs.detail_level }} `

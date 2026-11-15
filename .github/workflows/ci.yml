@@ -63,7 +63,7 @@ jobs:
             ${{ runner.os }}-nuget-test-
 
       - name: Build tests
-        run: msbuild Screenbox.Core.Tests\Screenbox.Core.Tests.csproj -p:Configuration=Release -p:Platform=x64 -p:OutDir=C:\BuildOutput\ -restore
+        run: msbuild FFlux.Core.Tests/FFlux.Core.Tests.csproj -p:Configuration=Release -p:Platform=x64 -p:OutDir=C:\BuildOutput\ -restore
 
       - name: Run tests
         run: C:\BuildOutput\Screenbox.Core.Tests.exe
@@ -74,7 +74,7 @@ jobs:
       actions: write
       contents: read
     env:
-      APP_PROJ_PATH: Screenbox
+      APP_PROJ_PATH: FFlux
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -102,7 +102,7 @@ jobs:
 
       - name: Build unpackaged app
         run: |
-          msbuild $env:APP_PROJ_PATH/Screenbox.csproj `
+          msbuild $env:APP_PROJ_PATH/FFlux.csproj `
             -restore `
             -p:RestoreConfigFile=nuget.config `
             -p:ContinuousIntegrationBuild=true `
@@ -115,5 +115,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: screenbox-unpackaged-win-x64
-          path: ${{ env.APP_PROJ_PATH }}/bin/x64/Release/**/Screenbox.exe
+          path: ${{ env.APP_PROJ_PATH }}/bin/x64/Release/**/FFlux.exe
           archive: false

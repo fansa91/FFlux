@@ -42,13 +42,13 @@ The test project relies strictly on the `x64`, `ARM64`, or `x86` build architect
 
 ### Using MSBuild / Visual Studio 2026 (18):
 ```cmd
-"C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" Screenbox.Core.Tests\Screenbox.Core.Tests.csproj /p:Configuration=Release /p:Platform=x64 /restore
+"C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" FFlux.Core.Tests/FFlux.Core.Tests.csproj /p:Configuration=Release /p:Platform=x64 /restore
 ```
 
 ### Running Tests:
 Using `dotnet run`:
 ```pwsh
-dotnet run --project Screenbox.Core.Tests/Screenbox.Core.Tests.csproj
+dotnet run --project FFlux.Core.Tests/FFlux.Core.Tests.csproj
 ```
 Or by running the built test executable directly:
 ```cmd

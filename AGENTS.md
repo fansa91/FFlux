@@ -6,7 +6,7 @@ This repository maintains its canonical AI agent instructions and coding guideli
 
 Refer to [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for:
 - **Git & PR Workflows**: Conventional Commits standard, PR title conventions, issue linking, descriptive change summaries (context, motivation, impact), and mandatory `--body-file` usage for GitHub CLI (`gh`) commands on Windows.
-- **Build & Test Workflows**: MSBuild commands (Visual Studio 2026 / version 18) for `Screenbox` and `Screenbox.Core` (never `dotnet build`), and `dotnet run` for running `Screenbox.Core.Tests`.
+- **Build & Test Workflows**: MSBuild commands (Visual Studio 2026 / version 18) for `FFlux` and `FFlux.Core` (never `dotnet build`), and `dotnet run` for running `FFlux.Core.Tests`.
 - **Persistence Boundaries**: Ephemeral SQLite cache data (`library_folders`, `media_records`, `playback_progress`) vs. durable user data (`playlists`, `playlist_items`), and per-table database recovery rules.
 
 ## 💻 C# and .NET 9+ Development
@@ -21,5 +21,5 @@ When viewing, writing, or modifying C# code (`**/*.cs`), strictly follow [`.gith
 
 When viewing, writing, or modifying XAML markup (`**/*.xaml`), strictly follow [`.github/instructions/uwp-xaml.instructions.md`](.github/instructions/uwp-xaml.instructions.md) for:
 - **Data Binding**: Compiled bindings (`{x:Bind}`), explicit modes (`OneWay`, `TwoWay`, `OneTime`), `x:DataType` on templates, and fallback handling.
-- **Localization**: ReswPlus strongly-typed strings in `Screenbox/Strings/en-US/`, with strict View-layer-only string access (never from ViewModels).
+- **Localization**: ReswPlus strongly-typed strings in `FFlux/Strings/en-US/`, with strict View-layer-only string access (never from ViewModels).
 - **Accessibility & Theming**: WCAG contrast, `AutomationProperties`, `{ThemeResource}` vs `{StaticResource}`, and UI collection virtualization (`ListView`/`GridView`, `ISupportIncrementalLoading`).

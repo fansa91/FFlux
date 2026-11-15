@@ -59,7 +59,7 @@ jobs:
             checkout_path: compare
     env:
       ARCH: ${{ inputs.architecture }}
-      APP_PROJ_PATH: Screenbox
+      APP_PROJ_PATH: FFlux
     steps:
       - name: Checkout ${{ matrix.ref }}
         uses: actions/checkout@v7
@@ -75,13 +75,13 @@ jobs:
       - name: Extract target framework
         working-directory: ${{ matrix.checkout_path }}
         run: |
-          $tfm = msbuild "$env:APP_PROJ_PATH/Screenbox.csproj" -nologo -getProperty:TargetFramework
+          $tfm = msbuild "$env:APP_PROJ_PATH/FFlux.csproj" -nologo -getProperty:TargetFramework
           "PROJ_TFM=$tfm" >> $env:GITHUB_ENV
 
       - name: Publish ${{ matrix.ref }}
         working-directory: ${{ matrix.checkout_path }}
         run: |
-          msbuild "$env:APP_PROJ_PATH/Screenbox.csproj" `
+          msbuild "$env:APP_PROJ_PATH/FFlux.csproj" `
             -restore `
             -v:${{ inputs.detail_level }} `
             -t:Publish `

@@ -1,14 +1,14 @@
 ---
 name: build-and-test
 description: >-
-  Procedures for restoring packages, compiling Screenbox and Screenbox.Core,
+  Procedures for restoring packages, compiling FFlux and FFlux.Core,
   running automated unit tests, and verifying XAML formatting. Use when the user
   asks to build projects, run tests, or verify code changes.
 ---
 
 # Build and Test Runbook
 
-Follow these structured procedures when restoring, compiling, testing, or validating formatting in the Screenbox solution.
+Follow these structured procedures when restoring, compiling, testing, or validating formatting in the FFlux solution.
 
 ---
 
@@ -34,12 +34,12 @@ dotnet tool restore
 ### Restore NuGet Packages
 For the full solution:
 ```pwsh
-& $msbuild Screenbox.slnx -t:restore -p:Platform=x64 -p:Configuration=Debug
+& $msbuild FFlux.slnx -t:restore -p:Platform=x64 -p:Configuration=Debug
 ```
 
 Or restore the main UWP app project individually:
 ```pwsh
-& $msbuild Screenbox/Screenbox.csproj /p:Configuration=Debug /p:Platform=x64 /t:Restore /m
+& $msbuild FFlux/FFlux.csproj /p:Configuration=Debug /p:Platform=x64 /t:Restore /m
 ```
 
 ---
@@ -48,12 +48,12 @@ Or restore the main UWP app project individually:
 
 Target the system platform for local development. For example, to build the main UWP app in Debug mode on the `x64` platform:
 ```pwsh
-& $msbuild Screenbox/Screenbox.csproj /p:Configuration=Debug /p:Platform=x64 /t:Build /m
+& $msbuild FFlux/FFlux.csproj /p:Configuration=Debug /p:Platform=x64 /t:Build /m
 ```
 
-Or build `Screenbox.Core`:
+Or build `FFlux.Core`:
 ```pwsh
-& $msbuild Screenbox.Core/Screenbox.Core.csproj /p:Configuration=Debug /p:Platform=x64 /t:Build /m
+& $msbuild FFlux.Core/FFlux.Core.csproj /p:Configuration=Debug /p:Platform=x64 /t:Build /m
 ```
 
 ---
@@ -62,11 +62,11 @@ Or build `Screenbox.Core`:
 
 ### Run Full Test Suite
 ```pwsh
-dotnet run --project Screenbox.Core.Tests/Screenbox.Core.Tests.csproj
+dotnet run --project FFlux.Core.Tests/FFlux.Core.Tests.csproj
 ```
 
 ### Testing Rules & Constraints
-- **Pure Logic Tests**: Use `[TestMethod]` in `Screenbox.Core.Tests`.
+- **Pure Logic Tests**: Use `[TestMethod]` in `FFlux.Core.Tests`.
 - **XAML-Dependent Tests**: **NEVER** use plain test runners for tests that instantiate XAML types. Use the `UWP Unit Test App` runner with `[UITestMethod]`.
 - **No Boilerplate Comments**: Do not emit `// Arrange`, `// Act`, `// Assert` comments.
 - **Naming Style**: Mirror existing test method naming in nearby test classes.
@@ -83,5 +83,5 @@ pwsh ./scripts/lint-xaml.ps1
 
 To format specific modified XAML files manually:
 ```pwsh
-dotnet tool run xstyler -f Screenbox/Pages/PlayerPage.xaml
+dotnet tool run xstyler -f FFlux/Pages/PlayerPage.xaml
 ```

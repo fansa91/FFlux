@@ -4,27 +4,27 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="Screenbox.Core.Tests/Screenbox.Core.Tests.csproj">
+  <Project Path="FFlux.Core.Tests/FFlux.Core.Tests.csproj">
     <Platform Solution="*|arm64" Project="ARM64" />
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
-  <Project Path="Screenbox.Core/Screenbox.Core.csproj">
+  <Project Path="FFlux.Core/FFlux.Core.csproj">
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
-  <Project Path="Screenbox.Lively/Screenbox.Lively.csproj">
+  <Project Path="FFlux.Lively/FFlux.Lively.csproj">
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
-  <Project Path="Screenbox.UI/Screenbox.UI.csproj">
+  <Project Path="FFlux.UI/FFlux.UI.csproj">
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
-  <Project Path="Screenbox/Screenbox.csproj">
+  <Project Path="FFlux/FFlux.csproj">
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />

@@ -2,6 +2,11 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <Nullable>enable</Nullable>
+    <!-- The project file and the assembly are named FFlux, but the code namespace stays
+         Screenbox.* so the resw-generated Resources class keeps its Screenbox.Strings
+         namespace. Without this, renaming the project file would silently move every
+         generated resource accessor to FFlux.Strings. -->
+    <RootNamespace>Screenbox</RootNamespace>
     <!-- WinUI 3 / Windows App SDK. UseUwp belongs to the UWP project model and is gone. -->
     <UseWinUI>true</UseWinUI>
     <!-- Unpackaged deployment: build a plain .exe into the output folder, never an MSIX.
@@ -90,9 +95,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Screenbox.Core\Screenbox.Core.csproj" />
-    <ProjectReference Include="..\Screenbox.Lively\Screenbox.Lively.csproj" />
-    <ProjectReference Include="..\Screenbox.UI\Screenbox.UI.csproj" />
+    <ProjectReference Include="..\FFlux.Core\FFlux.Core.csproj" />
+    <ProjectReference Include="..\FFlux.Lively\FFlux.Lively.csproj" />
+    <ProjectReference Include="..\FFlux.UI\FFlux.UI.csproj" />
   </ItemGroup>
 
   <!-- Unpackaged WinUI 3 resolves ms-appx:/// XAML against loose files next to the exe.
