@@ -15,9 +15,10 @@
     <WindowsPackageType>None</WindowsPackageType>
     <EnableMsixTooling>false</EnableMsixTooling>
     <AppxPackage>false</AppxPackage>
-    <!-- Ship the Windows App SDK runtime next to the exe so the app runs without a
-         separately installed framework package. Override on the command line with
-         -p:WindowsAppSDKSelfContained=false for framework-dependent deployment. -->
+    <!-- Ship the Windows App SDK runtime next to the exe, so neither release needs a
+         separately installed Windows App Runtime. Both flavours keep this on and differ
+         only in whether the .NET runtime travels along. Do not pass it as a global -p:
+         from the pipeline: Windows App SDK rejects the property on class libraries. -->
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Product name and binary name are the two things Windows shows outside the app's own

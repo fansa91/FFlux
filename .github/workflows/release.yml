@@ -76,8 +76,11 @@ jobs:
       # Version is the only thing the pipeline injects: it lands in the assembly
       # metadata (AssemblyInformationalVersion -> shown on the Settings page), in the
       # exe's file properties, and in the artefact names.
-      # WindowsAppSDKSelfContained stays true for both flavours, so the only difference
-      # between them is whether the .NET runtime travels inside the folder.
+      # WindowsAppSDKSelfContained is NOT passed here on purpose: a -p: value is global
+      # and reaches the class libraries too, where Windows App SDK aborts with
+      # "WindowsAppSDKSelfContained should not be applied to a class library".
+      # It stays true for both flavours through the app project's own default, so the
+      # only difference between the two artefacts is whether .NET travels inside.
       - name: Publish ${{ matrix.flavour }}
         shell: pwsh
         run: |
@@ -87,7 +90,6 @@ jobs:
             -p:Platform=x64 `
             -p:Version=${{ steps.app_version.outputs.version }} `
             -p:SelfContained=${{ matrix.self_contained }} `
-            -p:WindowsAppSDKSelfContained=true `
             -p:PublishAot=${{ matrix.publish_aot }} `
             -p:ContinuousIntegrationBuild=true `
             -p:PublishDir="${{ github.workspace }}\artifacts\${{ matrix.flavour }}" `
