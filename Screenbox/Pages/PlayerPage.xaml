@@ -465,7 +465,10 @@
                 MirroredWhenRightToLeft="{x:Bind ShouldMirrorBadgeIcon(ViewModel.CurrentPlaybackCommand), Mode=OneWay}" />
         </Border>
 
+        <!--  Loading / buffering indicator. IsBusy covers both "opening the source" and
+              "playback stalled waiting for the network", which is what a stream URL does.  -->
         <muxc:ProgressRing
+            x:Name="BusyIndicator"
             Grid.Row="0"
             Grid.RowSpan="3"
             Grid.Column="0"
@@ -473,7 +476,7 @@
             Height="64"
             IsActive="True"
             IsHitTestVisible="False"
-            Visibility="{x:Bind ViewModel.IsOpening, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+            Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
         <controls:NotificationView
             x:Name="NotificationView"

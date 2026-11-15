@@ -7,7 +7,9 @@ using CommunityToolkit.Mvvm.Messaging;
 using Screenbox.Core.Coordinators;
 using Screenbox.Core.Enums;
 using Screenbox.Core.Factories;
+using Screenbox.Core.Helpers;
 using Screenbox.Core.Messages;
+using Screenbox.Core.Models;
 using Screenbox.Core.Services;
 using Windows.Storage;
 
@@ -33,10 +35,9 @@ public sealed partial class PlayQueuePageViewModel : ObservableRecipient
     }
 
     [RelayCommand]
-    private void AddUrl(Uri? uri)
+    private void AddUrl(OpenUrlRequest? request)
     {
-        if (uri is null) return;
-        Messenger.Send(new PlayMediaMessage(_mediaFactory.Create(uri)));
+        StreamPlaybackHelper.Play(Messenger, _mediaFactory, request);
     }
 
     /// <summary>

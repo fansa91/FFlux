@@ -156,6 +156,7 @@ sealed partial class App : Application
             new KeyValuePair<Type, Type>(typeof(ArtistsPageViewModel), typeof(ArtistsPage)),
             new KeyValuePair<Type, Type>(typeof(AlbumsPageViewModel), typeof(AlbumsPage)),
             new KeyValuePair<Type, Type>(typeof(NetworkPageViewModel), typeof(NetworkPage)),
+            new KeyValuePair<Type, Type>(typeof(StreamsPageViewModel), typeof(StreamsPage)),
             new KeyValuePair<Type, Type>(typeof(PlayQueuePageViewModel), typeof(PlayQueuePage)),
             new KeyValuePair<Type, Type>(typeof(SettingsPageViewModel), typeof(SettingsPage)),
             new KeyValuePair<Type, Type>(typeof(AlbumDetailsPageViewModel), typeof(AlbumDetailsPage)),
@@ -293,10 +294,14 @@ sealed partial class App : Application
         if (Environment.GetEnvironmentVariable("FFLUX_PICKER_PROBE") == "1")
         {
             _ = ProbePickerInteropAsync();
+        }
         if (Environment.GetEnvironmentVariable("FFLUX_DIALOG_PROBE") == "1")
         {
             _ = ProbePropertiesDialogAsync();
         }
+        if (Environment.GetEnvironmentVariable("FFLUX_STREAM_PROBE") == "1")
+        {
+            _ = Screenbox.Helpers.StreamProbe.RunAsync(_window);
         }
 
 #if DEBUG
@@ -526,8 +531,11 @@ sealed partial class App : Application
         try
         {
             List<IStorageItem> items = [];
-            foreach (string path in LaunchArguments.Files)
+            foreach (string rawPath in LaunchArguments.Files)
             {
+                // Windows.Storage rejects forward slashes outright, and a path typed on the
+                // command line very often has them.
+                string path = FilesHelpers.NormalizePath(rawPath);
                 try
                 {
                     items.Add(await StorageFile.GetFileFromPathAsync(path));

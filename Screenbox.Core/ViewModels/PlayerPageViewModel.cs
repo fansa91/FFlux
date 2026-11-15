@@ -47,7 +47,25 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
 
     [ObservableProperty] public partial bool ControlsHidden { get; set; }
     [ObservableProperty] public partial bool IsPlaying { get; set; }
-    [ObservableProperty] public partial bool IsOpening { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBusy))]
+    public partial bool IsOpening { get; set; }
+
+    /// <summary>
+    /// Gets whether the session is waiting for more data, which is the normal state of a network
+    /// stream whose buffer ran dry.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBusy))]
+    public partial bool IsBuffering { get; set; }
+
+    /// <summary>
+    /// Gets whether the player should show its loading ring: either the source is still being
+    /// opened or playback is stalled waiting for the network.
+    /// </summary>
+    public bool IsBusy => IsOpening || IsBuffering;
+
     [ObservableProperty] public partial bool AudioOnly { get; set; }
     [ObservableProperty] public partial WindowViewMode ViewMode { get; set; }
     [ObservableProperty] public partial NavigationViewDisplayMode NavigationViewDisplayMode { get; set; }
@@ -105,6 +123,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
 
     private readonly IAppDispatcher _dispatcherQueue;
     private readonly IAppDispatcherTimer _openingTimer;
+    private readonly IAppDispatcherTimer _bufferingTimer;
     private readonly IAppDispatcherTimer _controlsVisibilityTimer;
     private readonly IAppDispatcherTimer _osdMessageTimer;
     private readonly IAppDispatcherTimer _osdBadgeTimer;
@@ -140,6 +159,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         _mediaFactory = mediaFactory;
         _dispatcherQueue = AppDispatcher.Current;
         _openingTimer = _dispatcherQueue.CreateTimer();
+        _bufferingTimer = _dispatcherQueue.CreateTimer();
         _controlsVisibilityTimer = _dispatcherQueue.CreateTimer();
         _osdMessageTimer = _dispatcherQueue.CreateTimer();
         _osdBadgeTimer = _dispatcherQueue.CreateTimer();
@@ -833,6 +853,18 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         if (state == MediaPlaybackState.Opening)
         {
             _openingTimer.DebounceCore(() => IsOpening = state == MediaPlaybackState.Opening, TimeSpan.FromSeconds(0.5));
+        }
+
+        // Buffering is debounced as well: every seek and every track switch dips through
+        // Buffering for a few milliseconds, and a ring flashing on each of those is noise.
+        if (state == MediaPlaybackState.Buffering)
+        {
+            _bufferingTimer.DebounceCore(() => IsBuffering = true, TimeSpan.FromMilliseconds(300));
+        }
+        else
+        {
+            _bufferingTimer.Stop();
+            IsBuffering = false;
         }
 
         _dispatcherQueue.TryEnqueue(() =>

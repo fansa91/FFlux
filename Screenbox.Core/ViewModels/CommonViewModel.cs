@@ -7,8 +7,10 @@ using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using Screenbox.Core.Contexts;
 using Screenbox.Core.Enums;
+using Screenbox.Core.Factories;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.Messages;
+using Screenbox.Core.Models;
 using Screenbox.Core.Services;
 using Windows.Storage;
 using Microsoft.UI.Xaml;
@@ -36,6 +38,7 @@ public sealed partial class CommonViewModel : ObservableRecipient,
     private readonly GeneralSettingsContext _generalSettings;
     private readonly IQueueService _queueService;
     private readonly PlaylistsContext _playlistsContext;
+    private readonly MediaViewModelFactory _mediaFactory;
     private readonly Dictionary<string, object> _pageStates;
 
     public CommonViewModel(INavigationService navigationService,
@@ -43,7 +46,8 @@ public sealed partial class CommonViewModel : ObservableRecipient,
         PlayerSettingsContext playerSettings,
         GeneralSettingsContext generalSettings,
         IQueueService queueService,
-        PlaylistsContext playlistsContext)
+        PlaylistsContext playlistsContext,
+        MediaViewModelFactory mediaFactory)
     {
         _navigationService = navigationService;
         _filesService = filesService;
@@ -51,6 +55,7 @@ public sealed partial class CommonViewModel : ObservableRecipient,
         _generalSettings = generalSettings;
         _queueService = queueService;
         _playlistsContext = playlistsContext;
+        _mediaFactory = mediaFactory;
         NavigationViewDisplayMode = Messenger.Send<NavigationViewDisplayModeRequestMessage>();
         NavigationStates = new Dictionary<Type, string>();
         _pageStates = new Dictionary<string, object>();
@@ -150,6 +155,19 @@ public sealed partial class CommonViewModel : ObservableRecipient,
         {
             Messenger.Send(new NotificationMessage(NotificationLevel.Error, NotificationKind.FileOpenFailed, message: e.Message));
         }
+    }
+
+    /// <summary>
+    /// Plays a network URL supplied by the open-URL dialog, carrying its anti-hotlink fields.
+    /// </summary>
+    /// <remarks>
+    /// Shared by every surface that can open a link (the player control bar, the empty state and
+    /// the Ctrl+U accelerator) so they all behave the same.
+    /// </remarks>
+    [RelayCommand]
+    private void OpenUrl(OpenUrlRequest? request)
+    {
+        StreamPlaybackHelper.Play(Messenger, _mediaFactory, request);
     }
 
 }

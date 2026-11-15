@@ -57,6 +57,14 @@
     </Page.Resources>
 
     <Grid>
+        <Grid.KeyboardAccelerators>
+            <!--  Ctrl+U opens a network URL from anywhere in the shell.  -->
+            <KeyboardAccelerator
+                Key="U"
+                Invoked="OpenUrlKeyboardAccelerator_OnInvoked"
+                Modifiers="Control" />
+        </Grid.KeyboardAccelerators>
+
         <sbuc:TitleBar
             x:Name="AppTitleBar"
             Title="FFlux"
@@ -119,6 +127,8 @@
                     KeyTipPlacementMode="Right"
                     Tag="music">
                     <muxc:NavigationViewItem.KeyboardAccelerators>
+                        <!--  Ctrl+U now opens a network URL, so the music library moved to Ctrl+Shift+M.  -->
+                        <KeyboardAccelerator Key="M" Modifiers="Control,Shift" />
                     </muxc:NavigationViewItem.KeyboardAccelerators>
                     <TextBlock x:Name="MusicNavItemText" Text="{x:Bind strings:Resources.MusicLibrary}" />
                 </muxc:NavigationViewItem>
@@ -145,6 +155,18 @@
                         <KeyboardAccelerator Key="N" Modifiers="Control" />
                     </muxc:NavigationViewItem.KeyboardAccelerators>
                     <TextBlock x:Name="NetworkNavItemText" Text="{x:Bind strings:Resources.Network}" />
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem
+                    extensions:AcceleratorService.ToolTip="{x:Bind StreamsNavItemText.Text}"
+                    KeyTipPlacementMode="Right"
+                    Tag="streams">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE774;" />
+                    </muxc:NavigationViewItem.Icon>
+                    <muxc:NavigationViewItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="L" Modifiers="Control,Shift" />
+                    </muxc:NavigationViewItem.KeyboardAccelerators>
+                    <TextBlock x:Name="StreamsNavItemText" Text="{x:Bind strings:Resources.NetworkStreams}" />
                 </muxc:NavigationViewItem>
                 <muxc:NavigationViewItemSeparator />
                 <muxc:NavigationViewItem
@@ -340,6 +362,12 @@
                                 Duration="{StaticResource NavItemTextShowDuration}" />
                             <DoubleAnimation
                                 Storyboard.TargetName="NetworkNavItemText"
+                                Storyboard.TargetProperty="Opacity"
+                                From="0"
+                                To="1"
+                                Duration="{StaticResource NavItemTextShowDuration}" />
+                            <DoubleAnimation
+                                Storyboard.TargetName="StreamsNavItemText"
                                 Storyboard.TargetProperty="Opacity"
                                 From="0"
                                 To="1"

@@ -296,6 +296,9 @@ public static class PlaybackProbe
         if (file is null)
         {
             // The app's own subtitle entry points hand over a StorageFile from the picker or a
+            // drop, so path-based resolution is only needed here. Report it instead of aborting
+            // the remaining probe steps.
+            Log($"external subtitle: cannot resolve '{path}'");
             return;
         }
 

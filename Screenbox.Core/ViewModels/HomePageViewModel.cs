@@ -16,6 +16,7 @@ using Screenbox.Core.Contexts;
 using Screenbox.Core.Factories;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.Messages;
+using Screenbox.Core.Models;
 using Screenbox.Core.Services;
 using Windows.Storage;
 using Windows.Storage.AccessCache;
@@ -111,10 +112,9 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
     }
 
     [RelayCommand]
-    private void OpenUrl(Uri? url)
+    private void OpenUrl(OpenUrlRequest? request)
     {
-        if (url == null) return;
-        Messenger.Send(new PlayMediaMessage(_mediaFactory.Create(url)));
+        StreamPlaybackHelper.Play(Messenger, _mediaFactory, request);
     }
 
     private async Task UpdateContentAsync()

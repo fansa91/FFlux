@@ -618,6 +618,39 @@
                     <KeyboardAccelerator Key="F11" />
                 </Button.KeyboardAccelerators>
             </Button>
+            <!--  Open media: local file or network URL  -->
+            <Button
+                x:Name="OpenMediaButton"
+                Margin="0,0,4,0"
+                extensions:AcceleratorService.ToolTip="{x:Bind strings:Resources.OpenMedia}"
+                AutomationProperties.Name="{x:Bind OpenMediaButton.(extensions:AcceleratorService.ToolTip), Mode=OneWay}"
+                Style="{StaticResource PlayerButtonStyle}">
+                <FontIcon Glyph="&#xE8E5;" />
+                <Button.Flyout>
+                    <!--  Anchored to the bar, so it opens upward from the right corner.  -->
+                    <MenuFlyout Placement="TopEdgeAlignedRight">
+                        <MenuFlyoutItem
+                            Command="{x:Bind Common.OpenFilesCommand}"
+                            Icon="{ui:FontIcon FontFamily={StaticResource ScreenboxSymbolThemeFontFamily},
+                                               Glyph={StaticResource FolderOpenGlyph}}"
+                            Text="{x:Bind strings:Resources.OpenMediaLocalFile}">
+                            <MenuFlyoutItem.KeyboardAccelerators>
+                                <KeyboardAccelerator Key="O" Modifiers="Control" />
+                            </MenuFlyoutItem.KeyboardAccelerators>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
+                            Icon="{ui:FontIcon Glyph=&#xE774;}"
+                            Text="{x:Bind strings:Resources.OpenMediaUrl}">
+                            <MenuFlyoutItem.Command>
+                                <commands:OpenUrlCommand NextCommand="{x:Bind Common.OpenUrlCommand}" />
+                            </MenuFlyoutItem.Command>
+                            <MenuFlyoutItem.KeyboardAccelerators>
+                                <KeyboardAccelerator Key="U" Modifiers="Control" />
+                            </MenuFlyoutItem.KeyboardAccelerators>
+                        </MenuFlyoutItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
             <!--  More  -->
             <Button
                 x:Name="MoreButton"

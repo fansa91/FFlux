@@ -52,6 +52,7 @@ public sealed partial class MainPage : Page, IContentFrame
             { "music", typeof(MusicPage) },
             { "queue", typeof(PlayQueuePage) },
             { "network", typeof(NetworkPage) },
+            { "streams", typeof(StreamsPage) },
             { "playlists", typeof(PlaylistsPage) },
             { "settings", typeof(SettingsPage) }
         };
@@ -380,5 +381,24 @@ public sealed partial class MainPage : Page, IContentFrame
     {
         e.Handled = true;
         ViewModel.OnDrop(e.DataView);
+    }
+
+    /// <summary>
+    /// Ctrl+U: opens the network URL dialog and hands the result to the shared playback command.
+    /// </summary>
+    private async void OpenUrlKeyboardAccelerator_OnInvoked(
+        KeyboardAccelerator sender,
+        KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+
+        OpenUrlRequest? request = await Dialogs.OpenUrlDialog.GetRequestAsync();
+        if (request is null) return;
+
+        CommonViewModel common = Ioc.Default.GetRequiredService<CommonViewModel>();
+        if (common.OpenUrlCommand.CanExecute(request))
+        {
+            common.OpenUrlCommand.Execute(request);
+        }
     }
 }

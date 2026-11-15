@@ -43,6 +43,7 @@ public static class ServiceHelpers
         services.AddTransient<HomePageViewModel>();
         services.AddTransient<PlaylistViewModel>();
         services.AddTransient<PlaylistsPageViewModel>();
+        services.AddTransient<StreamsPageViewModel>();
         services.AddTransient<SelectionViewModel>();
         services.AddSingleton<CommonViewModel>();   // Shared between many pages
         services.AddSingleton<PlaybackSessionViewModel>(); // Playback customization settings; Avoid thread lock
@@ -92,5 +93,10 @@ public static class ServiceHelpers
         services.AddSingleton<IPlaylistService, PlaylistService>();
         services.AddSingleton<ISourceMetadataService, StorageMetadataService>();
         services.AddSingleton<IPlaybackMetadataService, FFmpegMetadataService>();
+
+        // Network stream library: a JSON backed list of saved URLs plus the format classifier
+        // shared by the quick-add bar, the edit dialog and the open-URL dialog.
+        services.AddSingleton<IStreamManagerService, StreamManagerService>();
+        services.AddSingleton<IStreamUrlDetector, StreamUrlDetector>();
     }
 }

@@ -65,6 +65,27 @@ public sealed class MediaViewModelFactory
     }
 
     /// <summary>
+    /// Creates a network <see cref="MediaViewModel"/> carrying the FFmpeg options needed to open
+    /// it, for example <c>user_agent</c> / <c>referer</c> for a hotlink protected stream.
+    /// </summary>
+    public MediaViewModel Create(Uri uri, IEnumerable<string>? options, string? name = null)
+    {
+        var viewModel = Create(uri);
+        if (options is not null)
+        {
+            viewModel.AddOptions(options);
+        }
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            viewModel.Name = name;
+            viewModel.AltCaption = name;
+        }
+
+        return viewModel;
+    }
+
+    /// <summary>
     /// Always creates a new <see cref="MediaViewModel"/> without any lookup.
     /// </summary>
     public MediaViewModel Create(string pathOrUri)

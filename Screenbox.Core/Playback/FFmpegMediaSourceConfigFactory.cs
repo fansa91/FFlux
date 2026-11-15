@@ -70,10 +70,15 @@ public static class FFmpegMediaSourceConfigFactory
         config.General.MaxSupportedPlaybackRate = 4.0;
 
         // Network sources should recover from transient disconnects instead of failing playback.
+        // reconnect_delay_max bounds the exponential backoff at 5s so a dead host is reported
+        // instead of being retried for minutes. Callers layer per-item options (user_agent,
+        // referer, headers) on top through ApplyOptions.
         PropertySet ffmpegOptions = new()
         {
             ["reconnect"] = 1,
             ["reconnect_streamed"] = 1,
+            ["reconnect_on_network_error"] = 1,
+            ["reconnect_delay_max"] = 5
         };
         if (options is not null)
         {

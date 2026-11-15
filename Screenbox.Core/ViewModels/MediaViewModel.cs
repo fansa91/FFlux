@@ -116,6 +116,26 @@ public sealed partial class MediaViewModel : ObservableRecipient
         UpdateCaptions();
     }
 
+    /// <summary>
+    /// Appends FFmpeg AVFormat options for this item, e.g. <c>user_agent=...</c> for a stream
+    /// behind a hotlink check.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Options"/> is a read-only view over the backing list, so appending here is
+    /// picked up by <c>PlayQueueBufferManager</c> without replacing the collection. Duplicates are
+    /// ignored because the same options can arrive from a saved stream and from the queue.
+    /// </remarks>
+    public void AddOptions(IEnumerable<string>? options)
+    {
+        if (options is null) return;
+
+        foreach (string option in options)
+        {
+            if (string.IsNullOrWhiteSpace(option)) continue;
+            if (!_options.Contains(option)) _options.Add(option);
+        }
+    }
+
     public override string ToString()
     {
         return $"{Name}; {Caption}";

@@ -8,12 +8,37 @@
     Title="{x:Bind strings:Resources.OpenUrl}"
     CloseButtonText="{x:Bind strings:Resources.Close}"
     DefaultButton="Primary"
-    IsPrimaryButtonEnabled="{x:Bind CanOpen(UrlBox.Text), Mode=OneWay}"
+    IsPrimaryButtonEnabled="False"
     PrimaryButtonText="{x:Bind strings:Resources.Open}"
     Style="{StaticResource DefaultContentDialogStyle}"
     mc:Ignorable="d">
 
-    <Grid>
-        <TextBox x:Name="UrlBox" PlaceholderText="{x:Bind strings:Resources.OpenUrlPlaceholder}" />
-    </Grid>
+    <StackPanel MinWidth="420" Spacing="12">
+        <TextBox
+            x:Name="UrlBox"
+            PlaceholderText="{x:Bind strings:Resources.OpenUrlPlaceholder}"
+            TextChanged="UrlBox_OnTextChanged" />
+
+        <Expander
+            HorizontalAlignment="Stretch"
+            Header="{x:Bind strings:Resources.OpenUrlAdvancedHeader}"
+            IsExpanded="False">
+            <StackPanel Spacing="8">
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind strings:Resources.OpenUrlAdvancedDescription}"
+                    TextWrapping="Wrap" />
+                <TextBox x:Name="UserAgentBox" Header="{x:Bind strings:Resources.OpenUrlUserAgent}" />
+                <TextBox x:Name="RefererBox" Header="{x:Bind strings:Resources.OpenUrlReferer}" />
+                <TextBox
+                    x:Name="HeadersBox"
+                    AcceptsReturn="True"
+                    Header="{x:Bind strings:Resources.OpenUrlHeaders}"
+                    Height="72"
+                    PlaceholderText="{x:Bind strings:Resources.OpenUrlHeadersPlaceholder}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </Expander>
+    </StackPanel>
 </ContentDialog>
