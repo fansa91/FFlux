@@ -18,9 +18,24 @@ public static class PlaybackTrace
         Environment.GetEnvironmentVariable("FFLUX_STARTUP_TRACE") == "1" ||
         Environment.GetEnvironmentVariable("FFLUX_PLAYBACK_PROBE") == "1";
 
-    private static readonly string LogPath = Path.Combine(
+    private static readonly string LogDirectory = ResolveLogDirectory(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        AppDataMigration.CurrentFolderName, "playback-trace.log");
+        AppDataMigration.CurrentFolderName);
+
+    private static readonly string LogPath = Path.Combine(LogDirectory, "playback-trace.log");
+
+    /// <summary>
+    /// Resolves the diagnostics folder from the per-user app-data root. Automation and service
+    /// shells can strip LOCALAPPDATA entirely (observed in the field), in which case
+    /// <see cref="Environment.GetFolderPath"/> returns empty and Path.Combine would silently
+    /// produce a CWD-relative log that lands wherever the exe was started from; fall back to the
+    /// app folder so diagnostics never depend on the caller's shell.
+    /// </summary>
+    public static string ResolveLogDirectory(string localAppData, string folderName)
+    {
+        string root = string.IsNullOrEmpty(localAppData) ? AppContext.BaseDirectory : localAppData;
+        return Path.Combine(root, folderName);
+    }
 
     public static void Write(string message)
     {

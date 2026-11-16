@@ -20,10 +20,22 @@ public static class StartupErrorLog
     private const long MaxLogBytes = 2 * 1024 * 1024;
 
     private static readonly object Gate = new();
-    private static readonly string LogPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "FFlux", "startup-error.log");
+    private static readonly string LogPath = BuildLogPath();
+
     private static readonly string LogDirectory = Path.GetDirectoryName(LogPath)!;
+
+    /// <summary>
+    /// Same fallback as Core's <see cref="Screenbox.Core.Helpers.PlaybackTrace"/>: automation and
+    /// service shells can strip LOCALAPPDATA entirely, in which case GetFolderPath returns empty
+    /// and Path.Combine would silently produce a CWD-relative log that is lost between launches
+    /// (or lands next to the exe). Prefer the app folder in that case.
+    /// </summary>
+    private static string BuildLogPath()
+    {
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string root = string.IsNullOrEmpty(localAppData) ? AppContext.BaseDirectory : localAppData;
+        return Path.Combine(root, "FFlux", "startup-error.log");
+    }
 
     private static bool _directoryReady;
     private static StreamWriter? _writer;
