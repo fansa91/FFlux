@@ -1,4 +1,5 @@
 using Microsoft.Xaml.Interactivity;
+using Screenbox.Core.Helpers;
 using Screenbox.Core.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 
@@ -18,23 +19,32 @@ internal sealed partial class ThumbnailGridViewBehavior : Behavior<GridView>
         AssociatedObject.ContainerContentChanging -= OnContainerContentChanging;
     }
 
-    private async void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+    private void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
         if (args.Phase != 0) return;
+        // Caption and thumbnail loading hits storage, shell and FFmpeg; failures must stay
+        // observable instead of escaping this XAML callback as a fatal stowed exception
+        // (0xC000027B) that kills the process without a managed stack.
         switch (args.Item)
         {
             case AlbumViewModel album:
-                await album.LoadAlbumArtAsync();
+                FireAndForget.Run(() => album.LoadAlbumArtAsync(),
+                    "ThumbnailGridViewBehavior.OnContainerContentChanging");
                 break;
             case MediaViewModel media:
-                await media.LoadThumbnailAsync();
+                FireAndForget.Run(() => media.LoadThumbnailAsync(),
+                    "ThumbnailGridViewBehavior.OnContainerContentChanging");
                 break;
             case StorageItemViewModel storageItem:
-                await storageItem.UpdateCaptionAsync();
-                if (storageItem.Media != null)
-                {
-                    await storageItem.Media.LoadThumbnailAsync();
-                }
+                FireAndForget.Run(async () =>
+                    {
+                        await storageItem.UpdateCaptionAsync();
+                        if (storageItem.Media != null)
+                        {
+                            await storageItem.Media.LoadThumbnailAsync();
+                        }
+                    },
+                    "ThumbnailGridViewBehavior.OnContainerContentChanging");
                 break;
         }
     }

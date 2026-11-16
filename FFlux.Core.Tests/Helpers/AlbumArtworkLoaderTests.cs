@@ -58,4 +58,24 @@ public class AlbumArtworkLoaderTests
 
         await Assert.That(ordered.Count).IsEqualTo(0);
     }
+
+    /// <summary>
+    /// The entry point rejects a null file outright: callers always have a file by the time they
+    /// ask for artwork, so a null here means a programming error worth surfacing immediately.
+    /// </summary>
+    [Test]
+    public async Task LoadAsync_NullFile_ShouldThrowArgumentNullException()
+    {
+        bool threw = false;
+        try
+        {
+            await AlbumArtworkLoader.LoadAsync(null!);
+        }
+        catch (ArgumentNullException)
+        {
+            threw = true;
+        }
+
+        await Assert.That(threw).IsTrue();
+    }
 }

@@ -17,6 +17,7 @@
     xmlns:strings="using:Screenbox.Strings"
     xmlns:ui="using:CommunityToolkit.WinUI"
     Loaded="AlbumDetailsPage_OnLoaded"
+    Unloaded="AlbumDetailsPage_OnUnloaded"
     mc:Ignorable="d">
 
     <Page.Resources>

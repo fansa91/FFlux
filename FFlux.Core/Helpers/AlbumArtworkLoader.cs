@@ -71,6 +71,13 @@ public static class AlbumArtworkLoader
     private static readonly ConcurrentDictionary<string, Lazy<Task<byte[]?>>> InFlight =
         new(StringComparer.OrdinalIgnoreCase);
 
+    // Caps concurrent native FFmpeg opens. While a grid scrolls, dozens of albums can request
+    // embedded artwork at once; the native decoder stack is not hardened against that many
+    // simultaneous opens, and an access violation in native code cannot be caught in managed
+    // code - it kills the process. Two at a time keeps art flowing without exposing that
+    // surface, and also bounds the CPU/memory spike of a fast fling.
+    private static readonly SemaphoreSlim ExtractionGate = new(2, 2);
+
     /// <summary>
     /// Returns the raw bytes of the album art for <paramref name="file"/>, or <see langword="null"/>
     /// when no source produced an image. The returned array is shared with the cache and must be
@@ -212,7 +219,20 @@ public static class AlbumArtworkLoader
 
     private static async Task<StorageFile?> FindCoverInFolderAsync(StorageFolder folder)
     {
-        string key = folder.Path;
+        string key;
+        try
+        {
+            key = folder.Path;
+        }
+        catch (Exception)
+        {
+            // A folder that cannot even report its path (offline share, detached drive) has no
+            // cover and nothing worth caching. The caller keeps walking up the tree; without
+            // this guard the exception would escape LoadAsync into the XAML callback that
+            // requested the art, and kill the process as a stowed exception (0xC000027B).
+            return null;
+        }
+
         if (key.Length > 0 && CoverFileCache.TryGetValue(key, out StorageFile? cached))
         {
             return cached;
@@ -330,27 +350,35 @@ public static class AlbumArtworkLoader
         byte[]? artwork = null;
         try
         {
-            using IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read);
-            MediaSourceConfig config = FFmpegMediaSourceConfigFactory.Create();
-            using FFmpegMediaSource source = await FFmpegMediaSource.CreateFromStreamAsync(stream, config);
-            if (source.HasThumbnail)
+            await ExtractionGate.WaitAsync();
+            try
             {
-                MediaThumbnailData thumbnail = source.ExtractThumbnail();
-                try
+                using IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read);
+                MediaSourceConfig config = FFmpegMediaSourceConfigFactory.Create();
+                using FFmpegMediaSource source = await FFmpegMediaSource.CreateFromStreamAsync(stream, config);
+                if (source.HasThumbnail)
                 {
-                    IBuffer? buffer = thumbnail.Buffer;
-                    if (buffer is not null && buffer.Length > 0 && buffer.Length <= int.MaxValue)
+                    MediaThumbnailData thumbnail = source.ExtractThumbnail();
+                    try
                     {
-                        byte[] bytes = new byte[buffer.Length];
-                        using DataReader reader = DataReader.FromBuffer(buffer);
-                        reader.ReadBytes(bytes);
-                        artwork = bytes;
+                        IBuffer? buffer = thumbnail.Buffer;
+                        if (buffer is not null && buffer.Length > 0 && buffer.Length <= int.MaxValue)
+                        {
+                            byte[] bytes = new byte[buffer.Length];
+                            using DataReader reader = DataReader.FromBuffer(buffer);
+                            reader.ReadBytes(bytes);
+                            artwork = bytes;
+                        }
+                    }
+                    finally
+                    {
+                        thumbnail.Dispose();
                     }
                 }
-                finally
-                {
-                    thumbnail.Dispose();
-                }
+            }
+            finally
+            {
+                ExtractionGate.Release();
             }
         }
         catch (Exception)

@@ -207,12 +207,16 @@ public sealed partial class AlbumsPageViewModel : BaseMusicContentViewModel,
         };
     }
 
-    public async void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+    public void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
         if (args.Phase != 0) return;
         if (args.Item is AlbumViewModel album)
         {
-            await album.LoadAlbumArtAsync();
+            // Album art loading touches storage, shell and FFmpeg; a failure here must stay
+            // observable instead of escaping this XAML callback as a fatal stowed exception
+            // (0xC000027B) that kills the process without a managed stack.
+            FireAndForget.Run(() => album.LoadAlbumArtAsync(),
+                "AlbumsPageViewModel.OnContainerContentChanging");
         }
     }
 

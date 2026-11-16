@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.WinUI;
 using CommunityToolkit.WinUI.Animations.Expressions;
 using Screenbox.Core;
+using Screenbox.Core.Helpers;
 using Screenbox.Core.ViewModels;
 using Windows.Storage.Streams;
 using Windows.UI;
@@ -45,6 +46,10 @@ public sealed partial class AlbumDetailsPage : Page
     private CompositionPropertySet? _scrollerPropertySet;
     private Compositor? _compositor;
     private SpriteVisual? _backgroundVisual;
+    private CompositionSurfaceBrush? _backgroundImageBrush;
+    private CompositionMaskBrush? _backgroundMaskBrush;
+    private CompositionLinearGradientBrush? _backgroundGradientBrush;
+    private LoadedImageSurface? _backgroundImageSurface;
     private ScrollViewer? _scrollViewer;
 
     public AlbumDetailsPage()
@@ -62,39 +67,53 @@ public sealed partial class AlbumDetailsPage : Page
 
     private async void AlbumDetailsPage_OnLoaded(object sender, RoutedEventArgs e)
     {
-        // Retrieve the ScrollViewer that the GridView is using internally
-        ScrollViewer scrollViewer = _scrollViewer = ItemList.FindDescendant<ScrollViewer>() ??
-                                                    throw new Exception("Cannot find ScrollViewer in ListView");
-
-        // Get the PropertySet that contains the scroll values from the ScrollViewer
-        _scrollerPropertySet = ElementCompositionPreview.GetScrollViewerManipulationPropertySet(scrollViewer);
-        _compositor = _scrollerPropertySet.Compositor;
-
-        // Create a PropertySet that has values to be referenced in the ExpressionAnimations below
-        _props = _compositor.CreatePropertySet();
-        _props.InsertScalar("progress", 0);
-        _props.InsertScalar("clampSize", ClampSize);
-        _props.InsertScalar("backgroundScaleFactor", BackgroundScaleFactor);
-        _props.InsertScalar("coverScaleFactor", CoverScaleFactor);
-        _props.InsertScalar("buttonPanelOffset", ButtonPanelOffset);
-        _props.InsertScalar("headerPadding", 12);
-
-        // Get references to our property sets for use with ExpressionNodes
-        ManipulationPropertySetReferenceNode scrollingProperties = _scrollerPropertySet.GetSpecializedReference<ManipulationPropertySetReferenceNode>();
-
-        CreateHeaderAnimation(_props, scrollingProperties.Translation.Y);
-
-        if (ViewModel.Source == null || ViewModel.Source.RelatedSongs.Count == 0) return;
-        MediaViewModel firstSong = ViewModel.Source.RelatedSongs[0];
-        if (firstSong.Thumbnail != null)
+        // Composition setup talks to window/host objects that may already be gone when the page
+        // is left mid-load. async void failures escape as fatal stowed exceptions (0xC000027B)
+        // that kill the process without a managed stack, so this whole setup is best-effort.
+        try
         {
-            using var thumbnailSource = await firstSong.GetThumbnailSourceAsync();
-            if (thumbnailSource == null) return;
-            CreateImageBackgroundGradientVisual(scrollingProperties.Translation.Y, thumbnailSource);
+            // Retrieve the ScrollViewer that the GridView is using internally
+            ScrollViewer? scrollViewer = _scrollViewer = ItemList.FindDescendant<ScrollViewer>();
+            if (scrollViewer == null)
+            {
+                Screenbox.Helpers.StartupErrorLog.Write("AlbumDetailsPage: no ScrollViewer under ItemList; skipping composition setup");
+                return;
+            }
+
+            // Get the PropertySet that contains the scroll values from the ScrollViewer
+            _scrollerPropertySet = ElementCompositionPreview.GetScrollViewerManipulationPropertySet(scrollViewer);
+            _compositor = _scrollerPropertySet.Compositor;
+
+            // Create a PropertySet that has values to be referenced in the ExpressionAnimations below
+            _props = _compositor.CreatePropertySet();
+            _props.InsertScalar("progress", 0);
+            _props.InsertScalar("clampSize", ClampSize);
+            _props.InsertScalar("backgroundScaleFactor", BackgroundScaleFactor);
+            _props.InsertScalar("coverScaleFactor", CoverScaleFactor);
+            _props.InsertScalar("buttonPanelOffset", ButtonPanelOffset);
+            _props.InsertScalar("headerPadding", 12);
+
+            // Get references to our property sets for use with ExpressionNodes
+            ManipulationPropertySetReferenceNode scrollingProperties = _scrollerPropertySet.GetSpecializedReference<ManipulationPropertySetReferenceNode>();
+
+            CreateHeaderAnimation(_props, scrollingProperties.Translation.Y);
+
+            if (ViewModel.Source == null || ViewModel.Source.RelatedSongs.Count == 0) return;
+            MediaViewModel firstSong = ViewModel.Source.RelatedSongs[0];
+            if (firstSong.Thumbnail != null)
+            {
+                using var thumbnailSource = await firstSong.GetThumbnailSourceAsync();
+                if (thumbnailSource == null) return;
+                CreateImageBackgroundGradientVisual(scrollingProperties.Translation.Y, thumbnailSource);
+            }
+            else
+            {
+                firstSong.PropertyChanged += OnPropertyChanged;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            firstSong.PropertyChanged += OnPropertyChanged;
+            FireAndForget.Report("AlbumDetailsPage.OnLoaded", ex);
         }
     }
 
@@ -105,10 +124,17 @@ public sealed partial class AlbumDetailsPage : Page
         if (e.PropertyName == nameof(MediaViewModel.Thumbnail) && media.Thumbnail != null)
         {
             media.PropertyChanged -= OnPropertyChanged;
-            using var thumbnailSource = await media.GetThumbnailSourceAsync();
-            if (thumbnailSource == null) return;
-            ManipulationPropertySetReferenceNode scrollingProperties = _scrollerPropertySet.GetSpecializedReference<ManipulationPropertySetReferenceNode>();
-            CreateImageBackgroundGradientVisual(scrollingProperties.Translation.Y, thumbnailSource);
+            try
+            {
+                using var thumbnailSource = await media.GetThumbnailSourceAsync();
+                if (thumbnailSource == null) return;
+                ManipulationPropertySetReferenceNode scrollingProperties = _scrollerPropertySet.GetSpecializedReference<ManipulationPropertySetReferenceNode>();
+                CreateImageBackgroundGradientVisual(scrollingProperties.Translation.Y, thumbnailSource);
+            }
+            catch (Exception ex)
+            {
+                FireAndForget.Report("AlbumDetailsPage.OnThumbnailChanged", ex);
+            }
         }
     }
 
@@ -193,20 +219,21 @@ public sealed partial class AlbumDetailsPage : Page
     private void CreateImageBackgroundGradientVisual(ScalarNode scrollVerticalOffset, IRandomAccessStream image)
     {
         if (_compositor == null) return;
+        DisposeBackgroundVisual();
         image.Seek(0);  // Manually seek the stream to start or image won't load
-        LoadedImageSurface imageSurface = LoadedImageSurface.StartLoadFromStream(image);
-        CompositionSurfaceBrush imageBrush = _compositor.CreateSurfaceBrush(imageSurface);
+        LoadedImageSurface imageSurface = _backgroundImageSurface = LoadedImageSurface.StartLoadFromStream(image);
+        CompositionSurfaceBrush imageBrush = _backgroundImageBrush = _compositor.CreateSurfaceBrush(imageSurface);
         imageBrush.HorizontalAlignmentRatio = 0.5f;
         imageBrush.VerticalAlignmentRatio = 0.25f;
         imageBrush.Stretch = CompositionStretch.UniformToFill;
 
-        CompositionLinearGradientBrush gradientBrush = _compositor.CreateLinearGradientBrush();
+        CompositionLinearGradientBrush gradientBrush = _backgroundGradientBrush = _compositor.CreateLinearGradientBrush();
         gradientBrush.EndPoint = new Vector2(0, 1);
         gradientBrush.MappingMode = CompositionMappingMode.Relative;
         gradientBrush.ColorStops.Add(_compositor.CreateColorGradientStop(0.4f, Microsoft.UI.Colors.White));
         gradientBrush.ColorStops.Add(_compositor.CreateColorGradientStop(1, Microsoft.UI.Colors.Transparent));
 
-        CompositionMaskBrush maskBrush = _compositor.CreateMaskBrush();
+        CompositionMaskBrush maskBrush = _backgroundMaskBrush = _compositor.CreateMaskBrush();
         maskBrush.Source = imageBrush;
         maskBrush.Mask = gradientBrush;
 
@@ -219,6 +246,31 @@ public sealed partial class AlbumDetailsPage : Page
         imageBrush.StartAnimation("Offset.Y", -scrollVerticalOffset * 0.8f);
 
         ElementCompositionPreview.SetElementChildVisual(BackgroundHost, visual);
+    }
+
+    /// <summary>
+    /// Releases the composition resources behind the album-art background. The decoded image
+    /// surface is the big one; without this it lingers until finalization on every visit, so
+    /// repeated navigation accumulates native memory.
+    /// </summary>
+    private void DisposeBackgroundVisual()
+    {
+        ElementCompositionPreview.SetElementChildVisual(BackgroundHost, null);
+        _backgroundVisual?.Dispose();
+        _backgroundVisual = null;
+        _backgroundImageBrush?.Dispose();
+        _backgroundImageBrush = null;
+        _backgroundMaskBrush?.Dispose();
+        _backgroundMaskBrush = null;
+        _backgroundGradientBrush?.Dispose();
+        _backgroundGradientBrush = null;
+        _backgroundImageSurface?.Dispose();
+        _backgroundImageSurface = null;
+    }
+
+    private void AlbumDetailsPage_OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        DisposeBackgroundVisual();
     }
 
     private void AlbumArt_OnSizeChanged(object sender, SizeChangedEventArgs e)
