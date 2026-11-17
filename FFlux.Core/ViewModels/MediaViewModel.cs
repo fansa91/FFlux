@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.DependencyInjection;
+using Screenbox.Core.Contexts;
 using Screenbox.Core.Enums;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.MediaSources;
@@ -81,6 +83,18 @@ public sealed partial class MediaViewModel : ObservableRecipient
     public partial bool IsPlaying { get; set; }
 
     private WeakReference<BitmapImage>? _thumbnailRef;
+
+    /// <summary>
+    /// Caps concurrent thumbnail work across every instance.
+    /// </summary>
+    /// <remarks>
+    /// A grid realizes dozens of containers at once and each one opened the shell thumbnail
+    /// provider and decoded a bitmap with no limit; the native decoders are not hardened against
+    /// that burst. The gate is held across the whole load (including the decode), so the decode
+    /// step is bounded by the same permit - it must not take a second one, or four waiters that
+    /// already hold it would deadlock the UI thread.
+    /// </remarks>
+    private static readonly SemaphoreSlim ThumbnailGate = new(4, 4);
 
     public MediaViewModel(MediaViewModel source)
     {
@@ -221,6 +235,40 @@ public sealed partial class MediaViewModel : ObservableRecipient
     {
         if (Thumbnail is not null) return;
 
+        // A scan in progress rebuilds the library every few seconds (LibraryService reports a
+        // snapshot every 5 s), so each rebuild would queue a fresh thumbnail burst on top of the
+        // scan's own shell property queries. Defer instead: the rebuild that follows the scan
+        // re-triggers the realized containers, so the art still arrives once the library settles.
+        if (IsLibraryLoading()) return;
+
+        // Default context capture on purpose: the body assigns Thumbnail, which is bound to the UI.
+        await ThumbnailGate.WaitAsync();
+        try
+        {
+            await LoadThumbnailCoreAsync();
+        }
+        finally
+        {
+            ThumbnailGate.Release();
+        }
+    }
+
+    private static bool IsLibraryLoading()
+    {
+        try
+        {
+            LibraryContext? library = Ioc.Default.GetService<LibraryContext>();
+            return library is { IsLoadingMusic: true } or { IsLoadingVideos: true };
+        }
+        catch (Exception)
+        {
+            // No service provider (plain test host): there is no scan to defer to.
+            return false;
+        }
+    }
+
+    private async Task LoadThumbnailCoreAsync()
+    {
         // Artwork the metadata service already took off the container while the file was playing.
         if (MediaInfo.ArtworkData is { Length: > 0 } artworkData)
         {
@@ -337,11 +385,21 @@ public sealed partial class MediaViewModel : ObservableRecipient
         }
     }
 
-    public Task<IRandomAccessStream?> GetThumbnailSourceAsync()
+    public async Task<IRandomAccessStream?> GetThumbnailSourceAsync()
     {
-        return Source is IFileMediaSource fileSource && fileSource.StorageFile is { } file
-            ? GetThumbnailSourceAsync(file)
-            : GetThumbnailSourceLazyAsync();
+        // Same permit as LoadThumbnailAsync: this is the other entry point that asks the shell
+        // provider for a decoded image (album page background).
+        await ThumbnailGate.WaitAsync();
+        try
+        {
+            return Source is IFileMediaSource fileSource && fileSource.StorageFile is { } file
+                ? await GetThumbnailSourceAsync(file)
+                : await GetThumbnailSourceLazyAsync();
+        }
+        finally
+        {
+            ThumbnailGate.Release();
+        }
     }
 
     private async Task<IRandomAccessStream?> GetThumbnailSourceLazyAsync()
