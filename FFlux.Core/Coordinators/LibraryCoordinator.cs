@@ -131,6 +131,13 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
         {
             // ignored
         }
+        catch (Exception e)
+        {
+            // A scan failure (I/O, a bad container, a WinRT error) must not escape into a
+            // fire-and-forget task or a XAML callback as a fatal exception. Keep the last known
+            // library on screen and let the finally block clear the loading flag.
+            _logger.LogError(e, "Failed to fetch the music library; keeping the previous snapshot.");
+        }
         finally
         {
             if (!cts.Token.IsCancellationRequested)
@@ -166,6 +173,11 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
         catch (OperationCanceledException)
         {
             // ignored
+        }
+        catch (Exception e)
+        {
+            // Keep the last known library on screen; the finally block clears the loading flag.
+            _logger.LogError(e, "Failed to fetch the videos library; keeping the previous snapshot.");
         }
         finally
         {

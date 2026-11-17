@@ -718,7 +718,7 @@ public sealed class LibraryService : ILibraryService
                         unchanged = true;
                     }
 
-                    MediaViewModel song;
+                    MediaViewModel? song;
                     if (unchanged && cached is not null)
                     {
                         // Metadata came from the cache; only the album / artist associations have
@@ -728,10 +728,31 @@ public sealed class LibraryService : ILibraryService
                     }
                     else
                     {
-                        song = _mediaFactory.Create(file);
-                        song.IsFromLibrary = true;
-                        await song.LoadDetailsAsync(_sourceMetadataService, cancellationToken);
+                        MediaViewModel fresh = _mediaFactory.Create(file);
+                        fresh.IsFromLibrary = true;
+                        bool parsed = await LibraryParseGuard.TryParseAsync(
+                            () => fresh.LoadDetailsAsync(_sourceMetadataService, cancellationToken),
+                            _logger, file.Path, cancellationToken);
+                        if (parsed)
+                        {
+                            song = fresh;
+                        }
+                        else if (cached is not null)
+                        {
+                            // Keep the song in the library with its last-known metadata instead
+                            // of letting one bad container make it disappear.
+                            song = cached;
+                        }
+                        else
+                        {
+                            song = null;
+                            // Do not persist a stamp for a file we failed to parse, so a later scan
+                            // gets another chance once the file is fixed or unlocked.
+                            if (stamp is not null) currentStamps?.Remove(file.Path);
+                        }
                     }
+
+                    if (song is null) continue;
 
                     albumFactory.AddSong(song);
                     artistFactory.AddSong(song);
@@ -795,7 +816,7 @@ public sealed class LibraryService : ILibraryService
                         unchanged = true;
                     }
 
-                    MediaViewModel video;
+                    MediaViewModel? video;
                     if (unchanged && cached is not null)
                     {
                         video = cached;
@@ -803,10 +824,27 @@ public sealed class LibraryService : ILibraryService
                     }
                     else
                     {
-                        video = _mediaFactory.Create(file);
-                        video.IsFromLibrary = true;
-                        await video.LoadDetailsAsync(_sourceMetadataService, cancellationToken);
+                        MediaViewModel fresh = _mediaFactory.Create(file);
+                        fresh.IsFromLibrary = true;
+                        bool parsed = await LibraryParseGuard.TryParseAsync(
+                            () => fresh.LoadDetailsAsync(_sourceMetadataService, cancellationToken),
+                            _logger, file.Path, cancellationToken);
+                        if (parsed)
+                        {
+                            video = fresh;
+                        }
+                        else if (cached is not null)
+                        {
+                            video = cached;
+                        }
+                        else
+                        {
+                            video = null;
+                            if (stamp is not null) currentStamps?.Remove(file.Path);
+                        }
                     }
+
+                    if (video is null) continue;
 
                     target.Add(video);
                 }
