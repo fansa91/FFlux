@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
 
   <!-- Platform configuration -->
   <PropertyGroup>
@@ -12,7 +12,7 @@
        file properties, the Settings page caption and the artefact names all agree.
        Starts at 0.1.0: the app is pre-1.0 while the WinUI 3 port settles. -->
   <PropertyGroup>
-    <Version>0.1.3</Version>
+    <Version>0.1.4</Version>
     <Company>fansa92</Company>
     <Product>FFlux Player</Product>
   </PropertyGroup>
