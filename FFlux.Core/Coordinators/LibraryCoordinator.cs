@@ -129,13 +129,16 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
         }
         catch (OperationCanceledException)
         {
-            // ignored
+            // A newer fetch replaced this one. Logged so a "begin" without "end" is not mistaken
+            // for a crash in the stage trace.
+            StartupTrace.Write("scan.music.cancelled");
         }
         catch (Exception e)
         {
             // A scan failure (I/O, a bad container, a WinRT error) must not escape into a
             // fire-and-forget task or a XAML callback as a fatal exception. Keep the last known
             // library on screen and let the finally block clear the loading flag.
+            StartupTrace.Write("scan.music.failed", e);
             _logger.LogError(e, "Failed to fetch the music library; keeping the previous snapshot.");
         }
         finally
@@ -172,11 +175,12 @@ public sealed partial class LibraryCoordinator : ILibraryCoordinator,
         }
         catch (OperationCanceledException)
         {
-            // ignored
+            StartupTrace.Write("scan.videos.cancelled");
         }
         catch (Exception e)
         {
             // Keep the last known library on screen; the finally block clears the loading flag.
+            StartupTrace.Write("scan.videos.failed", e);
             _logger.LogError(e, "Failed to fetch the videos library; keeping the previous snapshot.");
         }
         finally

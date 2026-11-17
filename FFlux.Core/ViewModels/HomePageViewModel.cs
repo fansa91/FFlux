@@ -119,6 +119,11 @@ public sealed partial class HomePageViewModel : ObservableRecipient,
         {
             _logger.LogError(e, "Failed to load home page content.");
         }
+
+        // Marks the end of the first page-load pass. Approximation: it fires once the home page's
+        // initial content pass is done, not on the first presented frame (that would need
+        // CompositionTarget.Rendering).
+        StartupTrace.Write($"ui.firstRender (home, recent={Recent.Count})");
     }
 
     private void Selection_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)

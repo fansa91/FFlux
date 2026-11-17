@@ -62,6 +62,10 @@ sealed partial class App : Application
         FireAndForget.SetErrorHandler((context, ex) =>
             StartupErrorLog.Write($"FireAndForget [{context}] failed: {ex}"));
 
+        // Core's startup stage markers (scan / cache write / thumbnail failures) go to the same
+        // on-disk log. Diagnostics only: no sink means the markers are dropped.
+        StartupTrace.SetSink(StartupErrorLog.Write);
+
         // Initialize Sentry SDK and immediately register error handlers before XAML is initialized
         _ = InitializeSentrySdk();
         UnhandledException += App_UnhandledException;

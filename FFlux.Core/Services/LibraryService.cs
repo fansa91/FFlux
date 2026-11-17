@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -237,6 +238,10 @@ public sealed class LibraryService : ILibraryService
         CancellationToken cancellationToken,
         IProgress<MusicLibrary>? progress = null)
     {
+        // Stage marker only; a missing "end" line is itself the diagnostic (the scan never returned).
+        StartupTrace.Write($"scan.music.begin (useCache={useCache}, queries={scope.Queries.Count})");
+        Stopwatch scanWatch = Stopwatch.StartNew();
+
         StorageLibrary library = scope.Library;
         StorageLibraryChangeTracker? libraryChangeTracker = library.ChangeTracker;
         StorageLibraryChangeReader? changeReader = null;
@@ -358,6 +363,9 @@ public sealed class LibraryService : ILibraryService
             libraryChangeTracker?.Reset();
         }
 
+        StartupTrace.Write(
+            $"scan.music.end (songs={songs.Count}, cacheDirty={cacheDirty}, ms={scanWatch.ElapsedMilliseconds})");
+
         return result;
     }
 
@@ -367,6 +375,9 @@ public sealed class LibraryService : ILibraryService
         CancellationToken cancellationToken,
         IProgress<VideosLibrary>? progress = null)
     {
+        StartupTrace.Write($"scan.videos.begin (useCache={useCache}, queries={scope.Queries.Count})");
+        Stopwatch scanWatch = Stopwatch.StartNew();
+
         StorageLibrary library = scope.Library;
         StorageLibraryChangeTracker? libraryChangeTracker = library.ChangeTracker;
         StorageLibraryChangeReader? changeReader = null;
@@ -462,6 +473,9 @@ public sealed class LibraryService : ILibraryService
         {
             libraryChangeTracker?.Reset();
         }
+
+        StartupTrace.Write(
+            $"scan.videos.end (videos={videos.Count}, cacheDirty={cacheDirty}, ms={scanWatch.ElapsedMilliseconds})");
 
         return new VideosLibrary(videos);
     }
@@ -632,12 +646,16 @@ public sealed class LibraryService : ILibraryService
         }).ToList();
 
         cancellationToken.ThrowIfCancellationRequested();
+        StartupTrace.Write($"cache.write.begin (music, rows={snapshot.Count})");
+        Stopwatch writeWatch = Stopwatch.StartNew();
         try
         {
             await _databaseService.SaveMusicCacheAsync(folderPaths, snapshot);
+            StartupTrace.Write($"cache.write.end (music, rows={snapshot.Count}, ms={writeWatch.ElapsedMilliseconds})");
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
+            StartupTrace.Write($"cache.write.failed (music, rows={snapshot.Count}, ms={writeWatch.ElapsedMilliseconds})", e);
             _logger.LogError(e, "Failed to write the music library cache to the database.");
         }
     }
@@ -661,12 +679,16 @@ public sealed class LibraryService : ILibraryService
         }).ToList();
 
         cancellationToken.ThrowIfCancellationRequested();
+        StartupTrace.Write($"cache.write.begin (videos, rows={snapshot.Count})");
+        Stopwatch writeWatch = Stopwatch.StartNew();
         try
         {
             await _databaseService.SaveVideoCacheAsync(folderPaths, snapshot);
+            StartupTrace.Write($"cache.write.end (videos, rows={snapshot.Count}, ms={writeWatch.ElapsedMilliseconds})");
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
+            StartupTrace.Write($"cache.write.failed (videos, rows={snapshot.Count}, ms={writeWatch.ElapsedMilliseconds})", e);
             _logger.LogError(e, "Failed to write the video library cache to the database.");
         }
     }

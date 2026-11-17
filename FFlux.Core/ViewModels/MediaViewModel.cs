@@ -224,7 +224,7 @@ public sealed partial class MediaViewModel : ObservableRecipient
         // Artwork the metadata service already took off the container while the file was playing.
         if (MediaInfo.ArtworkData is { Length: > 0 } artworkData)
         {
-            if (await DecodeImageBytesAsync(artworkData) is { } embedded)
+            if (await DecodeImageBytesAsync(artworkData, Location) is { } embedded)
             {
                 PlaybackTrace.Write($"thumbnail: embedded artwork decoded, {artworkData.Length} bytes");
                 Thumbnail = embedded;
@@ -246,7 +246,7 @@ public sealed partial class MediaViewModel : ObservableRecipient
         {
             if (await AlbumArtworkLoader.LoadAsync(file) is { Length: > 0 } coverData)
             {
-                if (await DecodeImageBytesAsync(coverData) is { } cover)
+                if (await DecodeImageBytesAsync(coverData, Location) is { } cover)
                 {
                     PlaybackTrace.Write($"thumbnail: album artwork decoded, {coverData.Length} bytes");
                     Thumbnail = cover;
@@ -286,9 +286,10 @@ public sealed partial class MediaViewModel : ObservableRecipient
             {
                 await image.SetSourceAsync(source);
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 // WinRT component not found exception???
+                StartupTrace.Write($"thumb.shell.failed (setSource, file={file.Name})", e);
                 return;
             }
 
@@ -305,7 +306,7 @@ public sealed partial class MediaViewModel : ObservableRecipient
         }
     }
 
-    private static async Task<BitmapImage?> DecodeImageBytesAsync(byte[] imageData)
+    private static async Task<BitmapImage?> DecodeImageBytesAsync(byte[] imageData, string? origin = null)
     {
         try
         {
@@ -328,9 +329,10 @@ public sealed partial class MediaViewModel : ObservableRecipient
             await image.SetSourceAsync(stream);
             return image;
         }
-        catch (Exception)
+        catch (Exception e)
         {
             // Unknown or corrupt codec for the embedded cover; fall back to the next source.
+            StartupTrace.Write($"thumb.decode.failed (origin={origin ?? "?"}, bytes={imageData.Length})", e);
             return null;
         }
     }
@@ -383,13 +385,14 @@ public sealed partial class MediaViewModel : ObservableRecipient
                 return source;
             }
         }
-        catch (Exception)
+        catch (Exception e)
         {
             //// System.Exception: The data necessary to complete this operation is not yet available.
             //if (e.HResult != unchecked((int)0x8000000A) &&
             //    // System.Exception: The RPC server is unavailable.
             //    e.HResult != unchecked((int)0x800706BA))
             //    _logger.LogError(e, "Failed to load the image thumbnail.");
+            StartupTrace.Write($"thumb.shell.failed ({mode}, file={file.Name})", e);
         }
 
         return null;
