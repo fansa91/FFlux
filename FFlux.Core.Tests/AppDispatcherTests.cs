@@ -1,10 +1,14 @@
 using System;
 using System.Collections.Generic;
+using TUnit.Core;
 using Screenbox.Core.Helpers;
 using Screenbox.Core.Tests.Helpers;
 
 namespace Screenbox.Core.Tests;
 
+// One case installs/removes the process-wide FireAndForget error sink; keep the whole class
+// serial so it cannot clear another test's handler (and vice versa).
+[NotInParallel]
 public class AppDispatcherTests
 {
     [Test]
@@ -141,6 +145,50 @@ public class AppDispatcherTests
         dispatcher.Flush();
 
         await Assert.That(dispatcher.PendingCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task TryExecuteGuarded_WithPriority_ShouldContainCallbackException()
+    {
+        var dispatcher = new TestAppDispatcher();
+        var errors = new List<Exception>();
+        bool continued = false;
+
+        dispatcher.TryExecuteGuarded(
+            AppDispatcherPriority.Low,
+            () => throw new InvalidOperationException("low-priority callback failed"),
+            errors.Add);
+        dispatcher.TryExecuteGuarded(() => continued = true, errors.Add);
+
+        dispatcher.Flush();
+
+        await Assert.That(errors.Count).IsEqualTo(1);
+        await Assert.That(errors[0].Message).IsEqualTo("low-priority callback failed");
+        await Assert.That(continued).IsTrue();
+    }
+
+    [Test]
+    public async Task TryExecuteGuarded_WithoutReporter_ShouldUseDefaultFireAndForgetSink()
+    {
+        var dispatcher = new TestAppDispatcher();
+        string? reportedContext = null;
+        Exception? reported = null;
+        FireAndForget.SetErrorHandler((ctx, ex) => { reportedContext = ctx; reported = ex; });
+
+        try
+        {
+            dispatcher.TryExecuteGuarded(
+                () => throw new InvalidOperationException("no reporter supplied"));
+            dispatcher.Flush();
+
+            await Assert.That(reported).IsNotNull();
+            await Assert.That(reported!.Message).IsEqualTo("no reporter supplied");
+            await Assert.That(reportedContext).Contains("DispatcherCallback");
+        }
+        finally
+        {
+            FireAndForget.ResetErrorHandler();
+        }
     }
 
     [Test]

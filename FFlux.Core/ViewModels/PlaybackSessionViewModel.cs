@@ -110,7 +110,7 @@ public sealed partial class PlaybackSessionViewModel : ObservableRecipient,
 
     private void OnPlayerPlaybackRateChanged(IMediaPlayer sender, ValueChangedEventArgs<double> args)
     {
-        _dispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
             sender.PlaybackRate = PlaybackRate;
         });

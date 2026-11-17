@@ -62,8 +62,10 @@ public partial class FolderViewPageViewModel : ObservableRecipient,
     public void Receive(RefreshFolderMessage message)
     {
         if (!_isActive) return;
-        _dispatcherQueue.TryEnqueue(RefreshFolderContent);
+        _dispatcherQueue.TryExecuteGuarded(() => FireAndForget.Run(FetchContentAsync, "FolderViewPageViewModel.RefreshFolderContent"));
     }
+
+    private Task FetchContentAsync() => FetchContentAsync(NavData?.Parameter ?? _source);
 
     public async Task OnNavigatedTo(object? parameter)
     {
@@ -271,8 +273,4 @@ public partial class FolderViewPageViewModel : ObservableRecipient,
         }
     }
 
-    private async void RefreshFolderContent()
-    {
-        await FetchContentAsync(NavData?.Parameter ?? _source);
-    }
 }

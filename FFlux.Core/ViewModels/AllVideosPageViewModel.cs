@@ -39,7 +39,7 @@ public sealed partial class AllVideosPageViewModel : ObservableRecipient,
 
     public void Receive(PropertyChangedMessage<VideosLibrary> message)
     {
-        _dispatcherQueue.TryEnqueue(UpdateVideos);
+        _dispatcherQueue.TryExecuteGuarded(UpdateVideos);
     }
 
     public void UpdateVideos()

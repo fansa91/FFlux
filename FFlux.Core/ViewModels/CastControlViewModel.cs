@@ -101,7 +101,7 @@ public sealed partial class CastControlViewModel : ObservableObject
 
     private void RendererWatcherOnRendererLost(object? sender, RendererLostEventArgs e)
     {
-        _dispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
             Renderers.Remove(e.Renderer);
             if (SelectedRenderer == e.Renderer) SelectedRenderer = null;
@@ -110,6 +110,6 @@ public sealed partial class CastControlViewModel : ObservableObject
 
     private void RendererWatcherOnRendererFound(object? sender, RendererFoundEventArgs e)
     {
-        _dispatcherQueue.TryEnqueue(() => Renderers.Add(e.Renderer));
+        _dispatcherQueue.TryExecuteGuarded(() => Renderers.Add(e.Renderer));
     }
 }

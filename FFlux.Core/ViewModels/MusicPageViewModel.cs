@@ -45,7 +45,7 @@ public sealed partial class MusicPageViewModel : ObservableRecipient,
 
     public void Receive(PropertyChangedMessage<MusicLibrary> message)
     {
-        _dispatcherQueue.TryEnqueue(UpdateSongs);
+        _dispatcherQueue.TryExecuteGuarded(UpdateSongs);
     }
 
     public void UpdateSongs()

@@ -385,12 +385,11 @@ public sealed partial class PlayerElementViewModel : ObservableRecipient,
 
     private void OnPlaybackStateChanged(IMediaPlayer sender, object? args)
     {
-        _dispatcherQueue.TryEnqueue(() =>
-        {
-            UpdateDisplayRequest(sender.PlaybackState, _requestTracker);
-        });
-
-        _transportControlsService.UpdatePlaybackStatus(sender.PlaybackState);
+        // Capture the COM-backed value on the callback thread, then guard both the UI update
+        // and the SMTC update (which posts to the dispatcher internally).
+        MediaPlaybackState state = sender.PlaybackState;
+        _dispatcherQueue.TryExecuteGuarded(() => UpdateDisplayRequest(state, _requestTracker));
+        _transportControlsService.UpdatePlaybackStatus(state);
     }
 
     private void SetCropGeometry(Size size)

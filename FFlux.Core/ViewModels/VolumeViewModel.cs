@@ -114,7 +114,7 @@ public sealed partial class VolumeViewModel : ObservableRecipient,
         double normalizedVolume = Volume / 100d;
         if (Math.Abs(sender.Volume - normalizedVolume) > 0.001)
         {
-            _dispatcherQueue.TryEnqueue(() => sender.Volume = normalizedVolume);
+            _dispatcherQueue.TryExecuteGuarded(() => sender.Volume = normalizedVolume);
         }
     }
 
@@ -122,7 +122,7 @@ public sealed partial class VolumeViewModel : ObservableRecipient,
     {
         if (sender.IsMuted != IsMute)
         {
-            _dispatcherQueue.TryEnqueue(() => sender.IsMuted = IsMute);
+            _dispatcherQueue.TryExecuteGuarded(() => sender.IsMuted = IsMute);
         }
     }
 

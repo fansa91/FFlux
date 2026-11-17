@@ -287,15 +287,14 @@ public sealed partial class PlayerControlsViewModel : ObservableRecipient,
 
     private void OnNaturalVideoSizeChanged(IMediaPlayer sender, object? args)
     {
-        _dispatcherQueue.TryEnqueue(() => HasVideo = MediaPlayer?.NaturalVideoHeight > 0);
+        _dispatcherQueue.TryExecuteGuarded(() => HasVideo = MediaPlayer?.NaturalVideoHeight > 0);
     }
 
     private void OnPlaybackStateChanged(IMediaPlayer sender, object? args)
     {
-        _dispatcherQueue.TryEnqueue(() =>
-        {
-            IsPlaying = sender.PlaybackState is MediaPlaybackState.Playing or MediaPlaybackState.Opening;
-        });
+        // Capture the COM-backed value on the callback thread.
+        bool isPlaying = sender.PlaybackState is MediaPlaybackState.Playing or MediaPlaybackState.Opening;
+        _dispatcherQueue.TryExecuteGuarded(() => IsPlaying = isPlaying);
     }
 
     public void Receive(PropertyChangedMessage<WindowViewMode> message)
@@ -342,7 +341,7 @@ public sealed partial class PlayerControlsViewModel : ObservableRecipient,
         if (MediaPlayer is null) return;
         TimeSpan pos = MediaPlayer.Position;
         _coordinator.ResetCurrentItem();
-        _dispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
             MediaPlayer.Play();
             MediaPlayer.Position = pos;

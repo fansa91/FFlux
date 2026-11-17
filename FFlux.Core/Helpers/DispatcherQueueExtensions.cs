@@ -48,13 +48,23 @@ public static class DispatcherQueueExtensions
     public static bool TryExecuteGuarded(
         this IAppDispatcher dispatcher,
         Action action,
-        Action<Exception>? onError = null)
+        Action<Exception>? onError = null,
+        [System.Runtime.CompilerServices.CallerMemberName] string context = "")
     {
         void Report(Exception ex)
         {
             try
             {
-                onError?.Invoke(ex);
+                if (onError is not null)
+                {
+                    onError(ex);
+                }
+                else
+                {
+                    // Default: persist to the on-disk log. Without this sink an exception in a
+                    // dispatcher lambda is invisible - the app keeps running in a broken state.
+                    FireAndForget.Report($"DispatcherCallback:{context}", ex);
+                }
             }
             catch (Exception)
             {
@@ -81,6 +91,59 @@ public static class DispatcherQueueExtensions
         catch (Exception ex)
         {
             // HasThreadAccess / TryEnqueue can fail while the dispatcher is being torn down.
+            Report(ex);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Same guarantee as <see cref="TryExecuteGuarded(IAppDispatcher, Action, Action{Exception})"/>
+    /// for callers that need an explicit dispatcher priority (e.g. low-priority seek updates).
+    /// </summary>
+    public static bool TryExecuteGuarded(
+        this IAppDispatcher dispatcher,
+        AppDispatcherPriority priority,
+        Action action,
+        Action<Exception>? onError = null,
+        [System.Runtime.CompilerServices.CallerMemberName] string context = "")
+    {
+        void Report(Exception ex)
+        {
+            try
+            {
+                if (onError is not null)
+                {
+                    onError(ex);
+                }
+                else
+                {
+                    FireAndForget.Report($"DispatcherCallback:{context}", ex);
+                }
+            }
+            catch (Exception)
+            {
+                // Reporting must never become the exception that escapes the callback.
+            }
+        }
+
+        void Guarded()
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                Report(ex);
+            }
+        }
+
+        try
+        {
+            return dispatcher.TryEnqueue(priority, Guarded);
+        }
+        catch (Exception ex)
+        {
             Report(ex);
             return false;
         }

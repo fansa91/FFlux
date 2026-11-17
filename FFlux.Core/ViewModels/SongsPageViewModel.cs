@@ -45,7 +45,7 @@ public sealed partial class SongsPageViewModel : BaseMusicContentViewModel,
 
     public void Receive(PropertyChangedMessage<MusicLibrary> message)
     {
-        _dispatcherQueue.TryEnqueue(FetchSongs);
+        _dispatcherQueue.TryExecuteGuarded(FetchSongs);
     }
 
     public void OnNavigatedFrom()

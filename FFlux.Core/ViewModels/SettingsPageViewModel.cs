@@ -148,7 +148,7 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
         LibrarySettings.SearchRemovableStorage = value;
         if (SystemInformation.IsXbox && RemovableStorageFolders.Count > 0)
         {
-            _dispatcherQueue.TryEnqueue(async () => await RefreshLibrariesAsync());
+            _dispatcherQueue.TryExecuteGuarded(async () => await RefreshLibrariesAsync());
         }
     }
 
@@ -369,7 +369,7 @@ public sealed partial class SettingsPageViewModel : ObservableRecipient
 
     private void LibraryOnDefinitionChanged(StorageLibrary sender, object args)
     {
-        _dispatcherQueue.TryEnqueue(async () =>
+        _dispatcherQueue.TryExecuteGuarded(async () =>
         {
             try
             {

@@ -53,7 +53,7 @@ public sealed partial class AlbumsPageViewModel : BaseMusicContentViewModel,
 
     public void Receive(PropertyChangedMessage<MusicLibrary> message)
     {
-        _dispatcherQueue.TryEnqueue(FetchAlbums);
+        _dispatcherQueue.TryExecuteGuarded(FetchAlbums);
     }
 
     public void OnNavigatedFrom()

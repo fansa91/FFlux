@@ -58,7 +58,7 @@ public sealed partial class NotificationViewModel : ObservableRecipient,
 
         TimeSpan duration = message.DurationOverride ?? GetNotificationDuration(message.Level);
 
-        _dispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
             Reset();
             Severity = message.Level;

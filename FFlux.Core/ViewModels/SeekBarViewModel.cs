@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -130,7 +131,14 @@ public sealed partial class SeekBarViewModel :
         }
     }
 
-    public async void Receive(PropertyChangedMessage<IMediaPlayer?> message)
+    public void Receive(PropertyChangedMessage<IMediaPlayer?> message)
+    {
+        // Messenger callbacks can run off the UI thread. Keep an async void boundary out of
+        // this path: an exception escaping it is turned into a stowed exception by CoreMessaging.
+        FireAndForget.Run(() => AttachPlayerAsync(message), "SeekBarViewModel.Receive(IMediaPlayer)");
+    }
+
+    private async Task AttachPlayerAsync(PropertyChangedMessage<IMediaPlayer?> message)
     {
         if (message.Sender is not PlayerContext) return;
 
@@ -274,7 +282,7 @@ public sealed partial class SeekBarViewModel :
         {
             if (media.IsPlaying)
             {
-                _dispatcherQueue.TryEnqueue(AppDispatcherPriority.Low, () => SetPlayerPosition(lastPosition, false));
+                _dispatcherQueue.TryExecuteGuarded(AppDispatcherPriority.Low, () => SetPlayerPosition(lastPosition, false));
                 _lastTrackedPosition = TimeSpan.Zero;
             }
             else
@@ -349,10 +357,9 @@ public sealed partial class SeekBarViewModel :
 
     private void OnCanSeekChanged(IMediaPlayer sender, EventArgs args)
     {
-        _dispatcherQueue.TryEnqueue(() =>
-        {
-            IsSeekable = sender.CanSeek;
-        });
+        // Read the COM-backed value on the callback thread; never capture the sender itself.
+        bool canSeek = sender.CanSeek;
+        _dispatcherQueue.TryExecuteGuarded(() => IsSeekable = canSeek);
     }
 
     private void OnPlaybackStateChanged(IMediaPlayer sender, ValueChangedEventArgs<MediaPlaybackState> args)
@@ -360,7 +367,7 @@ public sealed partial class SeekBarViewModel :
         if (args.NewValue is not (MediaPlaybackState.None or MediaPlaybackState.Opening) &&
             _lastTrackedPosition > TimeSpan.Zero)
         {
-            _dispatcherQueue.TryEnqueue(AppDispatcherPriority.Low, () =>
+            _dispatcherQueue.TryExecuteGuarded(AppDispatcherPriority.Low, () =>
             {
                 SetPlayerPosition(_lastTrackedPosition, false);
                 _lastTrackedPosition = TimeSpan.Zero;
@@ -371,31 +378,20 @@ public sealed partial class SeekBarViewModel :
     private void OnPlaybackItemChanged(IMediaPlayer sender, object? args)
     {
         _seekTimer.Stop();
-        if (sender.PlaybackItem == null)
+        bool hasPlaybackItem = sender.PlaybackItem != null;
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                IsSeekable = false;
-                Time = 0;
-                CurrentChapterCue = null;
-                Chapters.Clear();
-            });
-        }
-        else
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                Time = 0;
-                CurrentChapterCue = null;
-                Chapters.Clear();
-            });
-        }
+            if (!hasPlaybackItem) IsSeekable = false;
+            Time = 0;
+            CurrentChapterCue = null;
+            Chapters.Clear();
+        });
     }
 
     private void OnBufferingEnded(IMediaPlayer sender, object? args)
     {
         _bufferingTimer.Stop();
-        _dispatcherQueue.TryEnqueue(() => BufferingVisible = false);
+        _dispatcherQueue.TryExecuteGuarded(() => BufferingVisible = false);
     }
 
     private void OnBufferingStarted(IMediaPlayer sender, object? args)
@@ -411,30 +407,34 @@ public sealed partial class SeekBarViewModel :
     private void OnPositionChanged(IMediaPlayer sender, object? args)
     {
         if (_seekTimer.IsRunning || _timeChangeOverride) return;
-        _dispatcherQueue.TryEnqueue(() =>
-        {
-            Time = sender.Position.TotalMilliseconds;
-        });
+        double positionMs = sender.Position.TotalMilliseconds;
+        _dispatcherQueue.TryExecuteGuarded(() => Time = positionMs);
     }
 
     private void OnChapterChanged(IMediaPlayer sender, ValueChangedEventArgs<ChapterCue?> args)
     {
+        // Capture the value off the COM event args before the delayed callback runs.
+        ChapterCue? chapter = args.NewValue;
         // Small delay to prevent boundary retriggers.
         _originalPositionTimer.DebounceCore(() =>
         {
-            CurrentChapterCue = args.NewValue;
+            CurrentChapterCue = chapter;
         }, TimeSpan.FromMilliseconds(100));
     }
 
     private void OnNaturalDurationChanged(IMediaPlayer sender, object? args)
     {
         // Natural duration can fluctuate during playback
-        // Do not rely on this event to detect media changes
-        _dispatcherQueue.TryEnqueue(() =>
+        // Do not rely on this event to detect media changes. Capture COM-backed values on the
+        // callback thread so the dispatcher lambda never touches a cross-thread WinRT object.
+        double durationMs = sender.NaturalDuration.TotalMilliseconds;
+        bool canSeek = sender.CanSeek;
+        IReadOnlyList<ChapterCue>? chapters = sender.PlaybackItem?.Chapters;
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
-            Length = sender.NaturalDuration.TotalMilliseconds;
-            IsSeekable = sender.CanSeek;
-            UpdateChapters(sender.PlaybackItem?.Chapters);
+            Length = durationMs;
+            IsSeekable = canSeek;
+            UpdateChapters(chapters);
         });
     }
 
@@ -442,7 +442,7 @@ public sealed partial class SeekBarViewModel :
     {
         if (!_timeChangeOverride)
         {
-            _dispatcherQueue.TryEnqueue(() =>
+            _dispatcherQueue.TryExecuteGuarded(() =>
             {
                 // Check if Time is close enough to Length. Sometimes a new file is already loaded at this point.
                 if (Length - Time is > 0 and < 400)

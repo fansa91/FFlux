@@ -957,7 +957,7 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
     private void OnMediaFailed(IMediaPlayer sender, EventArgs args)
     {
         // Playback events arrive on a WinRT callback thread; marshal observable property updates to the UI thread.
-        _dispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
             _context.IsPlaying = false;
             if (_context.CurrentItem is not null)
@@ -973,9 +973,9 @@ public sealed partial class PlayQueueCoordinator : ObservableRecipient, IPlayQue
     private void OnPlaybackStateChanged(IMediaPlayer sender, object args)
     {
         // Playback events arrive on a WinRT callback thread; marshal observable property updates to the UI thread.
-        _dispatcherQueue.TryEnqueue(() =>
+        bool isPlaying = sender.PlaybackState == MediaPlaybackState.Playing;
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
-            bool isPlaying = sender.PlaybackState == MediaPlaybackState.Playing;
             _context.IsPlaying = isPlaying;
 
             if (_context.CurrentItem is not null)

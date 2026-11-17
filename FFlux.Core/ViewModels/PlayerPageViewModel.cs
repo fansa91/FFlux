@@ -220,7 +220,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
     public void Receive(PropertyChangedMessage<WindowViewMode> message)
     {
         if (message.Sender is not WindowContext) return;
-        _dispatcherQueue.TryEnqueue(() => ViewMode = message.NewValue);
+        _dispatcherQueue.TryExecuteGuarded(() => ViewMode = message.NewValue);
     }
 
     private void OnNavigationServiceNavigated(object? sender, EventArgs e)
@@ -255,7 +255,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         OsdMessageValue = message.Value;
 
         // Message
-        _dispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
             _osdMessageTimer.Stop();
 
@@ -277,7 +277,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         });
 
         // Badge
-        _dispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
             _osdBadgeTimer.Stop();
 
@@ -299,16 +299,22 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         });
     }
 
-    public async void Receive(QueueCurrentItemChangedMessage message)
+    public void Receive(QueueCurrentItemChangedMessage message)
     {
-        MediaViewModel? current = message.Value;
-        _dispatcherQueue.TryEnqueue(() => UpdatePropertiesWithCurrentItem(current));
+        // Messenger callbacks can be raised off the UI thread; an exception escaping an
+        // async void boundary there is a process-killing stowed exception. Use a guarded task.
+        FireAndForget.Run(() => UpdateForCurrentItemAsync(message.Value), "PlayerPageViewModel.Receive(QueueCurrentItem)");
+    }
+
+    private async Task UpdateForCurrentItemAsync(MediaViewModel? current)
+    {
+        _dispatcherQueue.TryExecuteGuarded(() => UpdatePropertiesWithCurrentItem(current));
         if (current != null)
         {
             if (!current.DetailsLoaded)
             {
                 await current.LoadDetailsAsync(_sourceMetadataService);
-                _dispatcherQueue.TryEnqueue(() => UpdatePropertiesWithCurrentItem(current));
+                _dispatcherQueue.TryExecuteGuarded(() => UpdatePropertiesWithCurrentItem(current));
             }
 
             if (MediaPlayer?.PlaybackItem is { } playbackItem &&
@@ -319,7 +325,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
             await current.LoadThumbnailAsync();
 
             // Process again in case media type changed after loading details
-            _dispatcherQueue.TryEnqueue(() => UpdatePropertiesWithCurrentItem(current));
+            _dispatcherQueue.TryExecuteGuarded(() => UpdatePropertiesWithCurrentItem(current));
         }
     }
 
@@ -867,7 +873,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
             IsBuffering = false;
         }
 
-        _dispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
             PlaybackState = state;
             IsPlaying = state == MediaPlaybackState.Playing;
@@ -895,15 +901,17 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         if (!_resizeNext && _playerSettings.AutoResize != PlayerAutoResizeOption.Always) return;
         _resizeNext = false;
 
-        _dispatcherQueue.TryEnqueue(() =>
+        // Read COM-backed dimensions on the callback thread.
+        uint width = sender.NaturalVideoWidth;
+        uint height = sender.NaturalVideoHeight;
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
-            Size desiredSize = new(sender.NaturalVideoWidth, sender.NaturalVideoHeight);
+            Size desiredSize = new(width, height);
             if (ResizeWindow(desiredSize, 1).HasValue) return;
 
             // Resize to fill the screen only when video size is bigger than max window size
             Size maxWindowSize = _windowService.GetMaxWindowSize();
-            if (sender.NaturalVideoWidth >= maxWindowSize.Width ||
-                sender.NaturalVideoHeight >= maxWindowSize.Height)
+            if (width >= maxWindowSize.Width || height >= maxWindowSize.Height)
                 ResizeWindow(desiredSize, 0);
         });
     }
