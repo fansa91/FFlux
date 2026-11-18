@@ -172,16 +172,18 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # Checkout must come first: actions/checkout runs `git clean`, which would
+      # delete an untracked dist/ directory downloaded before it.
+      - name: Checkout full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: Download builds
         uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
-
-      - name: Checkout full history
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Publish GitHub release
         env:
