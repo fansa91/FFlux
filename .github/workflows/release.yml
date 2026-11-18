@@ -178,22 +178,64 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Checkout full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           ls -lh dist
-          cat > notes.md <<EOF
-          同一个 FFlux $VERSION，两种打包方式，功能完全一致。
 
-          | 下载 | 运行时要求 |
-          | --- | --- |
-          | \`FFlux-$VERSION-win-x64-self-contained.zip\` | 无。解压后直接运行 \`FFlux.exe\` |
-          | \`FFlux-$VERSION-win-x64-framework-dependent.zip\` | 需预装 .NET 10 桌面运行时（Windows App SDK 已随包提供） |
+          # Build the "what changed" section from commits since the previous release tag.
+          # checkout fetched full history and all tags, so git is the source of truth here.
+          PREVIOUS_TAG="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' \
+            | grep -v "^v${VERSION}$" \
+            | sort -V \
+            | tail -n 1)"
+          # On a tag push the ref exists locally. workflow_dispatch may name a version that
+          # has no tag yet; in that case use HEAD (the dispatch ref) as the range end.
+          if git rev-parse -q --verify "refs/tags/v${VERSION}" >/dev/null; then
+            RANGE_END="v${VERSION}"
+          else
+            RANGE_END="HEAD"
+          fi
+          if [ -n "$PREVIOUS_TAG" ]; then
+            RANGE="${PREVIOUS_TAG}..${RANGE_END}"
+          else
+            RANGE="$RANGE_END"
+          fi
 
-          系统要求：Windows 10 1903（build 18362）及以上，x64。
-          EOF
+          {
+            echo "同一个 FFlux $VERSION，两种打包方式，功能完全一致。"
+            echo
+            echo "## 更新内容"
+            echo
+            COMMITS="$(git log --no-merges --pretty=format:'- %s' "$RANGE")"
+            if [ -n "$COMMITS" ]; then
+              echo "$COMMITS"
+            else
+              echo "- 无代码变更（仅重新打包）"
+            fi
+            if [ -n "$PREVIOUS_TAG" ]; then
+              echo
+              echo "完整变更：[$PREVIOUS_TAG...v$VERSION](https://github.com/$GITHUB_REPOSITORY/compare/$PREVIOUS_TAG...v$VERSION)"
+            fi
+            echo
+            echo "## 下载"
+            echo
+            echo "| 下载 | 运行时要求 |"
+            echo "| --- | --- |"
+            echo "| \`FFlux-$VERSION-win-x64-self-contained.zip\` | 无。解压后直接运行 \`FFlux.exe\` |"
+            echo "| \`FFlux-$VERSION-win-x64-framework-dependent.zip\` | 需预装 .NET 10 桌面运行时（Windows App SDK 已随包提供） |"
+            echo
+            echo "系统要求：Windows 10 1903（build 18362）及以上，x64。"
+          } > notes.md
+
+          cat notes.md
 
           # A tag can be re-pointed at a fixed commit, which leaves the previous release
           # sitting on the same tag name. Replace it instead of failing with "already exists".
