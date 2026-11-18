@@ -60,11 +60,14 @@ public sealed class WindowService : IWindowService
 
     private void OnWindowSizeChanged(object sender, WindowSizeChangedEventArgs e)
     {
-        if (_windowContext.ViewMode != WindowViewMode.FullScreen) return;
+        if (_windowContext.ViewMode is not (WindowViewMode.FullScreen or WindowViewMode.Compact)) return;
 
         try
         {
-            if (AppWindow?.Presenter?.Kind != AppWindowPresenterKind.FullScreen)
+            AppWindowPresenterKind expected = _windowContext.ViewMode == WindowViewMode.FullScreen
+                ? AppWindowPresenterKind.FullScreen
+                : AppWindowPresenterKind.CompactOverlay;
+            if (AppWindow?.Presenter?.Kind != expected)
                 _windowContext.ViewMode = WindowViewMode.Default;
         }
         catch (Exception)
@@ -124,10 +127,27 @@ public sealed class WindowService : IWindowService
 
     public Task<bool> TryEnterCompactLayoutAsync(Size viewSize)
     {
-        // No compact-overlay presenter exists in unpackaged WinUI 3, so do not pretend
-        // a picture-in-picture mode is active.
-        _ = viewSize;
-        return Task.FromResult(false);
+        // WinUI 3 desktop does have AppWindowPresenterKind.CompactOverlay (the old UWP
+        // ApplicationViewMode.CompactOverlay was the unavailable API). SetPresenter throws when
+        // the OS or window configuration cannot host it, which is our capability check.
+        try
+        {
+            AppWindow? appWindow = AppWindow;
+            if (appWindow is null) return Task.FromResult(false);
+
+            if (viewSize.Width > 0 && viewSize.Height > 0)
+                appWindow.Resize(new SizeInt32((int)Math.Round(viewSize.Width), (int)Math.Round(viewSize.Height)));
+
+            appWindow.SetPresenter(AppWindowPresenterKind.CompactOverlay);
+            _windowContext.ViewMode = WindowViewMode.Compact;
+            StartupTrace.Write($"pip.enter (presenter={appWindow.Presenter?.Kind}, size={viewSize.Width}x{viewSize.Height})");
+            return Task.FromResult(true);
+        }
+        catch (Exception e)
+        {
+            StartupTrace.Write("pip.enter.failed", e);
+            return Task.FromResult(false);
+        }
     }
 
     public Size GetMaxWindowSize()
