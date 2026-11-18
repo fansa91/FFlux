@@ -121,6 +121,9 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
 
     private IMediaPlayer? MediaPlayer => _playerContext.MediaPlayer;
 
+    /// <summary>Lyrics for the current track, kept on the UI thread with the page.</summary>
+    public LyricsViewModel Lyrics { get; } = new();
+
     private readonly IAppDispatcher _dispatcherQueue;
     private readonly IAppDispatcherTimer _openingTimer;
     private readonly IAppDispatcherTimer _bufferingTimer;
@@ -175,6 +178,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         {
             MediaPlayer.PlaybackStateChanged += OnStateChanged;
             MediaPlayer.NaturalVideoSizeChanged += OnNaturalVideoSizeChanged;
+            MediaPlayer.PositionChanged += OnPositionChangedForLyrics;
         }
 
         Messenger.Register<TogglePlayerVisibilityMessage>(this);
@@ -238,12 +242,14 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
         {
             oldPlayer.PlaybackStateChanged -= OnStateChanged;
             oldPlayer.NaturalVideoSizeChanged -= OnNaturalVideoSizeChanged;
+            oldPlayer.PositionChanged -= OnPositionChangedForLyrics;
         }
 
         if (MediaPlayer != null)
         {
             MediaPlayer.PlaybackStateChanged += OnStateChanged;
             MediaPlayer.NaturalVideoSizeChanged += OnNaturalVideoSizeChanged;
+            MediaPlayer.PositionChanged += OnPositionChangedForLyrics;
         }
     }
 
@@ -323,6 +329,7 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
                 await current.LoadDetailsAsync(_playbackMetadataService, playbackItem);
             }
             await current.LoadThumbnailAsync();
+            await Lyrics.LoadForCurrentItemAsync(current);
 
             // Process again in case media type changed after loading details
             _dispatcherQueue.TryExecuteGuarded(() => UpdatePropertiesWithCurrentItem(current));
@@ -894,6 +901,13 @@ public sealed partial class PlayerPageViewModel : ObservableRecipient,
                 DelayHideControls();
             }
         });
+    }
+
+    // COM-backed position arrives on a worker thread: read the scalar here, then marshal.
+    private void OnPositionChangedForLyrics(IMediaPlayer sender, object? args)
+    {
+        TimeSpan position = sender.Position;
+        _dispatcherQueue.TryExecuteGuarded(() => Lyrics.UpdatePosition(position));
     }
 
     private void OnNaturalVideoSizeChanged(IMediaPlayer sender, EventArgs args)
