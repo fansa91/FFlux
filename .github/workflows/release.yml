@@ -120,13 +120,13 @@ jobs:
           $count = (Get-ChildItem $source -Recurse -File).Count
           "Publish layout OK: $count files"
 
-      # Best-effort runtime proof: start the published folder and wait for the startup
-      # heartbeat written by Program.cs. Deliberately non-blocking, because a hosted runner
-      # may lack the desktop or graphics stack WinUI 3 wants; the layout check above is the
-      # hard gate and the log is printed either way.
+      # Runtime proof: start the published folder and wait for the startup heartbeat written by
+      # Program.cs. This is a hard gate on purpose. v0.1.6 shipped a build that died ~1s into
+      # startup (a misaligned WASAPI vtable slot crashed the process inside COM) and it got
+      # through because this step used to be continue-on-error, so the assertion below only
+      # ever produced a warning. A build that cannot reach a running state must not be released.
       - name: Smoke test ${{ matrix.flavour }}
         shell: pwsh
-        continue-on-error: true
         run: |
           $source = Join-Path $env:GITHUB_WORKSPACE "artifacts/${{ matrix.flavour }}"
           $log = Join-Path $env:LOCALAPPDATA 'FFlux\startup-error.log'
