@@ -3,6 +3,7 @@ using Screenbox.UI.Automation.Peers;
 using Windows.ApplicationModel.Core;
 using Windows.UI.Core;
 using Windows.UI.ViewManagement;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
@@ -95,6 +96,7 @@ public sealed partial class TitleBar : ContentControl
     private CoreApplicationViewTitleBar? _coreTitleBar;
     private ApplicationViewTitleBar? _applicationViewTitleBar;
     private Window? _window;
+    private AppWindowTitleBar? _appWindowTitleBar;
 
     private ColumnDefinition? _leftPaddingColumn;
     private ColumnDefinition? _rightPaddingColumn;
@@ -130,6 +132,21 @@ public sealed partial class TitleBar : ContentControl
             catch (Exception)
             {
                 // Custom title bar is cosmetic; failing here must not break startup.
+            }
+
+            // Unpackaged WinUI 3 has no CoreApplicationViewTitleBar. The caption-button
+            // insets (which reserve space for Min/Max/Close) come from AppWindow instead.
+            try
+            {
+                _appWindowTitleBar = _window.AppWindow.TitleBar;
+                // AppWindowTitleBar has no LayoutMetricsChanged (that is UWP-only);
+                // AppWindow.Changed fires on size/DPI changes that can move the insets.
+                _window.AppWindow.Changed += AppWindow_OnChanged;
+            }
+            catch (Exception)
+            {
+                // Same best-effort rule as ExtendsContentIntoTitleBar above.
+                _appWindowTitleBar = null;
             }
         }
 
@@ -219,6 +236,9 @@ public sealed partial class TitleBar : ContentControl
     public void RefreshDragRegion()
     {
         UpdateDragRegion();
+        // Insets can still be zero when the template first applies (window not yet sized).
+        // Refresh them here too — callers invoke this after the tree is live.
+        UpdatePadding();
     }
 
     /// <summary>
@@ -245,8 +265,15 @@ public sealed partial class TitleBar : ContentControl
             _applicationViewTitleBar = null;
         }
 
+        if (_appWindowTitleBar is not null)
+        {
+            _appWindowTitleBar = null;
+        }
+
         if (_window is not null)
         {
+            try { _window.AppWindow.Changed -= AppWindow_OnChanged; }
+            catch (Exception) { /* window already torn down */ }
             _window.Activated -= Window_OnActivated;
             _window = null;
         }
@@ -364,17 +391,38 @@ public sealed partial class TitleBar : ContentControl
 
     private void UpdatePadding()
     {
-        if (_coreTitleBar is null) return;
-
-        double leadingInset = _coreTitleBar.SystemOverlayLeftInset;
-        double trailingInset = _coreTitleBar.SystemOverlayRightInset;
         bool isRtl = FlowDirection is FlowDirection.RightToLeft;
+        double leadingInset;
+        double trailingInset;
+
+        // Prefer AppWindow (unpackaged WinUI 3). _coreTitleBar is the legacy UWP path and is
+        // null in a desktop app, which previously left both padding columns at zero width
+        // and let the Footer overlap the system Min/Max/Close buttons.
+        if (_appWindowTitleBar is not null)
+        {
+            leadingInset = _appWindowTitleBar.LeftInset;
+            trailingInset = _appWindowTitleBar.RightInset;
+        }
+        else if (_coreTitleBar is not null)
+        {
+            leadingInset = _coreTitleBar.SystemOverlayLeftInset;
+            trailingInset = _coreTitleBar.SystemOverlayRightInset;
+        }
+        else
+        {
+            return;
+        }
 
         if (_leftPaddingColumn is not null)
             _leftPaddingColumn.Width = new GridLength(isRtl ? trailingInset : leadingInset);
 
         if (_rightPaddingColumn is not null)
             _rightPaddingColumn.Width = new GridLength(isRtl ? leadingInset : trailingInset);
+    }
+
+    private void AppWindow_OnChanged(AppWindow sender, AppWindowChangedEventArgs args)
+    {
+        UpdatePadding();
     }
 
     private void UpdateHeader()
