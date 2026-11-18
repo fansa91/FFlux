@@ -17,6 +17,7 @@ public sealed class SystemVolumeService : ISystemVolumeService
 {
     private readonly object _gate = new();
     private IMMDeviceEnumerator? _enumerator;
+    private bool _logged;
 
     public bool TryGetVolume(out int volume)
     {
@@ -29,12 +30,44 @@ public sealed class SystemVolumeService : ISystemVolumeService
                 int hr = endpoint.GetMasterVolumeLevelScalar(out float scalar);
                 if (hr < 0) return false;
                 volume = (int)Math.Round(Math.Clamp(scalar, 0f, 1f) * 100f);
+                LogOnce(volume);
                 return true;
             }
         }
         catch (Exception)
         {
             // No default device, device removed mid-call, or COM not initialized.
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Leaves one line in the startup log the first time the endpoint answers. The WASAPI interop
+    /// is vtable-sensitive and a misaligned slot kills the process without a managed exception,
+    /// so recording the value actually read makes a bad read visible without a debugger.
+    /// </summary>
+    private void LogOnce(int volume)
+    {
+        if (_logged) return;
+        _logged = true;
+
+        bool muteKnown = TryReadMuteQuietly(out bool mute);
+        Screenbox.Core.Helpers.StartupTrace.Write(
+            $"systemvolume: volume={volume} mute={(muteKnown ? mute.ToString() : "?")}");
+    }
+
+    private bool TryReadMuteQuietly(out bool mute)
+    {
+        mute = false;
+        try
+        {
+            if (GetEndpointVolume() is not { } endpoint) return false;
+            if (endpoint.GetMute(out int value) < 0) return false;
+            mute = value != 0;
+            return true;
+        }
+        catch (Exception)
+        {
             return false;
         }
     }
