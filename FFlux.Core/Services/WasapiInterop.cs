@@ -81,7 +81,23 @@ internal partial interface IMMDevice
 [Guid("5CDF2C82-841E-4546-9722-0CF74078229A")]
 internal partial interface IAudioEndpointVolume
 {
-    // vtable order: IUnknown(3) + the following methods in declaration order.
+    // The vtable slot of a COM method is its declaration index (+3 for IUnknown), so the order
+    // below is NOT free-form: it must be a verbatim prefix of the native interface from
+    // endpointvolume.h. Every method up to the last one used has to be present, including the
+    // ones this service never calls.
+    //
+    //   0 RegisterControlChangeNotify        7 SetChannelVolumeLevel
+    //   1 UnregisterControlChangeNotify      8 SetChannelVolumeLevelScalar
+    //   2 GetChannelCount                    9 GetChannelVolumeLevel
+    //   3 SetMasterVolumeLevel              10 GetChannelVolumeLevelScalar
+    //   4 SetMasterVolumeLevelScalar        11 SetMute
+    //   5 GetMasterVolumeLevel              12 GetMute
+    //   6 GetMasterVolumeLevelScalar
+    //
+    // Getting this wrong is fatal, not recoverable: a misaligned slot calls an unrelated method
+    // with the wrong argument layout, which dereferences a bogus pointer and raises an access
+    // violation. That is an unmanaged crash inside the COM transition, so
+    // Application.UnhandledException never sees it and the process just dies (0xC0000005).
     [PreserveSig]
     int RegisterControlChangeNotify(nint callback);
 
@@ -92,21 +108,33 @@ internal partial interface IAudioEndpointVolume
     int GetChannelCount(out uint channelCount);
 
     [PreserveSig]
+    int SetMasterVolumeLevel(float levelDb, nint eventContext);
+
+    [PreserveSig]
+    int SetMasterVolumeLevelScalar(float level, nint eventContext);
+
+    [PreserveSig]
     int GetMasterVolumeLevel(out float levelDb);
 
     [PreserveSig]
     int GetMasterVolumeLevelScalar(out float level);
 
     [PreserveSig]
-    int SetMasterVolumeLevel(float levelDb, nint eventContext);
+    int SetChannelVolumeLevel(uint channel, float levelDb, nint eventContext);
 
     [PreserveSig]
-    int SetMasterVolumeLevelScalar(float level, nint eventContext);
+    int SetChannelVolumeLevelScalar(uint channel, float level, nint eventContext);
+
+    [PreserveSig]
+    int GetChannelVolumeLevel(uint channel, out float levelDb);
+
+    [PreserveSig]
+    int GetChannelVolumeLevelScalar(uint channel, out float level);
 
     // BOOL in native; int avoids source-generator bool marshalling restrictions.
     [PreserveSig]
-    int GetMute(out int mute);
+    int SetMute(int mute, nint eventContext);
 
     [PreserveSig]
-    int SetMute(int mute, nint eventContext);
+    int GetMute(out int mute);
 }
