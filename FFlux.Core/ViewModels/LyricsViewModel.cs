@@ -59,6 +59,15 @@ public sealed partial class LyricsViewModel : ObservableObject
 
     private async Task<IReadOnlyList<LyricLine>> LoadFromFileAsync(MediaViewModel media)
     {
+        // Prefer timestamped lyrics embedded in the file's own tags. FFmpeg already read the
+        // tags when the track opened, so this is just a parse - no extra file access needed.
+        string embeddedText = media.MediaInfo.LyricsText;
+        if (!string.IsNullOrWhiteSpace(embeddedText))
+        {
+            IReadOnlyList<LyricLine> embeddedLines = LrcParser.Parse(embeddedText);
+            if (embeddedLines.Count > 0) return embeddedLines;
+        }
+
         if (media.Source is not IFileMediaSource fileSource) return Array.Empty<LyricLine>();
         Windows.Storage.StorageFile? file = await fileSource.GetStorageFileAsync();
         if (file is null) return Array.Empty<LyricLine>();

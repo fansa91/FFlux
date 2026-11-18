@@ -41,6 +41,7 @@ public static class MediaInfoExtensions
         DateTimeOffset dateModified = target.DateModified != default ? target.DateModified : source.DateModified;
         Uri? artworkUri = target.ArtworkUri ?? source.ArtworkUri;
         byte[]? artworkData = target.ArtworkData ?? source.ArtworkData;
+        string lyricsText = Text(target.LyricsText, source.LyricsText);
 
         MusicInfo targetMusic = target.MusicProperties;
         MusicInfo sourceMusic = source.MusicProperties;
@@ -91,6 +92,7 @@ public static class MediaInfoExtensions
             DateModified = dateModified,
             ArtworkUri = artworkUri,
             ArtworkData = artworkData,
+            LyricsText = lyricsText,
             Container = Text(target.Container, source.Container),
             AudioStreamCount = Count(target.AudioStreamCount, source.AudioStreamCount),
             SubtitleStreamCount = Count(target.SubtitleStreamCount, source.SubtitleStreamCount),

@@ -33,6 +33,12 @@ public sealed class MediaInfo
     /// </summary>
     public string Container { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets LRC-formatted lyrics embedded in the media file's own metadata tags
+    /// (ID3v2 USLT, Vorbis LYRICS, MP4 ©lyr). Empty when the file has no embedded lyrics.
+    /// </summary>
+    public string LyricsText { get; set; } = string.Empty;
+
     /// <summary>Gets or sets the number of audio streams in the container.</summary>
     public int AudioStreamCount { get; set; }
 

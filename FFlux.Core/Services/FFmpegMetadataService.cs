@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -6,6 +7,7 @@ using System.Threading.Tasks;
 using FFmpegInteropX;
 using Microsoft.Extensions.Logging;
 using Screenbox.Core.Enums;
+using Screenbox.Core.Helpers;
 using Screenbox.Core.Models;
 using Screenbox.Core.Playback;
 using Windows.Storage.Streams;
@@ -97,6 +99,7 @@ public sealed class FFmpegMetadataService : IPlaybackMetadataService
         string episode = Tag( "episode_number", "episode", "episode_id");
         uint trackNumber = ParseTrackNumber(Tag( "track"));
         uint year = ParseYear(Tag( "date", "year"));
+        string lyricsText = EmbeddedLyricsReader.FindLyricsText(EnumerateTags(tags)) ?? string.Empty;
 
         uint videoWidth = video is { PixelWidth: > 0 } ? (uint)video.PixelWidth : 0;
         uint videoHeight = video is { PixelHeight: > 0 } ? (uint)video.PixelHeight : 0;
@@ -151,11 +154,28 @@ public sealed class FFmpegMetadataService : IPlaybackMetadataService
         return new MediaInfo(mediaType, musicInfo, videoInfo)
         {
             ArtworkData = artworkData,
+            LyricsText = lyricsText,
             Container = source.FormatInfo?.FormatName ?? string.Empty,
             AudioStreamCount = source.AudioStreams.Count,
             SubtitleStreamCount = source.SubtitleStreams.Count,
             ChapterCount = source.ChapterInfos.Count
         };
+    }
+
+    /// <summary>
+    /// Flattens FFmpeg's tag map into key/value pairs for the AOT-safe lyrics reader.
+    /// </summary>
+    private static IEnumerable<KeyValuePair<string, string>> EnumerateTags(
+        IReadOnlyDictionary<string, IReadOnlyList<string>> tags)
+    {
+        foreach (KeyValuePair<string, IReadOnlyList<string>> tag in tags)
+        {
+            if (tag.Value is null) continue;
+            foreach (string value in tag.Value)
+            {
+                yield return new KeyValuePair<string, string>(tag.Key, value ?? string.Empty);
+            }
+        }
     }
 
     private static byte[]? TryExtractArtwork(FFmpegMediaSource source)
