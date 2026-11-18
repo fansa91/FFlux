@@ -50,6 +50,9 @@ public sealed partial class PlayerPage : Page
         UpdatePreviewType();
 
         ViewModel.PropertyChanged += ViewModelOnPropertyChanged;
+        // ListView does not scroll the selected item into view on its own. Keep the active
+        // lyric line visible as PositionChanged advances CurrentLineIndex.
+        ViewModel.Lyrics.PropertyChanged += LyricsOnPropertyChanged;
         AlbumArtImage.RegisterPropertyChangedCallback(ImageBrush.ImageSourceProperty, AlbumArtImageOnSourceChanged);
         LayoutRoot.ActualThemeChanged += OnActualThemeChanged;
     }
@@ -278,6 +281,20 @@ public sealed partial class PlayerPage : Page
                 ViewModel.ShouldClosePlayQueueFlyout = false;
                 break;
         }
+    }
+
+    /// <summary>
+    /// Brings the active lyric line into view. SelectedIndex alone does not make a WinUI
+    /// ListView scroll, so this is driven from the ViewModel's CurrentLineIndex changes.
+    /// </summary>
+    private void LyricsOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(LyricsViewModel.CurrentLineIndex)) return;
+
+        int index = ViewModel.Lyrics.CurrentLineIndex;
+        if (index < 0 || index >= LyricsList.Items.Count) return;
+
+        LyricsList.ScrollIntoView(LyricsList.Items[index], ScrollIntoViewAlignment.Leading);
     }
 
     private async void PlayBackgroundArtChangeCrossFadeAnimation()
