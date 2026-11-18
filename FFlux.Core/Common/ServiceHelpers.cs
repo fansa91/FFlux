@@ -81,6 +81,7 @@ public static class ServiceHelpers
 
         // Services
         services.AddSingleton<ISettingsStorage, SettingsStorage>();
+        services.AddSingleton<ISystemVolumeService, SystemVolumeService>();
         services.AddSingleton<IDatabaseService, DatabaseService>();
         services.AddSingleton<IPlayerService, PlayerService>();
         services.AddSingleton<IFilesService, FilesService>();

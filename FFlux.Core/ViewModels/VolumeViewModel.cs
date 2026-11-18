@@ -4,11 +4,11 @@ using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using Screenbox.Core.Contexts;
 using Screenbox.Core.Enums;
+using Screenbox.Core.Helpers;
 using Screenbox.Core.Messages;
 using Screenbox.Core.Playback;
 using Screenbox.Core.Services;
 using Windows.System;
-using Screenbox.Core.Helpers;
 
 namespace Screenbox.Core.ViewModels;
 
@@ -17,6 +17,12 @@ public sealed partial class VolumeViewModel : ObservableRecipient,
     IRecipient<ChangeVolumeRequestMessage>,
     IRecipient<PropertyChangedMessage<IMediaPlayer?>>
 {
+    // How often external system-volume changes are picked up. Polling on the UI dispatcher
+    // keeps every WASAPI call on the STA thread and avoids a COM callback on an MTA worker,
+    // which in this app previously surfaced as fatal stowed exceptions.
+    private static readonly TimeSpan SystemVolumePollInterval = TimeSpan.FromMilliseconds(700);
+    private const int SystemVolumeMax = 100;
+
     [ObservableProperty] public partial int MaxVolume { get; set; }
     [ObservableProperty] public partial int Volume { get; set; }
     [ObservableProperty] public partial bool IsMute { get; set; }
@@ -26,15 +32,43 @@ public sealed partial class VolumeViewModel : ObservableRecipient,
     private readonly IAppDispatcher _dispatcherQueue;
     private readonly PlaybackSettingsContext _playbackSettings;
     private readonly PlayerContext _playerContext;
+    private readonly ISystemVolumeService _systemVolume;
+    private readonly IAppDispatcherTimer _systemVolumeTimer;
+    private bool _suppressSystemWrite;
 
-    public VolumeViewModel(PlaybackSettingsContext playbackSettings, PlayerContext playerContext)
+    public VolumeViewModel(
+        PlaybackSettingsContext playbackSettings,
+        PlayerContext playerContext,
+        ISystemVolumeService systemVolume)
     {
         _playbackSettings = playbackSettings;
         _playerContext = playerContext;
-        Volume = playbackSettings.Volume;
-        MaxVolume = playbackSettings.MaxVolume;
-        IsMute = Volume == 0;
+        _systemVolume = systemVolume;
         _dispatcherQueue = AppDispatcher.Current;
+
+        MaxVolume = playbackSettings.MaxVolume;
+
+        // Adopt the system master volume as the source of truth when a render endpoint exists.
+        // Suppress the write-back from BOTH initial assignments so startup does not push our
+        // persisted value over the system (which would also make the adoption read back 100).
+        _suppressSystemWrite = true;
+        Volume = playbackSettings.Volume;
+        if (_systemVolume.TryGetVolume(out int currentSystemVolume))
+        {
+            Volume = Math.Clamp(currentSystemVolume, 0, MaxVolume);
+        }
+
+        if (_systemVolume.TryGetMute(out bool systemMute))
+        {
+            IsMute = systemMute;
+        }
+        else
+        {
+            IsMute = Volume == 0;
+        }
+
+        _suppressSystemWrite = false;
+        ApplyPlayerGain();
 
         if (MediaPlayer != null)
         {
@@ -45,6 +79,12 @@ public sealed partial class VolumeViewModel : ObservableRecipient,
         Messenger.Register<SettingChangedMessage<PlaybackSettingsContext, int>>(this);
         Messenger.Register<ChangeVolumeRequestMessage>(this);
         Messenger.Register<PropertyChangedMessage<IMediaPlayer?>>(this);
+
+        _systemVolumeTimer = _dispatcherQueue.CreateTimer();
+        _systemVolumeTimer.Interval = SystemVolumePollInterval;
+        _systemVolumeTimer.IsRepeating = true;
+        _systemVolumeTimer.Tick += OnSystemVolumeTimerTick;
+        _systemVolumeTimer.Start();
     }
 
     public void Receive(SettingChangedMessage<PlaybackSettingsContext, int> message)
@@ -52,6 +92,7 @@ public sealed partial class VolumeViewModel : ObservableRecipient,
         if (message.PropertyName == nameof(PlaybackSettingsContext.MaxVolume))
         {
             MaxVolume = message.NewValue;
+            if (Volume > MaxVolume) Volume = MaxVolume;
         }
     }
 
@@ -69,6 +110,7 @@ public sealed partial class VolumeViewModel : ObservableRecipient,
         {
             MediaPlayer.VolumeChanged += OnVolumeChanged;
             MediaPlayer.IsMutedChanged += OnIsMutedChanged;
+            ApplyPlayerGain();
         }
     }
 
@@ -78,22 +120,35 @@ public sealed partial class VolumeViewModel : ObservableRecipient,
         message.Reply(Volume);
     }
 
+    /// <summary>
+    /// Called when the slider changes. The slider drives the system master volume up to 100%;
+    /// above that (the volume-boost setting) the extra gain stays local to the player, since a
+    /// system endpoint cannot exceed unity.
+    /// </summary>
     partial void OnVolumeChanged(int value)
     {
-        if (MediaPlayer == null) return;
-        double newValue = value / 100d;
-        // bool stayMute = IsMute && newValue - MediaPlayer.Volume < 0.005;
-        MediaPlayer.Volume = newValue;
-        if (value > 0) IsMute = false;
         _playbackSettings.Volume = value;
+        if (value > 0) IsMute = false;
+
+        if (!_suppressSystemWrite)
+        {
+            _systemVolume.TrySetVolume(Math.Min(value, SystemVolumeMax));
+        }
+
+        ApplyPlayerGain();
     }
 
     partial void OnIsMuteChanged(bool value)
     {
-        if (MediaPlayer is null)
-            return;
+        if (!_suppressSystemWrite)
+        {
+            _systemVolume.TrySetMute(value);
+        }
 
-        MediaPlayer.IsMuted = value;
+        _dispatcherQueue.TryExecuteGuarded(() =>
+        {
+            if (MediaPlayer is not null) MediaPlayer.IsMuted = value;
+        });
     }
 
     /// <summary>
@@ -109,20 +164,88 @@ public sealed partial class VolumeViewModel : ObservableRecipient,
             .ShowBadge());
     }
 
+    /// <summary>
+    /// Mirrors the player's own volume changes back into the view model. When the system
+    /// endpoint is the source of truth the player is expected to stay at unity (or at the boost
+    /// gain), so the comparison uses that value instead of Volume/100.
+    /// </summary>
     private void OnVolumeChanged(IMediaPlayer sender, object? args)
     {
-        double normalizedVolume = Volume / 100d;
-        if (Math.Abs(sender.Volume - normalizedVolume) > 0.001)
+        // MediaPlayer.VolumeChanged fires on an MTA worker. Only read the scalar here;
+        // everything else (including the WASAPI-backed gain lookup) runs on the UI thread.
+        double playerVolume = sender.Volume;
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
-            _dispatcherQueue.TryExecuteGuarded(() => sender.Volume = normalizedVolume);
-        }
+            double expected = GetPlayerGain();
+            if (Math.Abs(playerVolume - expected) > 0.001)
+            {
+                sender.Volume = expected;
+            }
+        });
     }
 
     private void OnIsMutedChanged(IMediaPlayer sender, object? args)
     {
-        if (sender.IsMuted != IsMute)
+        // Same MTA rule: capture the scalar first, mutate only on the UI thread.
+        bool playerMuted = sender.IsMuted;
+        _dispatcherQueue.TryExecuteGuarded(() =>
         {
-            _dispatcherQueue.TryExecuteGuarded(() => sender.IsMuted = IsMute);
+            if (playerMuted != IsMute)
+            {
+                sender.IsMuted = IsMute;
+            }
+        });
+    }
+
+    /// <summary>
+    /// Picks up system-volume changes made outside the app (tray icon, keyboard media keys,
+    /// another app). Runs on the UI dispatcher so every WASAPI call stays on the STA thread.
+    /// </summary>
+    private void OnSystemVolumeTimerTick(object? sender, EventArgs e)
+    {
+        if (!_systemVolume.TryGetVolume(out int systemVolume)) return;
+
+        // While boost is active the slider sits above 100 but the system is pinned at 100.
+        int expectedSystemVolume = Math.Min(Volume, SystemVolumeMax);
+        if (systemVolume != expectedSystemVolume)
+        {
+            _suppressSystemWrite = true;
+            Volume = Math.Clamp(systemVolume, 0, MaxVolume);
+            _suppressSystemWrite = false;
+        }
+
+        if (_systemVolume.TryGetMute(out bool systemMute) && systemMute != IsMute)
+        {
+            _suppressSystemWrite = true;
+            IsMute = systemMute;
+            _suppressSystemWrite = false;
+        }
+    }
+
+    /// <summary>
+    /// Volume above 100 is an app-side boost; 0-100 is handled by the system master volume, so
+    /// the player itself must stay at unity to avoid attenuating twice. Without a usable system
+    /// endpoint, the player keeps full control as before.
+    /// </summary>
+    private double GetPlayerGain()
+    {
+        if (_systemVolume.TryGetVolume(out _))
+        {
+            return Volume > SystemVolumeMax ? Volume / 100d : 1.0;
+        }
+
+        return Volume / 100d;
+    }
+
+    private void ApplyPlayerGain()
+    {
+        IMediaPlayer? player = MediaPlayer;
+        if (player is null) return;
+
+        double gain = GetPlayerGain();
+        if (Math.Abs(player.Volume - gain) > 0.001)
+        {
+            _dispatcherQueue.TryExecuteGuarded(() => player.Volume = gain);
         }
     }
 
