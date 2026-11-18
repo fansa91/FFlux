@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -755,6 +755,20 @@
   </data>
   <data name="SubtitleAddedNotificationTitle" xml:space="preserve">
     <value>添加了字幕</value>
+  </data>
+  <data name="PlaylistExportedNotificationTitle" xml:space="preserve">
+    <value>播放列表"{0}" 已导出</value>
+    <comment>#Format[String name]</comment>
+  </data>
+  <data name="PlaylistImportedNotificationTitle" xml:space="preserve">
+    <value>播放列表"{0}" 已导入</value>
+    <comment>#Format[String name]</comment>
+  </data>
+  <data name="PlaylistExportFailedNotificationTitle" xml:space="preserve">
+    <value>导出播放列表失败</value>
+  </data>
+  <data name="PlaylistImportFailedNotificationTitle" xml:space="preserve">
+    <value>导入播放列表失败</value>
   </data>
   <data name="PlaylistCreatedNotificationTitle" xml:space="preserve">
     <value>播放列表"{0}" 已创建</value>

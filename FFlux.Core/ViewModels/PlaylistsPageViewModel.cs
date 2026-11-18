@@ -85,14 +85,23 @@ public partial class PlaylistsPageViewModel : ObservableRecipient
         StorageFile? file = await _filesService.PickFileAsync(".m3u8", ".m3u");
         if (file is null) return;
 
-        IReadOnlyList<MediaViewModel> items = await _playlistService.ImportPlaylistItemsAsync(file);
-        if (items.Count == 0) return;
+        try
+        {
+            IReadOnlyList<MediaViewModel> items = await _playlistService.ImportPlaylistItemsAsync(file);
+            if (items.Count == 0) return;
 
-        var playlist = Ioc.Default.GetRequiredService<PlaylistViewModel>();
-        playlist.Name = file.DisplayName;
-        await playlist.AddItemsAsync(items);
-        Playlists.Insert(0, playlist);
-        Messenger.Send(new NotificationMessage(NotificationLevel.Success, NotificationKind.PlaylistCreated, title: playlist.Name));
+            var playlist = Ioc.Default.GetRequiredService<PlaylistViewModel>();
+            playlist.Name = file.DisplayName;
+            await playlist.AddItemsAsync(items);
+            Playlists.Insert(0, playlist);
+            Messenger.Send(new NotificationMessage(NotificationLevel.Success, NotificationKind.PlaylistImported, title: playlist.Name));
+        }
+        catch (Exception e)
+        {
+            FireAndForget.Report("PlaylistsPageViewModel.ImportPlaylist", e);
+            Messenger.Send(new NotificationMessage(NotificationLevel.Error, NotificationKind.PlaylistImportFailed,
+                message: e.Message));
+        }
     }
 
     public async Task ExportPlaylistAsync(PlaylistViewModel playlist, string playlistFileDisplayName = "M3U8")
@@ -102,7 +111,17 @@ public partial class PlaylistsPageViewModel : ObservableRecipient
             saveFileTypes, Windows.Storage.Pickers.PickerLocationId.MusicLibrary);
         if (file is null) return;
 
-        await _playlistService.ExportPlaylistItemsAsync(playlist.Items, file);
+        try
+        {
+            await _playlistService.ExportPlaylistItemsAsync(playlist.Items, file);
+            Messenger.Send(new NotificationMessage(NotificationLevel.Success, NotificationKind.PlaylistExported, title: playlist.Name));
+        }
+        catch (Exception e)
+        {
+            FireAndForget.Report("PlaylistsPageViewModel.ExportPlaylist", e);
+            Messenger.Send(new NotificationMessage(NotificationLevel.Error, NotificationKind.PlaylistExportFailed,
+                message: e.Message));
+        }
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]

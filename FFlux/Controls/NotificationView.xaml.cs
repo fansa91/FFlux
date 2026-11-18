@@ -84,6 +84,10 @@ public sealed partial class NotificationView : UserControl
             NotificationKind.PlaylistDeleted => Strings.Resources.PlaylistDeletedNotificationTitle(title ?? string.Empty),
             NotificationKind.PlaylistRenamed => Strings.Resources.PlaylistRenamedNotificationTitle(title ?? string.Empty),
             NotificationKind.PlaylistItemsAdded when numericValue is double count => Strings.Resources.PlaylistItemsAddedNotificationTitle(count, title ?? string.Empty),
+            NotificationKind.PlaylistExported => Strings.Resources.PlaylistExportedNotificationTitle(title ?? string.Empty),
+            NotificationKind.PlaylistImported => Strings.Resources.PlaylistImportedNotificationTitle(title ?? string.Empty),
+            NotificationKind.PlaylistExportFailed => Strings.Resources.PlaylistExportFailedNotificationTitle,
+            NotificationKind.PlaylistImportFailed => Strings.Resources.PlaylistImportFailedNotificationTitle,
             NotificationKind.ResumePosition => Strings.Resources.ResumePositionNotificationTitle,
             _ => null,
         };

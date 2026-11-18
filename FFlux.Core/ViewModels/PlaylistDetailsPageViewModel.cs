@@ -148,7 +148,17 @@ public sealed partial class PlaylistDetailsPageViewModel : ObservableRecipient
             saveFileTypes, Windows.Storage.Pickers.PickerLocationId.MusicLibrary);
         if (file is null) return;
 
-        await _playlistService.ExportPlaylistItemsAsync(Source.Items, file);
+        try
+        {
+            await _playlistService.ExportPlaylistItemsAsync(Source.Items, file);
+            Messenger.Send(new NotificationMessage(NotificationLevel.Success, NotificationKind.PlaylistExported, title: Source.Name));
+        }
+        catch (Exception e)
+        {
+            FireAndForget.Report("PlaylistDetailsPageViewModel.ExportPlaylist", e);
+            Messenger.Send(new NotificationMessage(NotificationLevel.Error, NotificationKind.PlaylistExportFailed,
+                message: e.Message));
+        }
     }
 
     public async Task<bool> DeletePlaylistAsync()

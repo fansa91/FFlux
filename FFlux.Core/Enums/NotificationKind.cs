@@ -21,6 +21,10 @@ public enum NotificationKind
     PlaylistDeleted,
     PlaylistRenamed,
     PlaylistItemsAdded,
+    PlaylistExported,
+    PlaylistImported,
+    PlaylistExportFailed,
+    PlaylistImportFailed,
 
     ResumePosition,
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Screenbox.Core.Enums;
+using Screenbox.Core.Helpers;
 using Screenbox.Core.Models;
 using Screenbox.Core.ViewModels;
 using Windows.Storage;
@@ -88,28 +89,16 @@ public sealed class PlaylistService : IPlaylistService
 
     public async Task ExportPlaylistItemsAsync(IReadOnlyList<MediaViewModel> items, StorageFile file)
     {
-        var sb = new StringBuilder();
-        sb.AppendLine("#EXTM3U");
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(file);
 
+        var entries = new List<M3uEntry>(items.Count);
         foreach (MediaViewModel item in items)
         {
-            if (string.IsNullOrWhiteSpace(item.Location) || string.Equals(item.Location, "about:blank", StringComparison.Ordinal))
-                continue;
-
-            int durationSeconds = item.Duration > TimeSpan.Zero
-                ? (int)Math.Round(item.Duration.TotalSeconds)
-                : -1;
-
-            string title = item.Name;
-            string path = Uri.TryCreate(item.Location, UriKind.Absolute, out var uri)
-                ? uri.AbsoluteUri
-                : item.Location;
-
-            sb.AppendLine($"#EXTINF:{durationSeconds},{title}")
-              .AppendLine(path);
+            entries.Add(new M3uEntry(item.Location, item.Name, item.Duration));
         }
 
-        byte[] bytes = Encoding.UTF8.GetBytes(sb.ToString());
-        await FileIO.WriteBytesAsync(file, bytes);
+        string playlist = M3uPlaylistSerializer.Serialize(entries);
+        await FileIO.WriteBytesAsync(file, M3uPlaylistSerializer.Encode(playlist));
     }
 }
